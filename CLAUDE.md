@@ -98,17 +98,45 @@ Each subject directory contains:
 
 3. **Confounds**: Task-specific confound regressors for denoising
 
-### Data Access Notes
+### Data Access for Lab Members
 
-- **fMRI Dataset URL**: https://www.dropbox.com/scl/fo/0bvo2n8reyr16zlqdnktp/ABXiAY8gG22Uj2SxoIOhKaY?rlkey=37e5m9k1mw90i5s7wa943xp85&st=948ucp0g&dl=0
-- **Stimulus Video URL**: https://www.dropbox.com/scl/fi/ilblpsb7jsuuvwwvbpg2r/stimuli_Sherlock.m4v?rlkey=o55ziuub2x7jy0mg2jqfncqpw&st=4ahtlcl0&dl=0
+**Simple one-command setup:**
 
-**Download Instructions**:
-1. Download fMRI data from the first link (Dropbox web interface required)
-2. Extract the downloaded folder contents into `data/` directory
-3. Download the video stimulus from the second link
-4. Place `stimuli_Sherlock.m4v` in the `data/` directory
-5. Verify data integrity by checking that `.nii.gz` files are not empty (should be ~hundreds of MB each)
+```bash
+./download_data_from_dropbox.sh
+```
+
+This downloads a single 11GB zip file from Dropbox containing:
+- Stimulus video (272 MB)
+- Scene annotations (173 KB)
+- fMRI data for all subjects (17 .nii.gz files, ~10.7 GB)
+
+**No credentials needed** - just run the script and it will download and extract everything automatically.
+
+**Alternative: Download from Discovery server** (if you have access):
+
+```bash
+./download_data.sh
+```
+
+Requires Discovery credentials and `sshpass` installed.
+
+**What you'll get:**
+- `data/stimuli_Sherlock.m4v` - Sherlock episode video
+- `data/annotations.xlsx` - Scene-level annotations (1000 segments with timing, characters, locations, emotions)
+- `data/sherlock_nii/*.nii.gz` - fMRI data for 17 subjects
+
+**Dataset URL**: https://www.dropbox.com/scl/fi/tlr6orirwc14gdq7yqwcl/sherlock_dataset.zip?rlkey=82h9hyrbv37xvtqff5mw6h6m5&dl=1
+
+### Data Storage for Lab-Only Sharing
+
+This dataset cannot be publicly shared (no permissions for stimulus video, borrowed fMRI data). For lab member access:
+
+1. **Code & metadata**: GitHub repository (this repo) - public or private
+2. **Large data files**: Discovery server (requires Dartmouth NetID)
+3. **Alternative**: DataLad dataset with Dropbox backend (for team members without Discovery access)
+
+**Note**: Do not commit .nii or .nii.gz files to GitHub. Data directory is in .gitignore.
 
 ### Spatial Normalization
 
