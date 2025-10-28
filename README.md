@@ -1,24 +1,30 @@
 # Introduction and overview
 
-This repository contains the [Contextual Dynamics Lab](http://www.context-lab.com)'s code related to the [CCN Algonauts 2021 challenge](http://algonauts.csail.mit.edu/challenge.html).
+This repository originally contained the [Contextual Dynamics Lab](http://www.context-lab.com)'s code related to the [CCN Algonauts 2021 challenge](http://algonauts.csail.mit.edu/challenge.html). However, since that challenge has *long* passed (without us entering it!) our focus has shifted to a new question:
 
-## Important dates:
+> As you go through life, your subjective experience reflects ongoing processing and coordination among and between the many (many!) components of your brain. Conceptually, you can think of your complete subjective experience as a sort of “baseline” that we can use for (theoretical) comparrison.
+>
+> But how does an individual piece of your brain “experience” those same things? For example, presumably your retina and primary visual cortex mostly process visual aspects of your experiences, but perhaps they don’t “care” as much about other stuff (information from other senses, emotion, motor processing, etc.). Could we come up with a “transformation function” that takes in a stimulus (say, a movie) and outputs a modified version of the stimulus containing only the parts that one specific brain region “cares about”? For example, maybe this function would remove the audio track from the movie if we were to ask it how the movie was “seen” by primary visual cortex. Or maybe we’d get only auditory information if we processed it like primary auditory cortex. Or maybe we’d get a version that focused on (or highlighted in some way) faces, if we passed in face processing areas. And so on.
+>
+>One could also imagine trying to remove individual brain areas. E.g., suppose we asked how everywhere in the brain except face processing areas “saw” that movie. Would faces be blurred out or unintelligible?
+>
+> This project is in the very early (brainstorming and prototyping) phases: we’re trying to figure out how to solve a very difficult conceptual and theoretical problem! If we can figure out some approaches, there are myriad deep, interesting, and enormously useful applications. A few examples:
+>
+>   - We could understand, intuitively, the “role” of any brain area or set of brain areas
+>   - We could simulate changes in function following brain lesions, damage, and/or resective surgery
+>   - We could construct “optimized” stimuli that maximally target specific regions or sets of regions. This could be useful for other neuroscientific experiments, building/testing models, therapies, etc.
 
-| Description          | Date |
------------------------|------|
-| Training data, test data, and development kit released | May 1, 2021 |
-| Challenge submission deadline | August 14, 2021 at 11:59PM (UTC-4) |
-| Challenge report submission deadline | August 22, 2021 |
-| Challenge results released | August 23, 2021 |
-| Virtual session as [CCN 2021](https://2021.ccneuro.org/) | September 7, 2021 |
+### Where did the name "giblet responses" come from?
+
+The brain's "giblets" are its myriad constituent pieces (apologies for the somewhat morbid/gross metaphor). We want to understand how each giblet [responds](https://en.wikipedia.org/wiki/Region_of_interest) to a stimulus-- in this case, a movie.
 
 ## Setup instructions
 
 1. Read about the Algonauts 2021 challenge [here](http://algonauts.csail.mit.edu/challenge.html)
-2. Follow the setup instructions [here](https://github.com/Neural-Dynamics-of-Visual-Cognition-FUB/Algonauts2021_devkit) to install the Algonauts Developer's Kit on your computer and download the data.  (*TODO: let's make a Docker container to do this part automatically*)
+2. Follow the setup instructions [here](https://github.com/Neural-Dynamics-of-Visual-Cognition-FUB/Algonauts2021_devkit) to install the Algonauts Developer's Kit on your computer and download the data.  (*TODO: let's make a setup script to do this part automatically*)
 3. Fork this repository and clone the fork to your computer
 4. Add yourself to the "Team CDL contributors" list below (you'll need to add yourself to your fork and then submit a pull request).  By adding yourself to the team, you agree to:
-    - Maintain clear, open, and regular communications with your fellow team members related to work on this challenge project.  This includes joining the associated [slack channel](https://context-lab.slack.com/archives/C020V4HJFT4) and/or [discord channel](https://discord.com/channels/861636192751845386/861636755182059591) and checking/contributing to it regularly while the project is active.
+    - Maintain clear, open, and regular communications with your fellow team members related to work on this challenge project.  This includes joining the associated [slack channel](https://context-lab.slack.com/archives/C020V4HJFT4) and checking/contributing to it regularly while the project is active.
     - Participate in the hackathons related to the project
     - Take responsibility for the methods, code, and results
     - Assist in writing up and submitting our results
