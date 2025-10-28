@@ -43,6 +43,19 @@ Some scattered thoughts (expand and refine later...)
 - use TFA and/or timecorr features?
 - connect with other datasets (e.g. Huth et al. semantic decoding, neurosynth, etc.)?
 
+Another half-baked idea:
+ - Build an autoencoder with the following design:
+     - Input and output layers: vectorized video frames + audio
+     - Several (not sure how many) intermediate layers (leading to/from the "middle")
+     - Middle layer: "compressed" representation-- should have the same number of features as there are fMRI voxels in the dataset
+         - Potential future tweak: add in some convolutional layers to pool information across nearby voxels
+ - Now train the autoencoder to optimize not just for matching the input/output, but also matching the middle layer to match the fMRI responses to each frame
+     - The frame rate will be much higher than the fMRI samplerate, so we might want to use linear interpolation to generate intermediate images between the actual fMRI responses
+     - BOLD responses are slow; perhaps there's a way to detangle the temporal blurring?
+ - Now, for any (new) input image, we can predict brain responses using the encoder part of the autoencoder
+ - We can also use the decoder part to predict video/audio from brain responses
+ - We can also fix some of the responses (of some "voxels" in the middle layer) to 0 to "lesion" the responses, and then see how the decoder's outputs change
+
 # Results
 
 (insert description here, including links to Jupyter notebooks for reproducing any figures)
