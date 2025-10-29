@@ -1,7 +1,7 @@
 """
 Models module for giblet autoencoder.
 
-Contains encoder and decoder architectures for multimodal fMRI reconstruction.
+Contains encoder, decoder, and full autoencoder architectures for multimodal fMRI reconstruction.
 """
 
 from .encoder import (
@@ -11,11 +11,21 @@ from .encoder import (
     SherlockEncoder,
     create_encoder
 )
+from .decoder import MultimodalDecoder
+from .autoencoder import (
+    SherlockAutoencoder,
+    create_autoencoder,
+    prepare_for_distributed
+)
 
 __all__ = [
     'VideoEncoder',
     'AudioEncoder',
     'TextEncoder',
     'SherlockEncoder',
-    'create_encoder'
+    'create_encoder',
+    'MultimodalDecoder',
+    'SherlockAutoencoder',
+    'create_autoencoder',
+    'prepare_for_distributed'
 ]
