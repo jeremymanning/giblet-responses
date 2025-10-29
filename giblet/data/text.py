@@ -1,12 +1,12 @@
 """
-Text processing module for Sherlock fMRI project.
+Text processing module for multimodal fMRI autoencoder project.
 
 Handles bidirectional conversion between text annotations and embeddings:
 - Text → Embeddings: Extract text embeddings aligned to fMRI TRs
 - Embeddings → Text: Recover text using nearest-neighbor search
 
 Uses BAAI/bge-large-en-v1.5 model (1024-dim, top MTEB performance).
-All temporal alignment uses TR = 1.5 seconds.
+Default temporal alignment uses TR = 1.5 seconds (configurable).
 """
 
 import numpy as np

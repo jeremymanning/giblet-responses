@@ -1,6 +1,6 @@
-# Training System for Sherlock Autoencoder
+# Training System for Multimodal Autoencoder
 
-This directory contains the complete training system for the Sherlock autoencoder, supporting both single-GPU and multi-GPU distributed training.
+This directory contains the complete training system for the multimodal fMRI autoencoder, supporting both single-GPU and multi-GPU distributed training.
 
 ## Overview
 
@@ -21,15 +21,15 @@ The training system provides:
 
 ```python
 from giblet.models.autoencoder import create_autoencoder
-from giblet.data.dataset import SherlockDataset
+from giblet.data.dataset import MultimodalDataset
 from giblet.training import Trainer, TrainingConfig
 
 # Create model
 model = create_autoencoder()
 
 # Load datasets
-train_dataset = SherlockDataset('data/', split='train')
-val_dataset = SherlockDataset('data/', split='val')
+train_dataset = MultimodalDataset('data/', split='train')
+val_dataset = MultimodalDataset('data/', split='val')
 
 # Configure training
 config = TrainingConfig(
@@ -418,9 +418,9 @@ python tests/test_training.py
 ```bash
 # 1. Prepare data
 python -c "
-from giblet.data.dataset import SherlockDataset
-train_ds = SherlockDataset('data/', split='train', preprocess=True)
-val_ds = SherlockDataset('data/', split='val', preprocess=True)
+from giblet.data.dataset import MultimodalDataset
+train_ds = MultimodalDataset('data/', split='train', preprocess=True)
+val_ds = MultimodalDataset('data/', split='val', preprocess=True)
 print(f'Train: {len(train_ds)}, Val: {len(val_ds)}')
 "
 

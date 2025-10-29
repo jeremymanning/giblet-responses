@@ -1,5 +1,5 @@
 """
-Training module for Sherlock autoencoder.
+Training module for multimodal autoencoder.
 
 This module provides comprehensive training functionality including:
 - Trainer class with single-GPU and multi-GPU support

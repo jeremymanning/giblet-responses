@@ -1,5 +1,5 @@
 """
-Loss functions for training the Sherlock autoencoder.
+Loss functions for training the multimodal autoencoder.
 
 This module provides various loss functions used for training:
 1. Reconstruction losses (MSE, Cosine similarity)

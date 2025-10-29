@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Training script for Sherlock autoencoder.
+Training script for multimodal autoencoder.
 
 Supports both single-GPU and multi-GPU distributed training.
 
@@ -31,7 +31,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from giblet.models.autoencoder import create_autoencoder
-from giblet.data.dataset import SherlockDataset
+from giblet.data.dataset import MultimodalDataset
 from giblet.training.trainer import Trainer, TrainingConfig, setup_distributed, cleanup_distributed
 
 
@@ -123,7 +123,7 @@ def main():
 
     if is_main_process:
         print("\n" + "=" * 80)
-        print("Sherlock Autoencoder Training")
+        print("Multimodal Autoencoder Training")
         print("=" * 80)
         print(f"Config file: {args.config}")
         print(f"Distributed: {args.distributed}")
@@ -140,7 +140,7 @@ def main():
     if is_main_process:
         print("Loading datasets...")
 
-    train_dataset = SherlockDataset(
+    train_dataset = MultimodalDataset(
         data_dir=data_dir,
         subjects=data_config.get('subjects', 'all'),
         split='train',
@@ -149,7 +149,7 @@ def main():
         preprocess=True
     )
 
-    val_dataset = SherlockDataset(
+    val_dataset = MultimodalDataset(
         data_dir=data_dir,
         subjects=data_config.get('subjects', 'all'),
         split='val',

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Simple training example for Sherlock autoencoder.
+Simple training example for multimodal autoencoder.
 
 This script demonstrates how to use the training system with minimal configuration.
+Example uses the Sherlock dataset.
 """
 
 import sys
@@ -12,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from giblet.models.autoencoder import create_autoencoder
-from giblet.data.dataset import SherlockDataset
+from giblet.data.dataset import MultimodalDataset
 from giblet.training import Trainer, TrainingConfig
 
 
@@ -20,7 +21,7 @@ def main():
     """Run a simple training example."""
 
     print("\n" + "=" * 80)
-    print("Sherlock Autoencoder - Training Example")
+    print("Multimodal Autoencoder - Training Example")
     print("=" * 80 + "\n")
 
     # 1. Create model
@@ -52,7 +53,7 @@ def main():
 
     try:
         # Load training data
-        train_dataset = SherlockDataset(
+        train_dataset = MultimodalDataset(
             data_dir=data_dir,
             subjects='all',  # All 17 subjects
             split='train',   # 80% of data
@@ -62,7 +63,7 @@ def main():
         )
 
         # Load validation data
-        val_dataset = SherlockDataset(
+        val_dataset = MultimodalDataset(
             data_dir=data_dir,
             subjects='all',
             split='val',  # 20% of data

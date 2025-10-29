@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Demo script for Sherlock Encoder architecture.
+Demo script for Multimodal Encoder architecture.
 
 This script demonstrates the encoder forward pass with realistic data dimensions
 and provides detailed output about the architecture.
@@ -15,7 +15,7 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from giblet.models.encoder import SherlockEncoder, create_encoder
+from giblet.models.encoder import MultimodalEncoder, create_encoder
 
 
 def format_bytes(num_bytes):
@@ -29,14 +29,14 @@ def format_bytes(num_bytes):
 
 def main():
     print("=" * 80)
-    print("Sherlock Encoder Architecture Demo")
+    print("Multimodal Encoder Architecture Demo")
     print("=" * 80)
     print()
 
-    # Create encoder with Sherlock dataset dimensions
-    print("Initializing encoder with Sherlock dataset dimensions:")
+    # Create encoder with example dataset dimensions (Sherlock)
+    print("Initializing encoder with example dataset dimensions:")
     print(f"  - Video: 160×90×3 (RGB frames)")
-    print(f"  - Audio: 128 mel frequency bins")
+    print(f"  - Audio: 2048 mel frequency bins")
     print(f"  - Text: 1024-dim embeddings (BAAI/bge-large-en-v1.5)")
     print(f"  - Brain: 85,810 voxels")
     print(f"  - Bottleneck: 8,000 dimensions")
@@ -45,7 +45,7 @@ def main():
     encoder = create_encoder(
         video_height=90,
         video_width=160,
-        audio_mels=128,
+        audio_mels=2048,
         text_dim=1024,
         n_voxels=85810,
         bottleneck_dim=8000
@@ -88,7 +88,7 @@ def main():
     # Create dummy inputs (simulating 1 TR of data)
     print("Creating dummy inputs for 1 TR:")
     video = torch.randn(1, 3, 90, 160)
-    audio = torch.randn(1, 128)
+    audio = torch.randn(1, 2048)
     text = torch.randn(1, 1024)
 
     print(f"  - Video shape: {tuple(video.shape)}")
@@ -119,7 +119,7 @@ def main():
     print("Batch processing (32 TRs):")
     batch_size = 32
     video_batch = torch.randn(batch_size, 3, 90, 160)
-    audio_batch = torch.randn(batch_size, 128)
+    audio_batch = torch.randn(batch_size, 2048)
     text_batch = torch.randn(batch_size, 1024)
 
     with torch.no_grad():
@@ -145,7 +145,7 @@ def main():
     # For batch_size=32, we need to store intermediate activations
     activation_memory = batch_size * (
         90 * 160 * 3 +  # Input video
-        128 +  # Input audio
+        2048 +  # Input audio
         1024 +  # Input text
         1024 +  # Video features
         256 +  # Audio features
@@ -201,7 +201,7 @@ def main():
     print()
     print("  Layer 1: Input")
     print("    - Video: 160×90×3 pixels")
-    print("    - Audio: 128 mel bins")
+    print("    - Audio: 2048 mel bins")
     print("    - Text: 1024 embeddings")
     print()
     print("  Layer 2A/B/C: Modality-specific encoders")

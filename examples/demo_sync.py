@@ -2,7 +2,7 @@
 Demonstration of the temporal synchronization module.
 
 Shows how to:
-1. Create sample data matching Sherlock dataset dimensions
+1. Create sample data matching example dataset dimensions
 2. Align all modalities to a common TR grid
 3. Apply HRF convolution to stimulus features
 4. Verify output dimensions and structure
@@ -18,8 +18,8 @@ def main():
     print("TEMPORAL SYNCHRONIZATION MODULE DEMONSTRATION")
     print("=" * 70)
 
-    # Create sample data with Sherlock dataset dimensions
-    print("\n1. Creating sample data with Sherlock dimensions...")
+    # Create sample data with example dataset dimensions (Sherlock)
+    print("\n1. Creating sample data with example dimensions...")
     print("-" * 70)
 
     np.random.seed(42)
@@ -27,7 +27,7 @@ def main():
     # Video: 950 TRs, downsampled RGB frames (160x90x3 = 43200 features)
     video_features = np.random.randn(950, 43200).astype(np.float32)
     print(f"   Video features:  {video_features.shape}")
-    print(f"      - 950 TRs at 25fps (Sherlock movie duration)")
+    print(f"      - 950 TRs at 25fps (example duration)")
     print(f"      - Downsampled RGB frames (160x90x3)")
 
     # Audio: 946 TRs, mel spectrogram (128 mels)

@@ -1,12 +1,12 @@
 """
-fMRI processing module for Sherlock project.
+fMRI processing module for multimodal autoencoder project.
 
 Handles bidirectional conversion between fMRI NIfTI files and feature matrices:
 - NIfTI → Features: Extract timeseries from brain voxels using shared mask
 - Features → NIfTI: Reconstruct NIfTI files from feature matrices
 - Cross-subject averaging and alignment
 
-All processing uses TR = 1.5 seconds.
+Default TR = 1.5 seconds (configurable).
 """
 
 import nibabel as nib
@@ -79,7 +79,7 @@ class FMRIProcessor:
         -----
         - Uses temporal std > 10th percentile for each subject
         - Votes across subjects with threshold (default 0.5 = >50% of subjects)
-        - Expected ~83,300 brain voxels for Sherlock dataset
+        - Typical result: ~83,300 brain voxels (varies by dataset)
         """
         print(f"Creating shared mask from {len(nii_files)} subjects...")
         print(f"Using voting threshold: {self.mask_threshold}")

@@ -1,11 +1,11 @@
 """
-Audio processing module for Sherlock fMRI project.
+Audio processing module for multimodal fMRI autoencoder project.
 
 Handles bidirectional conversion between audio and mel spectrogram features:
 - Audio → Features: Extract mel spectrogram aligned to fMRI TRs
 - Features → Audio: Reconstruct audio using HiFi-GAN vocoder
 
-All temporal alignment uses TR = 1.5 seconds.
+Default temporal alignment uses TR = 1.5 seconds (configurable).
 """
 
 import librosa

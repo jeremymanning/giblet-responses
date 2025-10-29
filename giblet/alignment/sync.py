@@ -5,8 +5,8 @@ This module aligns all stimulus modalities (video, audio, text) to a common
 temporal grid based on fMRI TRs. It also applies HRF convolution to stimulus
 features to predict BOLD responses.
 
-All data is aligned to the minimum number of TRs across modalities, typically
-920 TRs for the Sherlock dataset (TR=1.5s ≈ 23 minutes total duration).
+All data is aligned to the minimum number of TRs across modalities.
+(Example: 920 TRs at TR=1.5s ≈ 23 minutes total duration).
 
 References:
     The approach follows standard fMRI analysis practices:
@@ -125,7 +125,7 @@ def align_all_modalities(
     -----
     Alignment Strategy:
     - All stimulus modalities are resampled to match the minimum TR count
-    - This is typically the fMRI TRs (920 for Sherlock), which is the
+    - This is typically the fMRI TRs (example: 920 TRs), which is the
       minimum number of samples across modalities
     - Resampling uses linear interpolation to maintain feature continuity
 

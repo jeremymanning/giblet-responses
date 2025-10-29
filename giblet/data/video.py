@@ -1,11 +1,11 @@
 """
-Video processing module for Sherlock fMRI project.
+Video processing module for multimodal fMRI autoencoder project.
 
 Handles bidirectional conversion between video files and feature matrices:
 - Video → Features: Extract, downsample, and align frames to fMRI TRs
 - Features → Video: Reconstruct video from feature matrices
 
-All temporal alignment uses TR = 1.5 seconds (fMRI repetition time).
+Default temporal alignment uses TR = 1.5 seconds (configurable).
 """
 
 import cv2

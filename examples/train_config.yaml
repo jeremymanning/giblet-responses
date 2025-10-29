@@ -1,4 +1,4 @@
-# Training configuration for Sherlock autoencoder
+# Training configuration for multimodal autoencoder
 # This YAML file specifies all hyperparameters and settings for training
 
 # Optimizer parameters

@@ -1,5 +1,5 @@
 """
-Test suite for SherlockAutoencoder module.
+Test suite for MultimodalAutoencoder module.
 
 Tests the full autoencoder including:
 - Forward pass with and without fMRI targets
@@ -23,21 +23,21 @@ import os
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from giblet.models.autoencoder import (
-    SherlockAutoencoder,
+    MultimodalAutoencoder,
     create_autoencoder,
     prepare_for_distributed
 )
 
 
-class TestSherlockAutoencoder:
-    """Test full autoencoder."""
+class TestMultimodalAutoencoder:
+    """Test full multimodal autoencoder."""
 
     def test_autoencoder_init(self):
         """Test autoencoder initialization with default parameters."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
         assert model.video_height == 90
         assert model.video_width == 160
-        assert model.audio_mels == 128
+        assert model.audio_mels == 2048
         assert model.text_dim == 1024
         assert model.n_voxels == 85810
         assert model.bottleneck_dim == 8000
@@ -50,12 +50,12 @@ class TestSherlockAutoencoder:
 
     def test_forward_pass_eval(self):
         """Test forward pass in eval mode (no losses)."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
         model.eval()
 
         batch_size = 4
         video = torch.randn(batch_size, 3, 90, 160)
-        audio = torch.randn(batch_size, 128)
+        audio = torch.randn(batch_size, 2048)
         text = torch.randn(batch_size, 1024)
 
         with torch.no_grad():
@@ -82,12 +82,12 @@ class TestSherlockAutoencoder:
 
     def test_forward_pass_train_no_fmri(self):
         """Test forward pass in train mode without fMRI target."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
         model.train()
 
         batch_size = 4
         video = torch.randn(batch_size, 3, 90, 160)
-        audio = torch.randn(batch_size, 128)
+        audio = torch.randn(batch_size, 2048)
         text = torch.randn(batch_size, 1024)
 
         outputs = model(video, audio, text)
@@ -119,12 +119,12 @@ class TestSherlockAutoencoder:
 
     def test_forward_pass_train_with_fmri(self):
         """Test forward pass in train mode with fMRI target."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
         model.train()
 
         batch_size = 4
         video = torch.randn(batch_size, 3, 90, 160)
-        audio = torch.randn(batch_size, 128)
+        audio = torch.randn(batch_size, 2048)
         text = torch.randn(batch_size, 1024)
         fmri_target = torch.randn(batch_size, 85810)
 
@@ -149,7 +149,7 @@ class TestSherlockAutoencoder:
 
     def test_forward_pass_different_weights(self):
         """Test forward pass with different loss weights."""
-        model = SherlockAutoencoder(
+        model = MultimodalAutoencoder(
             reconstruction_weight=2.0,
             fmri_weight=0.5
         )
@@ -157,7 +157,7 @@ class TestSherlockAutoencoder:
 
         batch_size = 4
         video = torch.randn(batch_size, 3, 90, 160)
-        audio = torch.randn(batch_size, 128)
+        audio = torch.randn(batch_size, 2048)
         text = torch.randn(batch_size, 1024)
         fmri_target = torch.randn(batch_size, 85810)
 
@@ -172,12 +172,12 @@ class TestSherlockAutoencoder:
 
     def test_backward_pass(self):
         """Test backward pass and gradient flow."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
         model.train()
 
         batch_size = 2
         video = torch.randn(batch_size, 3, 90, 160)
-        audio = torch.randn(batch_size, 128)
+        audio = torch.randn(batch_size, 2048)
         text = torch.randn(batch_size, 1024)
         fmri_target = torch.randn(batch_size, 85810)
 
@@ -195,12 +195,12 @@ class TestSherlockAutoencoder:
 
     def test_encode_only(self):
         """Test encoding without decoding."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
         model.eval()
 
         batch_size = 4
         video = torch.randn(batch_size, 3, 90, 160)
-        audio = torch.randn(batch_size, 128)
+        audio = torch.randn(batch_size, 2048)
         text = torch.randn(batch_size, 1024)
 
         with torch.no_grad():
@@ -220,7 +220,7 @@ class TestSherlockAutoencoder:
 
     def test_decode_only(self):
         """Test decoding without encoding."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
         model.eval()
 
         batch_size = 4
@@ -235,7 +235,7 @@ class TestSherlockAutoencoder:
 
     def test_parameter_count(self):
         """Test parameter counting."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
         param_dict = model.get_parameter_count()
 
         # Check keys present
@@ -262,7 +262,7 @@ class TestSherlockAutoencoder:
 
     def test_custom_dimensions(self):
         """Test autoencoder with custom dimensions."""
-        model = SherlockAutoencoder(
+        model = MultimodalAutoencoder(
             video_height=45,
             video_width=80,
             audio_mels=64,
@@ -289,7 +289,7 @@ class TestSherlockAutoencoder:
 
     def test_checkpoint_save_load(self):
         """Test saving and loading checkpoints."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             checkpoint_path = os.path.join(tmpdir, 'checkpoint.pt')
@@ -305,7 +305,7 @@ class TestSherlockAutoencoder:
             assert os.path.exists(checkpoint_path)
 
             # Load checkpoint
-            loaded_model, checkpoint = SherlockAutoencoder.load_checkpoint(
+            loaded_model, checkpoint = MultimodalAutoencoder.load_checkpoint(
                 checkpoint_path
             )
 
@@ -324,7 +324,7 @@ class TestSherlockAutoencoder:
             loaded_model.eval()
             batch_size = 2
             video = torch.randn(batch_size, 3, 90, 160)
-            audio = torch.randn(batch_size, 128)
+            audio = torch.randn(batch_size, 2048)
             text = torch.randn(batch_size, 1024)
 
             with torch.no_grad():
@@ -334,7 +334,7 @@ class TestSherlockAutoencoder:
 
     def test_checkpoint_with_optimizer(self):
         """Test checkpoint with optimizer state."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -348,7 +348,7 @@ class TestSherlockAutoencoder:
             )
 
             # Load checkpoint
-            loaded_model, checkpoint = SherlockAutoencoder.load_checkpoint(
+            loaded_model, checkpoint = MultimodalAutoencoder.load_checkpoint(
                 checkpoint_path
             )
 
@@ -362,12 +362,12 @@ class TestSherlockAutoencoder:
     @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
     def test_gpu_forward(self):
         """Test forward pass on GPU."""
-        model = SherlockAutoencoder().cuda()
+        model = MultimodalAutoencoder().cuda()
         model.eval()
 
         batch_size = 4
         video = torch.randn(batch_size, 3, 90, 160).cuda()
-        audio = torch.randn(batch_size, 128).cuda()
+        audio = torch.randn(batch_size, 2048).cuda()
         text = torch.randn(batch_size, 1024).cuda()
 
         with torch.no_grad():
@@ -380,12 +380,12 @@ class TestSherlockAutoencoder:
 
     def test_reconstruction_quality_sanity(self):
         """Test that reconstruction is not completely random."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
         model.eval()
 
         batch_size = 4
         video = torch.randn(batch_size, 3, 90, 160)
-        audio = torch.randn(batch_size, 128)
+        audio = torch.randn(batch_size, 2048)
         text = torch.randn(batch_size, 1024)
 
         with torch.no_grad():
@@ -409,7 +409,7 @@ class TestCreateAutoencoder:
     def test_create_autoencoder_defaults(self):
         """Test factory with defaults."""
         model = create_autoencoder()
-        assert isinstance(model, SherlockAutoencoder)
+        assert isinstance(model, MultimodalAutoencoder)
         assert model.n_voxels == 85810
         assert model.bottleneck_dim == 8000
 
@@ -433,7 +433,7 @@ class TestPrepareForDistributed:
     @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
     def test_prepare_requires_init(self):
         """Test that prepare_for_distributed requires initialized process group."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
 
         # Should raise error if not initialized
         with pytest.raises(RuntimeError, match="not initialized"):
@@ -445,7 +445,7 @@ class TestAutoencoderIntegration:
 
     def test_full_training_step(self):
         """Test complete training step."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
         model.train()
@@ -453,7 +453,7 @@ class TestAutoencoderIntegration:
         # Create dummy batch
         batch_size = 8
         video = torch.randn(batch_size, 3, 90, 160)
-        audio = torch.randn(batch_size, 128)
+        audio = torch.randn(batch_size, 2048)
         text = torch.randn(batch_size, 1024)
         fmri_target = torch.randn(batch_size, 85810)
 
@@ -471,13 +471,13 @@ class TestAutoencoderIntegration:
 
     def test_batch_consistency(self):
         """Test that batch processing is consistent."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
         model.eval()
 
         # Create batch
         batch_size = 16
         video_batch = torch.randn(batch_size, 3, 90, 160)
-        audio_batch = torch.randn(batch_size, 128)
+        audio_batch = torch.randn(batch_size, 2048)
         text_batch = torch.randn(batch_size, 1024)
 
         # Process as batch
@@ -510,7 +510,7 @@ class TestAutoencoderIntegration:
 
     def test_gradient_accumulation(self):
         """Test gradient accumulation over multiple batches."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
         model.train()
@@ -522,7 +522,7 @@ class TestAutoencoderIntegration:
 
         for step in range(accumulation_steps):
             video = torch.randn(2, 3, 90, 160)
-            audio = torch.randn(2, 128)
+            audio = torch.randn(2, 2048)
             text = torch.randn(2, 1024)
             fmri_target = torch.randn(2, 85810)
 
@@ -540,7 +540,7 @@ class TestAutoencoderIntegration:
 
     def test_multiple_epochs(self):
         """Test training over multiple epochs."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
         model.train()
@@ -550,7 +550,7 @@ class TestAutoencoderIntegration:
             epoch_loss = 0
             for batch in range(5):
                 video = torch.randn(4, 3, 90, 160)
-                audio = torch.randn(4, 128)
+                audio = torch.randn(4, 2048)
                 text = torch.randn(4, 1024)
                 fmri_target = torch.randn(4, 85810)
 
@@ -570,11 +570,11 @@ class TestAutoencoderIntegration:
 
     def test_eval_train_mode_switch(self):
         """Test switching between eval and train modes."""
-        model = SherlockAutoencoder()
+        model = MultimodalAutoencoder()
 
         batch_size = 4
         video = torch.randn(batch_size, 3, 90, 160)
-        audio = torch.randn(batch_size, 128)
+        audio = torch.randn(batch_size, 2048)
         text = torch.randn(batch_size, 1024)
 
         # Eval mode

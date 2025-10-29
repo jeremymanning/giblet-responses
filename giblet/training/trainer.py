@@ -1,5 +1,5 @@
 """
-Trainer for Sherlock autoencoder with multi-GPU support.
+Trainer for multimodal autoencoder with multi-GPU support.
 
 This module provides a comprehensive training system supporting:
 - Single-GPU and multi-GPU (DistributedDataParallel) training
@@ -14,7 +14,7 @@ This module provides a comprehensive training system supporting:
 Example
 -------
 >>> from giblet.models.autoencoder import create_autoencoder
->>> from giblet.data.dataset import SherlockDataset
+>>> from giblet.data.dataset import MultimodalDataset
 >>> from giblet.training.trainer import Trainer, TrainingConfig
 >>>
 >>> # Create model and datasets

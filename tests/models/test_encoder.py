@@ -1,5 +1,5 @@
 """
-Test suite for SherlockEncoder module.
+Test suite for MultimodalEncoder module.
 
 Tests the encoder architecture including:
 - Individual modality encoders (video, audio, text)
@@ -22,7 +22,7 @@ from giblet.models.encoder import (
     VideoEncoder,
     AudioEncoder,
     TextEncoder,
-    SherlockEncoder,
+    MultimodalEncoder,
     create_encoder
 )
 
@@ -150,27 +150,27 @@ class TestTextEncoder:
         assert n_params < 10_000_000  # Should be under 10M
 
 
-class TestSherlockEncoder:
-    """Test full Sherlock encoder."""
+class TestMultimodalEncoder:
+    """Test full multimodal encoder."""
 
     def test_encoder_init(self):
         """Test encoder initialization with default parameters."""
-        encoder = SherlockEncoder()
+        encoder = MultimodalEncoder()
         assert encoder.video_height == 90
         assert encoder.video_width == 160
-        assert encoder.audio_mels == 128
+        assert encoder.audio_mels == 2048  # Default is 2048, not 128
         assert encoder.text_dim == 1024
         assert encoder.n_voxels == 85810
         assert encoder.bottleneck_dim == 8000
 
     def test_encoder_forward_single(self):
         """Test encoder forward pass with single sample."""
-        encoder = SherlockEncoder()
+        encoder = MultimodalEncoder()
         encoder.eval()
 
         # Create dummy inputs
         video = torch.randn(1, 3, 90, 160)
-        audio = torch.randn(1, 128)
+        audio = torch.randn(1, 2048)
         text = torch.randn(1, 1024)
 
         # Forward pass
@@ -185,13 +185,13 @@ class TestSherlockEncoder:
 
     def test_encoder_forward_batch(self):
         """Test encoder forward pass with batch."""
-        encoder = SherlockEncoder()
+        encoder = MultimodalEncoder()
         encoder.eval()
 
         # Create dummy inputs
         batch_size = 8
         video = torch.randn(batch_size, 3, 90, 160)
-        audio = torch.randn(batch_size, 128)
+        audio = torch.randn(batch_size, 2048)
         text = torch.randn(batch_size, 1024)
 
         # Forward pass
@@ -206,12 +206,12 @@ class TestSherlockEncoder:
 
     def test_encoder_forward_without_voxels(self):
         """Test encoder forward pass without returning voxels."""
-        encoder = SherlockEncoder()
+        encoder = MultimodalEncoder()
         encoder.eval()
 
         # Create dummy inputs
         video = torch.randn(4, 3, 90, 160)
-        audio = torch.randn(4, 128)
+        audio = torch.randn(4, 2048)
         text = torch.randn(4, 1024)
 
         # Forward pass
@@ -224,7 +224,7 @@ class TestSherlockEncoder:
 
     def test_encoder_parameter_count(self):
         """Test encoder parameter counting method."""
-        encoder = SherlockEncoder()
+        encoder = MultimodalEncoder()
         param_dict = encoder.get_parameter_count()
 
         # Check all keys present
@@ -253,7 +253,7 @@ class TestSherlockEncoder:
 
     def test_encoder_custom_dimensions(self):
         """Test encoder with custom dimensions."""
-        encoder = SherlockEncoder(
+        encoder = MultimodalEncoder(
             video_height=45,
             video_width=80,
             audio_mels=64,
@@ -278,12 +278,12 @@ class TestSherlockEncoder:
     @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
     def test_encoder_gpu(self):
         """Test encoder on GPU."""
-        encoder = SherlockEncoder().cuda()
+        encoder = MultimodalEncoder().cuda()
         encoder.eval()
 
         # Create dummy inputs on GPU
         video = torch.randn(4, 3, 90, 160).cuda()
-        audio = torch.randn(4, 128).cuda()
+        audio = torch.randn(4, 2048).cuda()
         text = torch.randn(4, 1024).cuda()
 
         # Forward pass
@@ -303,7 +303,7 @@ class TestCreateEncoder:
     def test_create_encoder_defaults(self):
         """Test factory function with defaults."""
         encoder = create_encoder()
-        assert isinstance(encoder, SherlockEncoder)
+        assert isinstance(encoder, MultimodalEncoder)
         assert encoder.n_voxels == 85810
         assert encoder.bottleneck_dim == 8000
 
@@ -320,12 +320,12 @@ class TestCreateEncoder:
 class TestEncoderIntegration:
     """Integration tests with realistic data dimensions."""
 
-    def test_sherlock_dimensions(self):
-        """Test with exact Sherlock dataset dimensions."""
-        encoder = SherlockEncoder(
+    def test_example_dataset_dimensions(self):
+        """Test with example dataset dimensions (Sherlock)."""
+        encoder = MultimodalEncoder(
             video_height=90,
             video_width=160,
-            audio_mels=128,
+            audio_mels=2048,
             text_dim=1024,
             n_voxels=85810,
             bottleneck_dim=8000
@@ -334,7 +334,7 @@ class TestEncoderIntegration:
 
         # Simulate one TR of data
         video = torch.randn(1, 3, 90, 160)  # 160×90×3 = 43,200 per TR
-        audio = torch.randn(1, 128)          # 128 mels per TR
+        audio = torch.randn(1, 2048)         # 2048 mels per TR
         text = torch.randn(1, 1024)          # 1024 embeddings per TR
 
         # Forward pass
@@ -351,13 +351,13 @@ class TestEncoderIntegration:
 
     def test_batch_processing(self):
         """Test batch processing with multiple TRs."""
-        encoder = SherlockEncoder()
+        encoder = MultimodalEncoder()
         encoder.eval()
 
         # Simulate 32 TRs (mini-batch)
         batch_size = 32
         video = torch.randn(batch_size, 3, 90, 160)
-        audio = torch.randn(batch_size, 128)
+        audio = torch.randn(batch_size, 2048)
         text = torch.randn(batch_size, 1024)
 
         # Forward pass
@@ -369,12 +369,12 @@ class TestEncoderIntegration:
 
     def test_gradient_flow(self):
         """Test that gradients flow through encoder."""
-        encoder = SherlockEncoder()
+        encoder = MultimodalEncoder()
         encoder.train()
 
         # Create dummy inputs (requires_grad=True)
         video = torch.randn(2, 3, 90, 160, requires_grad=True)
-        audio = torch.randn(2, 128, requires_grad=True)
+        audio = torch.randn(2, 2048, requires_grad=True)
         text = torch.randn(2, 1024, requires_grad=True)
 
         # Forward pass
