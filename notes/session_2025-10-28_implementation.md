@@ -36,9 +36,28 @@ Status: In Progress
    - This doesn't block encoder training (only affects decoder quality)
    - Moving forward with complete implementation
 
-### 📋 Remaining Tasks
-- Text processing (3 tasks)
-- fMRI processing (2 tasks)
+### 🚨 Critical Issues Requiring Fixes
+
+Issues created for systematic resolution:
+1. **#10**: Text timing alignment - must use Start Time/End Time columns
+2. **#11**: Architecture verification - audit against issue #2 spec
+3. **#12**: Audio reconstruction broken - Griffin-Lim garbled
+4. **#13**: Comprehensive validation - manual inspection required
+5. **#1**: Cluster environment setup - needed for deployment
+
+### 📋 Next Session Tasks
+
+**Fix Batch** (parallel agents):
+- Issue #10: Correct text timing alignment
+- Issue #12: Fix audio reconstruction
+- Issue #11: Verify/correct architecture
+
+**Validation Batch** (after fixes):
+- Issue #13: Manual quality checks (listen to audio, watch video, etc.)
+- Integration tests with real pipeline
+
+**Deployment**:
+- Issue #1: Complete cluster setup
 - Temporal alignment (3 tasks)
 - Model architecture (3 tasks)
 - Training infrastructure (2 tasks)
