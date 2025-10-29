@@ -14,24 +14,11 @@ chmod +x download_data_from_dropbox.sh
 ```
 
 This will:
-1. Download `sherlock_dataset.zip` from Dropbox
+1. Download `sherlock_dataset.zip` from Dropbox (11 GB)
 2. Extract all data files to the correct locations
 3. Clean up the zip file
 
 **Requirements**: Only `curl` and `unzip` (standard on macOS/Linux)
-
-## Alternative: Direct from Discovery Server
-
-If you have access to Discovery:
-
-```bash
-chmod +x download_data.sh
-./download_data.sh
-```
-
-This downloads directly from `/dartfs/rc/lab/D/DBIC/CDL/data/fMRI/sherlock/nii/` on Discovery.
-
-**Requirements**: `sshpass` and Discovery credentials
 
 ## Dataset Structure
 

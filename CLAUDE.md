@@ -113,14 +113,6 @@ This downloads a single 11GB zip file from Dropbox containing:
 
 **No credentials needed** - just run the script and it will download and extract everything automatically.
 
-**Alternative: Download from Discovery server** (if you have access):
-
-```bash
-./download_data.sh
-```
-
-Requires Discovery credentials and `sshpass` installed.
-
 **What you'll get:**
 - `data/stimuli_Sherlock.m4v` - Sherlock episode video
 - `data/annotations.xlsx` - Scene-level annotations (1000 segments with timing, characters, locations, emotions)
@@ -130,11 +122,11 @@ Requires Discovery credentials and `sshpass` installed.
 
 ### Data Storage for Lab-Only Sharing
 
-This dataset cannot be publicly shared (no permissions for stimulus video, borrowed fMRI data). For lab member access:
+This dataset cannot be publicly shared (no permissions for stimulus video, borrowed fMRI data).
 
-1. **Code & metadata**: GitHub repository (this repo) - public or private
-2. **Large data files**: Discovery server (requires Dartmouth NetID)
-3. **Alternative**: DataLad dataset with Dropbox backend (for team members without Discovery access)
+**Access method:**
+- **Code & metadata**: GitHub repository (this repo)
+- **Large data files**: Dropbox (11GB zip file, link embedded in download script)
 
 **Note**: Do not commit .nii or .nii.gz files to GitHub. Data directory is in .gitignore.
 
