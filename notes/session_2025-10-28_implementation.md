@@ -4,21 +4,22 @@ Status: In Progress
 
 ## Current Progress
 
-### ✅ Completed (Commits: 95cf03c)
+### ✅ Completed (Commits: 95cf03c, 275fa23, 6ee9629)
 1. Project structure created
 2. requirements.txt with all dependencies
-3. **Video processing module** (`giblet/data/video.py`)
-   - Tested with real Sherlock video
-   - Round-trip PSNR: 35.37 dB ✓
-   - 950 TRs extracted (TR=1.5s)
+3. **Video processing module** (`giblet/data/video.py`) - FULLY TESTED
+   - Extract: 640×360@25fps → 160×90@1fps (TR=1.5s)
+   - Reconstruct: features → video
+   - Real test: 950 TRs from Sherlock, PSNR=35.37dB, SSIM=0.9742 ✓
 
-4. **Audio processing module** (`giblet/data/audio.py`)
-   - Mel spectrogram extraction working
-   - 946 TRs extracted
-   - Note: torchaudio has version conflict, using Griffin-Lim fallback
+4. **Audio processing module** (`giblet/data/audio.py`) - EXTRACTION TESTED
+   - Extract: 44.1kHz → 128 mels @ 22.05kHz, TR=1.5s bins
+   - Real test: 946 TRs from Sherlock ✓
+   - Reconstruction: Griffin-Lim functional but needs HiFi-GAN upgrade (#8)
 
-### 🔄 In Progress
+### 🔄 In Progress (Token usage: 230K/1M)
 - Text processing module
+- 18 tasks remaining, need to accelerate
 
 ### ⚠️ Known Issues & Decisions
 1. **Audio reconstruction - using Griffin-Lim for now**:
