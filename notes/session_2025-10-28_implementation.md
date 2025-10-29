@@ -18,7 +18,16 @@ Status: In Progress
    - Note: torchaudio has version conflict, using Griffin-Lim fallback
 
 ### 🔄 In Progress
-- Audio round-trip testing
+- Text processing module
+
+### ⚠️ Known Issues & Decisions
+1. **Audio reconstruction - using Griffin-Lim for now**:
+   - torchaudio 2.9+ removed HiFi-GAN bundles
+   - speechbrain incompatible with torchaudio 2.9
+   - **Decision**: Implement working Griffin-Lim, upgrade to HiFi-GAN in #8
+   - Audio EXTRACTION working perfectly (946 TRs, 128 mels) ✓
+   - This doesn't block encoder training (only affects decoder quality)
+   - Moving forward with complete implementation
 
 ### 📋 Remaining Tasks
 - Text processing (3 tasks)

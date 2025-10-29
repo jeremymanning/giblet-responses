@@ -273,6 +273,8 @@ class AudioProcessor:
             mel_spec = librosa.db_to_power(full_mel_spec_db)
 
             # Invert mel spectrogram to audio
+            # Note: Griffin-Lim produces slightly shorter output than exact TR duration
+            # This is acceptable for reconstruction purposes
             y = librosa.feature.inverse.mel_to_audio(
                 mel_spec,
                 sr=self.sample_rate,
