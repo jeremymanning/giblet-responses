@@ -1,30 +1,8 @@
 # Data Setup Instructions
 
-## For Lab Coordinator (One-Time Setup)
+## Dataset Already Packaged and Available
 
-After downloading the fMRI data from Discovery server:
-
-1. **Package the dataset**:
-   ```bash
-   chmod +x package_for_dropbox.sh
-   ./package_for_dropbox.sh
-   ```
-
-   This creates `sherlock_dataset.zip` containing:
-   - `data/stimuli_Sherlock.m4v` (272 MB)
-   - `data/annotations.xlsx` (173 KB)
-   - `data/sherlock_nii/*.nii.gz` (17 compressed fMRI files, ~12 GB total)
-
-2. **Upload to Dropbox**:
-   - Upload `sherlock_dataset.zip` to your Dropbox
-   - Right-click → Share → Create link
-   - Copy the link and **change `dl=0` to `dl=1`** at the end
-   - Example: `https://www.dropbox.com/scl/fi/xxxxx/sherlock_dataset.zip?rlkey=xxxxx&dl=1`
-
-3. **Update download script**:
-   - Edit `download_data_from_dropbox.sh`
-   - Replace `PLACEHOLDER_DROPBOX_URL` with your actual Dropbox link
-   - Commit the updated script to GitHub
+The Sherlock dataset has been packaged and uploaded to Dropbox. No setup needed - just download!
 
 ## For Lab Members
 
