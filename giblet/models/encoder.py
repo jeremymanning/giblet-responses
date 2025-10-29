@@ -1,5 +1,5 @@
 """
-Encoder module for Sherlock multimodal autoencoder.
+Encoder module for multimodal fMRI autoencoder.
 
 Implements the encoder half of the autoencoder architecture that maps
 stimulus features (video + audio + text) to brain activity (fMRI voxels).
@@ -272,9 +272,9 @@ class TextEncoder(nn.Module):
         return x
 
 
-class SherlockEncoder(nn.Module):
+class MultimodalEncoder(nn.Module):
     """
-    Full encoder for Sherlock multimodal autoencoder.
+    Full encoder for multimodal fMRI autoencoder.
 
     Maps stimulus features (video + audio + text) to brain activity (fMRI).
 
@@ -470,9 +470,9 @@ def create_encoder(
     text_dim: int = 1024,
     n_voxels: int = 85810,
     bottleneck_dim: int = 8000
-) -> SherlockEncoder:
+) -> MultimodalEncoder:
     """
-    Factory function to create SherlockEncoder with default parameters.
+    Factory function to create MultimodalEncoder with default parameters.
 
     Parameters
     ----------
@@ -491,10 +491,10 @@ def create_encoder(
 
     Returns
     -------
-    encoder : SherlockEncoder
+    encoder : MultimodalEncoder
         Initialized encoder model
     """
-    return SherlockEncoder(
+    return MultimodalEncoder(
         video_height=video_height,
         video_width=video_width,
         audio_mels=audio_mels,

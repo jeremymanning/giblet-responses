@@ -20,7 +20,7 @@ from .fmri import FMRIProcessor
 from ..alignment.sync import align_all_modalities
 
 
-class SherlockDataset(Dataset):
+class MultimodalDataset(Dataset):
     """
     PyTorch Dataset for Sherlock multimodal fMRI data.
 

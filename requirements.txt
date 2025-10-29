@@ -46,6 +46,6 @@ pytest-cov>=4.1.0
 tqdm>=4.66.0
 pyyaml>=6.0.0
 
-# Optional: Logging and experiment tracking
-# tensorboard>=2.14.0
-# wandb>=0.15.0
+# Logging and experiment tracking (optional but recommended)
+tensorboard>=2.14.0
+# wandb>=0.15.0  # Uncomment for Weights & Biases integration

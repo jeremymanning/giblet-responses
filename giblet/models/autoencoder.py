@@ -1,5 +1,5 @@
 """
-Full autoencoder combining encoder and decoder for Sherlock dataset.
+Full autoencoder combining encoder and decoder for multimodal fMRI data.
 
 Implements the complete architecture that:
 1. Encodes video/audio/text → bottleneck (compressed brain activity)
@@ -18,11 +18,11 @@ import torch.nn.functional as F
 from typing import Dict, Tuple, Optional
 from pathlib import Path
 
-from .encoder import SherlockEncoder
+from .encoder import MultimodalEncoder
 from .decoder import MultimodalDecoder
 
 
-class SherlockAutoencoder(nn.Module):
+class MultimodalAutoencoder(nn.Module):
     """
     Full autoencoder for multimodal fMRI prediction and reconstruction.
 
@@ -91,7 +91,7 @@ class SherlockAutoencoder(nn.Module):
         self.fmri_weight = fmri_weight
 
         # Encoder: stimulus → bottleneck → fMRI voxels
-        self.encoder = SherlockEncoder(
+        self.encoder = MultimodalEncoder(
             video_height=video_height,
             video_width=video_width,
             audio_mels=audio_mels,
@@ -333,7 +333,7 @@ class SherlockAutoencoder(nn.Module):
         cls,
         path: str,
         device: Optional[torch.device] = None
-    ) -> Tuple['SherlockAutoencoder', dict]:
+    ) -> Tuple['MultimodalAutoencoder', dict]:
         """
         Load model from checkpoint.
 
@@ -384,9 +384,9 @@ def create_autoencoder(
     bottleneck_dim: int = 8000,
     reconstruction_weight: float = 1.0,
     fmri_weight: float = 1.0
-) -> SherlockAutoencoder:
+) -> MultimodalAutoencoder:
     """
-    Factory function to create SherlockAutoencoder with default parameters.
+    Factory function to create MultimodalAutoencoder with default parameters.
 
     Parameters
     ----------
@@ -409,10 +409,10 @@ def create_autoencoder(
 
     Returns
     -------
-    autoencoder : SherlockAutoencoder
+    autoencoder : MultimodalAutoencoder
         Initialized autoencoder model
     """
-    return SherlockAutoencoder(
+    return MultimodalAutoencoder(
         video_height=video_height,
         video_width=video_width,
         audio_mels=audio_mels,
@@ -425,7 +425,7 @@ def create_autoencoder(
 
 
 def prepare_for_distributed(
-    model: SherlockAutoencoder,
+    model: MultimodalAutoencoder,
     device_ids: Optional[list] = None,
     output_device: Optional[int] = None,
     find_unused_parameters: bool = False

@@ -1,5 +1,5 @@
 """
-PyTorch Dataset for Sherlock multimodal fMRI data.
+PyTorch Dataset for multimodal fMRI data (video, audio, text, fMRI).
 
 This module provides a PyTorch Dataset class that loads and aligns all modalities
 (video, audio, text, fMRI) for training the multimodal autoencoder. It handles:
@@ -36,9 +36,9 @@ except Exception as e:
     TextProcessor = None
 
 
-class SherlockDataset(Dataset):
+class MultimodalDataset(Dataset):
     """
-    PyTorch Dataset for Sherlock multimodal fMRI data.
+    PyTorch Dataset for multimodal fMRI data (video, audio, text, fMRI).
 
     This dataset loads all four modalities (video, audio, text, fMRI) aligned
     to a common temporal grid based on fMRI TRs. Each sample corresponds to
@@ -49,7 +49,7 @@ class SherlockDataset(Dataset):
     data_dir : str or Path
         Root directory containing data files:
         - data_dir/sherlock_nii/*.nii.gz (fMRI data)
-        - data_dir/stimuli_Sherlock.m4v (video)
+        - data_dir/stimuli_*.m4v or stimuli_*.mp4 (video file)
         - data_dir/annotations.xlsx (text annotations)
     subjects : str, int, or list, default='all'
         Which subjects to load:
@@ -93,7 +93,7 @@ class SherlockDataset(Dataset):
     Examples
     --------
     >>> # Load all subjects with HRF convolution
-    >>> dataset = SherlockDataset('data/', subjects='all', apply_hrf=True)
+    >>> dataset = MultimodalDataset('data/', subjects='all', apply_hrf=True)
     >>> len(dataset)  # 17 subjects × 920 TRs
     15640
     >>> sample = dataset[0]
@@ -101,12 +101,12 @@ class SherlockDataset(Dataset):
     torch.Size([43200])
 
     >>> # Load single subject for validation
-    >>> val_dataset = SherlockDataset('data/', subjects=1, split='val')
+    >>> val_dataset = MultimodalDataset('data/', subjects=1, split='val')
     >>> len(val_dataset)
     184  # 20% of 920 TRs
 
     >>> # Cross-subject averaged dataset
-    >>> avg_dataset = SherlockDataset('data/', mode='cross_subject')
+    >>> avg_dataset = MultimodalDataset('data/', mode='cross_subject')
     >>> len(avg_dataset)
     920  # Just TRs, averaged across subjects
     """
@@ -205,7 +205,7 @@ class SherlockDataset(Dataset):
 
     def _preprocess_data(self):
         """Preprocess all modalities and align them."""
-        print(f"\nPreprocessing Sherlock dataset:")
+        print(f"\nPreprocessing multimodal dataset:")
         print(f"  Subjects: {self.subject_ids}")
         print(f"  Mode: {self.mode}")
         print(f"  Apply HRF: {self.apply_hrf}")
