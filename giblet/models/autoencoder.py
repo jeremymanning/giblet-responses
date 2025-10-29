@@ -39,7 +39,7 @@ class MultimodalAutoencoder(nn.Module):
         Video frame height
     video_width : int, default=160
         Video frame width
-    audio_mels : int, default=128
+    audio_mels : int, default=2048
         Number of mel frequency bins
     text_dim : int, default=1024
         Dimensionality of text embeddings
@@ -67,7 +67,7 @@ class MultimodalAutoencoder(nn.Module):
         self,
         video_height: int = 90,
         video_width: int = 160,
-        audio_mels: int = 128,
+        audio_mels: int = 2048,
         text_dim: int = 1024,
         n_voxels: int = 85810,
         bottleneck_dim: int = 8000,
@@ -378,7 +378,7 @@ class MultimodalAutoencoder(nn.Module):
 def create_autoencoder(
     video_height: int = 90,
     video_width: int = 160,
-    audio_mels: int = 128,
+    audio_mels: int = 2048,
     text_dim: int = 1024,
     n_voxels: int = 85810,
     bottleneck_dim: int = 8000,
@@ -394,7 +394,7 @@ def create_autoencoder(
         Video frame height
     video_width : int, default=160
         Video frame width
-    audio_mels : int, default=128
+    audio_mels : int, default=2048
         Number of mel frequency bins
     text_dim : int, default=1024
         Dimensionality of text embeddings

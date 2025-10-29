@@ -8,12 +8,12 @@ from .encoder import (
     VideoEncoder,
     AudioEncoder,
     TextEncoder,
-    SherlockEncoder,
+    MultimodalEncoder,
     create_encoder
 )
 from .decoder import MultimodalDecoder
 from .autoencoder import (
-    SherlockAutoencoder,
+    MultimodalAutoencoder,
     create_autoencoder,
     prepare_for_distributed
 )
@@ -22,10 +22,10 @@ __all__ = [
     'VideoEncoder',
     'AudioEncoder',
     'TextEncoder',
-    'SherlockEncoder',
+    'MultimodalEncoder',
     'create_encoder',
     'MultimodalDecoder',
-    'SherlockAutoencoder',
+    'MultimodalAutoencoder',
     'create_autoencoder',
     'prepare_for_distributed'
 ]

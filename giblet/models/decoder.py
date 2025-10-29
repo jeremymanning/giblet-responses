@@ -31,8 +31,8 @@ class MultimodalDecoder(nn.Module):
         Dimension of the bottleneck/middle layer (fMRI feature space)
     video_dim : int, default=43200
         Output dimension for video (160×90×3 = 43,200)
-    audio_dim : int, default=128
-        Output dimension for audio (128 mels)
+    audio_dim : int, default=2048
+        Output dimension for audio (2048 mels)
     text_dim : int, default=1024
         Output dimension for text (1024 embeddings)
     hidden_dim : int, default=2048
@@ -67,14 +67,14 @@ class MultimodalDecoder(nn.Module):
     >>> bottleneck = torch.randn(32, 5000)  # batch_size=32
     >>> video, audio, text = decoder(bottleneck)
     >>> video.shape, audio.shape, text.shape
-    (torch.Size([32, 43200]), torch.Size([32, 128]), torch.Size([32, 1024]))
+    (torch.Size([32, 43200]), torch.Size([32, 2048]), torch.Size([32, 1024]))
     """
 
     def __init__(
         self,
         bottleneck_dim: int,
         video_dim: int = 43200,
-        audio_dim: int = 128,
+        audio_dim: int = 2048,
         text_dim: int = 1024,
         hidden_dim: int = 2048,
         dropout: float = 0.3
@@ -164,7 +164,7 @@ class MultimodalDecoder(nn.Module):
             nn.Sigmoid()  # Video pixels in [0, 1] range
         )
 
-        # Audio: output 128 mel features (no activation, dB scale)
+        # Audio: output 2048 mel features (no activation, dB scale)
         self.layer11_audio = nn.Linear(hidden_dim // 2, audio_dim)
 
         # Text: output 1024 embeddings (normalized in loss/post-processing)

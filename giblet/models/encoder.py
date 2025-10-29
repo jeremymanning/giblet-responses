@@ -128,11 +128,11 @@ class AudioEncoder(nn.Module):
     """
     Encode audio mel spectrograms using 1D convolutions.
 
-    Processes 128 mel bins to extract audio features.
+    Processes 2048 mel bins to extract audio features.
 
     Parameters
     ----------
-    input_mels : int, default=128
+    input_mels : int, default=2048
         Number of mel frequency bins
     output_features : int, default=256
         Dimensionality of output features
@@ -140,7 +140,7 @@ class AudioEncoder(nn.Module):
 
     def __init__(
         self,
-        input_mels: int = 128,
+        input_mels: int = 2048,
         output_features: int = 256
     ):
         super().__init__()
@@ -149,7 +149,7 @@ class AudioEncoder(nn.Module):
         self.output_features = output_features
 
         # 1D convolutions over frequency dimension
-        # 128 → 64 → 32 → 16
+        # 2048 → 1024 → 512 → 256 → 128
         self.conv1 = nn.Conv1d(1, 32, kernel_size=3, stride=2, padding=1)
         self.bn1 = nn.BatchNorm1d(32)
 
@@ -159,9 +159,12 @@ class AudioEncoder(nn.Module):
         self.conv3 = nn.Conv1d(64, 128, kernel_size=3, stride=2, padding=1)
         self.bn3 = nn.BatchNorm1d(128)
 
+        self.conv4 = nn.Conv1d(128, 256, kernel_size=3, stride=2, padding=1)
+        self.bn4 = nn.BatchNorm1d(256)
+
         # Calculate flattened size
-        self.flat_length = (input_mels + 7) // 8  # After 3 stride-2 convs
-        self.flat_features = 128 * self.flat_length
+        self.flat_length = (input_mels + 15) // 16  # After 4 stride-2 convs
+        self.flat_features = 256 * self.flat_length
 
         # Linear projection
         self.fc = nn.Linear(self.flat_features, output_features)
@@ -197,6 +200,11 @@ class AudioEncoder(nn.Module):
         # Conv block 3
         x = self.conv3(x)
         x = self.bn3(x)
+        x = F.relu(x)
+
+        # Conv block 4
+        x = self.conv4(x)
+        x = self.bn4(x)
         x = F.relu(x)
 
         # Flatten
@@ -292,7 +300,7 @@ class MultimodalEncoder(nn.Module):
         Video frame height
     video_width : int, default=160
         Video frame width
-    audio_mels : int, default=128
+    audio_mels : int, default=2048
         Number of mel frequency bins
     text_dim : int, default=1024
         Dimensionality of text embeddings
@@ -312,7 +320,7 @@ class MultimodalEncoder(nn.Module):
         self,
         video_height: int = 90,
         video_width: int = 160,
-        audio_mels: int = 128,
+        audio_mels: int = 2048,
         text_dim: int = 1024,
         n_voxels: int = 85810,
         bottleneck_dim: int = 8000,
@@ -466,7 +474,7 @@ class MultimodalEncoder(nn.Module):
 def create_encoder(
     video_height: int = 90,
     video_width: int = 160,
-    audio_mels: int = 128,
+    audio_mels: int = 2048,
     text_dim: int = 1024,
     n_voxels: int = 85810,
     bottleneck_dim: int = 8000
@@ -480,7 +488,7 @@ def create_encoder(
         Video frame height
     video_width : int, default=160
         Video frame width
-    audio_mels : int, default=128
+    audio_mels : int, default=2048
         Number of mel frequency bins
     text_dim : int, default=1024
         Dimensionality of text embeddings
