@@ -18,6 +18,9 @@ from .autoencoder import (
     prepare_for_distributed
 )
 
+# Alias for backwards compatibility
+SherlockAutoencoder = MultimodalAutoencoder
+
 __all__ = [
     'VideoEncoder',
     'AudioEncoder',
@@ -26,6 +29,7 @@ __all__ = [
     'create_encoder',
     'MultimodalDecoder',
     'MultimodalAutoencoder',
+    'SherlockAutoencoder',  # Backwards compatibility alias
     'create_autoencoder',
     'prepare_for_distributed'
 ]

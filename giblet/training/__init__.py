@@ -10,13 +10,13 @@ This module provides comprehensive training functionality including:
 Example
 -------
 >>> from giblet.models.autoencoder import create_autoencoder
->>> from giblet.data.dataset import SherlockDataset
+>>> from giblet.data.dataset import MultimodalDataset
 >>> from giblet.training import Trainer, TrainingConfig
 >>>
 >>> # Create model and datasets
 >>> model = create_autoencoder()
->>> train_dataset = SherlockDataset('data/', split='train')
->>> val_dataset = SherlockDataset('data/', split='val')
+>>> train_dataset = MultimodalDataset('data/', split='train')
+>>> val_dataset = MultimodalDataset('data/', split='val')
 >>>
 >>> # Configure training
 >>> config = TrainingConfig(

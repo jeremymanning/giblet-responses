@@ -19,8 +19,8 @@ Example
 >>>
 >>> # Create model and datasets
 >>> model = create_autoencoder()
->>> train_dataset = SherlockDataset('data/', split='train')
->>> val_dataset = SherlockDataset('data/', split='val')
+>>> train_dataset = MultimodalDataset('data/', split='train')
+>>> val_dataset = MultimodalDataset('data/', split='val')
 >>>
 >>> # Configure training
 >>> config = TrainingConfig(
@@ -52,7 +52,9 @@ from dataclasses import dataclass, asdict
 from tqdm import tqdm
 import numpy as np
 
-from ..models.autoencoder import SherlockAutoencoder
+from ..models.autoencoder import MultimodalAutoencoder
+# Keep backwards compatibility
+SherlockAutoencoder = MultimodalAutoencoder
 from .losses import CombinedAutoEncoderLoss, compute_correlation_metric, compute_r2_score
 
 
@@ -158,7 +160,7 @@ class Trainer:
 
     Parameters
     ----------
-    model : SherlockAutoencoder
+    model : MultimodalAutoencoder
         Model to train
     train_dataset : Dataset
         Training dataset
@@ -176,7 +178,7 @@ class Trainer:
 
     def __init__(
         self,
-        model: SherlockAutoencoder,
+        model: MultimodalAutoencoder,
         train_dataset,
         val_dataset,
         config: TrainingConfig,

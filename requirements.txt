@@ -1,51 +1,116 @@
-# Core deep learning
-torch>=2.0.0
-torchvision>=0.15.0
-torchaudio>=2.0.0
+# Giblet Responses - fMRI to Stimulus Decoding
+# Complete requirements for cluster deployment
+#
+# Python 3.11.12 (recommended)
+# Last tested: 2025-10-29
+# All versions verified in clean environment
 
-# Neuroimaging
-nibabel>=5.0.0
-nilearn>=0.10.0
-brainiak>=0.11.0
+# ============================================================================
+# CORE DEEP LEARNING
+# ============================================================================
+torch==2.9.0
+torchvision==0.24.0
+torchaudio==2.9.0
 
-# Video processing
-opencv-python>=4.8.0
-imageio>=2.31.0
-imageio-ffmpeg>=0.4.9
+# ============================================================================
+# NEUROIMAGING & fMRI ANALYSIS
+# ============================================================================
+# NIfTI file I/O and manipulation
+nibabel>=5.3.2
 
-# Audio processing
-librosa>=0.10.0
-soundfile>=0.12.0
+# Neuroimaging data processing and analysis
+nilearn>=0.12.1
 
-# Text processing and embeddings
-sentence-transformers>=2.2.0
-transformers>=4.30.0
-openpyxl>=3.1.0
+# Inter-subject correlation (ISC) analysis for fMRI
+brainiak>=0.12
 
-# Data handling
-numpy>=1.24.0
-pandas>=2.0.0
-polars>=0.19.0
-h5py>=3.9.0
+# ============================================================================
+# VIDEO & AUDIO PROCESSING
+# ============================================================================
+# Computer vision for video frame processing
+opencv-python>=4.12.0
 
-# Scientific computing
-scipy>=1.11.0
-scikit-learn>=1.3.0
-scikit-image>=0.21.0
+# Video and image I/O
+imageio>=2.37.0
+imageio-ffmpeg>=0.6.0
 
-# Visualization
-matplotlib>=3.7.0
-seaborn>=0.12.0
-plotly>=5.17.0
+# Audio waveform processing and feature extraction
+librosa>=0.11.0
 
-# Testing
-pytest>=7.4.0
-pytest-cov>=4.1.0
+# WAV file I/O
+soundfile>=0.13.1
 
-# Utilities
-tqdm>=4.66.0
-pyyaml>=6.0.0
+# ============================================================================
+# TEXT EMBEDDINGS & TRANSFORMERS
+# ============================================================================
+# State-of-the-art text embeddings (BAAI/bge-large-en-v1.5)
+# This is critical for text annotation processing
+sentence-transformers>=5.1.2
 
-# Logging and experiment tracking (optional but recommended)
-tensorboard>=2.14.0
-wandb>=0.15.0  # Uncomment for Weights & Biases integration
+# Hugging Face transformers for language models
+transformers>=4.57.1
+
+# Excel file handling for annotations
+openpyxl>=3.1.5
+
+# ============================================================================
+# DATA HANDLING & MANIPULATION
+# ============================================================================
+# Numerical computing (must be <2.0 for torch compatibility)
+numpy>=2.2.6
+
+# Data frame manipulation
+pandas>=2.3.3
+
+# Fast data frame alternative
+polars>=1.34.0
+
+# HDF5 file I/O for large datasets
+h5py>=3.15.1
+
+# ============================================================================
+# SCIENTIFIC COMPUTING
+# ============================================================================
+scipy>=1.16.3
+scikit-learn>=1.7.2
+scikit-image>=0.25.2
+
+# ============================================================================
+# VISUALIZATION
+# ============================================================================
+matplotlib>=3.10.7
+seaborn>=0.13.2
+plotly>=6.3.1
+
+# ============================================================================
+# TESTING
+# ============================================================================
+pytest>=8.4.2
+pytest-cov>=7.0.0
+
+# ============================================================================
+# UTILITIES & CONFIGURATION
+# ============================================================================
+tqdm>=4.67.1
+pyyaml>=6.0.3
+
+# ============================================================================
+# EXPERIMENT TRACKING & MONITORING
+# ============================================================================
+tensorboard>=2.20.0
+wandb>=0.22.3
+
+# ============================================================================
+# OPTIONAL: HPC/DISTRIBUTED COMPUTING
+# ============================================================================
+# Message Passing Interface (required for distributed training on clusters)
+mpi4py>=4.1.1
+
+# Optional: Ray for distributed computing
+# Uncomment if using Ray for distributed training/hyperparameter tuning
+# ray[tune,train]>=2.20.0
+
+# ============================================================================
+# DOCUMENTATION
+# ============================================================================
+# Built-in: docstring utilities already in Python stdlib
