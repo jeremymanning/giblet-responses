@@ -16,14 +16,12 @@ from pathlib import Path
 from typing import Tuple, Optional, Union
 from tqdm import tqdm
 
-# Optional: torchaudio for HiFi-GAN vocoder
+# PyTorch is optional for future neural vocoder support
 try:
     import torch
-    import torchaudio
-    VOCODER_AVAILABLE = True
-except (ImportError, OSError) as e:
-    VOCODER_AVAILABLE = False
-    print(f"Warning: torchaudio not available ({e}). Audio reconstruction will use Griffin-Lim.")
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
 
 
 class AudioProcessor:
@@ -32,16 +30,16 @@ class AudioProcessor:
 
     Handles:
     - Audio extraction from video files
-    - Resampling to 22,050 Hz (HiFi-GAN standard)
-    - Mel spectrogram computation (128 mels)
+    - Resampling to 22,050 Hz
+    - Mel spectrogram computation (2048 mels for maximum detail preservation)
     - Temporal aggregation to match fMRI TR (1.5s bins)
-    - Audio reconstruction using HiFi-GAN vocoder
+    - Audio reconstruction using Griffin-Lim algorithm
 
     Parameters
     ----------
     sample_rate : int, default=22050
         Target sample rate (Hz)
-    n_mels : int, default=128
+    n_mels : int, default=2048
         Number of mel frequency bins
     n_fft : int, default=1024
         FFT window size
@@ -53,10 +51,10 @@ class AudioProcessor:
 
     def __init__(
         self,
-        sample_rate: int = 22050,
-        n_mels: int = 128,
-        n_fft: int = 1024,
-        hop_length: int = 256,
+        sample_rate: int = 22050,  # Standard for speech/music
+        n_mels: int = 2048,        # Very high resolution for detail preservation
+        n_fft: int = 4096,         # Larger FFT for frequency resolution
+        hop_length: int = 512,     # Frame advance
         tr: float = 1.5
     ):
         self.sample_rate = sample_rate
@@ -65,24 +63,6 @@ class AudioProcessor:
         self.hop_length = hop_length
         self.tr = tr
         self.n_features = n_mels
-
-        # Initialize HiFi-GAN vocoder (lazy loading)
-        self._vocoder = None
-        self._vocoder_sample_rate = None
-
-    def _load_vocoder(self):
-        """Load HiFi-GAN vocoder for audio reconstruction."""
-        if not VOCODER_AVAILABLE:
-            raise RuntimeError("torchaudio not available. Cannot load HiFi-GAN vocoder.")
-
-        if self._vocoder is None:
-            print("Loading HiFi-GAN vocoder...")
-            # Use pretrained HiFi-GAN vocoder
-            bundle = torchaudio.pipelines.HIFIGAN_VOCODER_V3_LJSPEECH
-            self._vocoder = bundle.get_vocoder()
-            self._vocoder_sample_rate = bundle.sample_rate
-            self._vocoder.eval()
-            print(f"Vocoder loaded (sample rate: {self._vocoder_sample_rate} Hz)")
 
     def audio_to_features(
         self,
@@ -188,11 +168,10 @@ class AudioProcessor:
     def features_to_audio(
         self,
         features: np.ndarray,
-        output_path: Union[str, Path],
-        use_vocoder: bool = True
+        output_path: Union[str, Path]
     ) -> None:
         """
-        Reconstruct audio from mel spectrogram features.
+        Reconstruct audio from mel spectrogram features using Griffin-Lim.
 
         Parameters
         ----------
@@ -200,90 +179,48 @@ class AudioProcessor:
             Shape (n_trs, n_mels) mel spectrogram in dB scale
         output_path : str or Path
             Path for output audio file
-        use_vocoder : bool, default=True
-            If True, use HiFi-GAN vocoder for high-quality reconstruction
-            If False, use Griffin-Lim algorithm (faster but lower quality)
 
         Notes
         -----
-        - HiFi-GAN produces much better quality than Griffin-Lim
+        - Uses Griffin-Lim algorithm for phase reconstruction
         - Reconstructed audio will be at self.sample_rate Hz
+        - Griffin-Lim may produce slightly shorter output than exact TR duration
         """
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         n_trs = features.shape[0]
 
-        if use_vocoder:
-            # Use HiFi-GAN vocoder for high-quality reconstruction
-            self._load_vocoder()
+        # Expand TR-level features to frames
+        # Each TR needs to be expanded to fill self.tr seconds
+        samples_per_tr = int(self.tr * self.sample_rate)
+        frames_per_tr = samples_per_tr // self.hop_length
 
-            # Expand TR-level features to frames
-            # Each TR needs to be expanded to fill self.tr seconds
-            samples_per_tr = int(self.tr * self.sample_rate)
-            frames_per_tr = samples_per_tr // self.hop_length
+        # Build full mel spectrogram by repeating each TR
+        full_mel_spec_db = np.zeros(
+            (self.n_mels, n_trs * frames_per_tr),
+            dtype=np.float32
+        )
 
-            # Build full mel spectrogram by repeating each TR
-            full_mel_spec_db = np.zeros(
-                (self.n_mels, n_trs * frames_per_tr),
-                dtype=np.float32
-            )
+        for tr_idx in range(n_trs):
+            start_frame = tr_idx * frames_per_tr
+            end_frame = start_frame + frames_per_tr
+            # Repeat the TR's features across all frames in that TR
+            full_mel_spec_db[:, start_frame:end_frame] = features[tr_idx:tr_idx+1].T
 
-            for tr_idx in range(n_trs):
-                start_frame = tr_idx * frames_per_tr
-                end_frame = start_frame + frames_per_tr
-                # Repeat the TR's features across all frames in that TR
-                full_mel_spec_db[:, start_frame:end_frame] = features[tr_idx:tr_idx+1].T
+        # Convert from dB to power
+        mel_spec = librosa.db_to_power(full_mel_spec_db)
 
-            # Convert from dB back to power
-            mel_spec = librosa.db_to_power(full_mel_spec_db)
+        # Invert mel spectrogram to audio using Griffin-Lim
+        y = librosa.feature.inverse.mel_to_audio(
+            mel_spec,
+            sr=self.sample_rate,
+            n_fft=self.n_fft,
+            hop_length=self.hop_length
+        )
 
-            # Convert to tensor for vocoder
-            mel_spec_tensor = torch.FloatTensor(mel_spec).unsqueeze(0)
-
-            # Generate audio using vocoder
-            with torch.no_grad():
-                waveform = self._vocoder(mel_spec_tensor)
-
-            # Save audio
-            waveform_np = waveform.squeeze().cpu().numpy()
-            sf.write(
-                str(output_path),
-                waveform_np,
-                self._vocoder_sample_rate
-            )
-
-        else:
-            # Fallback: Griffin-Lim algorithm (lower quality)
-            # Similar expansion as above
-            samples_per_tr = int(self.tr * self.sample_rate)
-            frames_per_tr = samples_per_tr // self.hop_length
-
-            full_mel_spec_db = np.zeros(
-                (self.n_mels, n_trs * frames_per_tr),
-                dtype=np.float32
-            )
-
-            for tr_idx in range(n_trs):
-                start_frame = tr_idx * frames_per_tr
-                end_frame = start_frame + frames_per_tr
-                full_mel_spec_db[:, start_frame:end_frame] = features[tr_idx:tr_idx+1].T
-
-            # Convert from dB to power
-            mel_spec = librosa.db_to_power(full_mel_spec_db)
-
-            # Invert mel spectrogram to audio
-            # Note: Griffin-Lim produces slightly shorter output than exact TR duration
-            # This is acceptable for reconstruction purposes
-            y = librosa.feature.inverse.mel_to_audio(
-                mel_spec,
-                sr=self.sample_rate,
-                n_fft=self.n_fft,
-                hop_length=self.hop_length
-            )
-
-            # Save
-            sf.write(str(output_path), y, self.sample_rate)
+        # Save audio
+        sf.write(str(output_path), y, self.sample_rate)
 
     def get_audio_info(
         self,
