@@ -58,10 +58,53 @@ Issues created for systematic resolution:
 
 **Deployment**:
 - Issue #1: Complete cluster setup
-- Temporal alignment (3 tasks)
-- Model architecture (3 tasks)
-- Training infrastructure (2 tasks)
-- Integration tests (1 task)
+- Issue #14: Switch to Python 3.10/3.11 for audio library compatibility
+
+### 📦 Deliverables (7 Commits)
+
+**Package structure:**
+```
+giblet/
+├── data/        # video.py, audio.py, text.py, fmri.py, dataset.py
+├── alignment/   # hrf.py, sync.py
+├── models/      # encoder.py, decoder.py, autoencoder.py
+├── training/    # losses.py, trainer.py
+└── utils/
+
+tests/           # 100+ tests across data/, models/, integration/
+scripts/         # train.py, cluster/ deployment
+examples/        # Configuration and usage examples
+notes/           # Comprehensive documentation
+```
+
+**Statistics:**
+- ~15,000 lines of code
+- 50+ Python files
+- 100+ test functions
+- 2.0B parameter model
+- Tested on 17 real subjects
+
+### 🎯 Success Metrics Achieved
+
+- ✅ Video round-trip: PSNR 35.37 dB (target: >30)
+- ✅ fMRI: 85,810 shared voxels extracted from 17 subjects
+- ✅ HRF: Verified 6-second temporal shift
+- ✅ Models: Forward/backward passes working
+- ✅ Training: Loop functional, checkpointing works
+- ⚠️  Audio: Extraction working, reconstruction needs fix
+- ⚠️  Text: Implementation needs timing verification
+- ⚠️  Architecture: Needs audit against spec
+
+### 🔄 For Next Session
+
+**Priority fixes (use parallel agents):**
+1. Issue #14: Python 3.10/3.11 environment → fixes audio
+2. Issue #10: Text timing alignment → correct TR mapping
+3. Issue #11: Architecture audit → verify spec compliance
+4. Issue #12: Audio reconstruction → test with new Python version
+5. Issue #13: Manual validation → listen/watch/verify all outputs
+
+**Current token usage:** ~325K / 1M (67% remaining for fixes)
 - Cluster setup (1 task)
 - Documentation (1 task)
 
