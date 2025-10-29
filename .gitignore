@@ -129,8 +129,8 @@ dmypy.json
 .pyre/
 
 # Project-specific
-data/
-code/
+/data/
+/code/
 cluster_config/*.json
 
 # macOS
