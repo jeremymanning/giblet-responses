@@ -1,0 +1,71 @@
+# Training configuration for Sherlock autoencoder
+# This YAML file specifies all hyperparameters and settings for training
+
+# Optimizer parameters
+learning_rate: 1.0e-4
+batch_size: 64  # Per GPU batch size
+num_epochs: 100
+weight_decay: 1.0e-5
+
+# Loss function weights
+reconstruction_weight: 1.0
+fmri_weight: 1.0
+video_weight: 1.0
+audio_weight: 1.0
+text_weight: 1.0
+fmri_loss_type: 'mse'  # Options: 'mse', 'mae', 'correlation'
+
+# Learning rate scheduling
+scheduler_type: 'cosine'  # Options: 'cosine', 'step', 'none'
+warmup_epochs: 5
+min_lr: 1.0e-6
+
+# Training settings
+gradient_clip_val: 1.0
+use_mixed_precision: true
+num_workers: 4
+pin_memory: true
+
+# Checkpointing and logging
+checkpoint_dir: 'checkpoints'
+log_dir: 'logs'
+save_every: 5
+validate_every: 1
+
+# Early stopping
+early_stopping_patience: 10
+early_stopping_delta: 1.0e-4
+
+# Resume training (optional)
+resume_from: null  # Path to checkpoint, or null to start fresh
+
+# Data settings (not part of TrainingConfig, but useful for reference)
+data:
+  data_dir: 'data/'
+  subjects: 'all'  # 'all' or list of subject IDs [1, 2, 3, ...]
+  apply_hrf: true
+  mode: 'per_subject'  # 'per_subject' or 'cross_subject'
+  train_split: 'train'
+  val_split: 'val'
+
+# Model architecture (not part of TrainingConfig, but useful for reference)
+model:
+  video_height: 90
+  video_width: 160
+  audio_mels: 128
+  text_dim: 1024
+  n_voxels: 85810
+  bottleneck_dim: 8000
+  video_features: 1024
+  audio_features: 256
+  text_features: 256
+  decoder_hidden_dim: 2048
+  decoder_dropout: 0.3
+
+# Multi-GPU training settings
+distributed:
+  enabled: false  # Set to true for multi-GPU training
+  backend: 'nccl'  # 'nccl' for GPU, 'gloo' for CPU
+  world_size: 8  # Number of GPUs
+  master_addr: 'localhost'
+  master_port: '12355'
