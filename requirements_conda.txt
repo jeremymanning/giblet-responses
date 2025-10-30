@@ -35,6 +35,14 @@ pandas==2.3.3
 openpyxl==3.1.5
 scipy==1.16.3
 
+# Video/Audio processing
+opencv-python==4.11.0.86
+librosa==0.10.2.post1
+
+# Neuroimaging
+nibabel==5.3.2
+nilearn==0.11.1
+
 # Scientific computing
 scikit-learn==1.7.2
 
