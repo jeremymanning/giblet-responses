@@ -20,10 +20,27 @@ The brain's "giblets" are its myriad constituent pieces (apologies for the somew
 
 ## Setup instructions
 
-1. Read about the Algonauts 2021 challenge [here](http://algonauts.csail.mit.edu/challenge.html)
-2. Follow the setup instructions [here](https://github.com/Neural-Dynamics-of-Visual-Cognition-FUB/Algonauts2021_devkit) to install the Algonauts Developer's Kit on your computer and download the data.  (*TODO: let's make a setup script to do this part automatically*)
-3. Fork this repository and clone the fork to your computer
-4. Add yourself to the "Team CDL contributors" list below (you'll need to add yourself to your fork and then submit a pull request).  By adding yourself to the team, you agree to:
+### Quick Setup (Recommended)
+
+Run the automated setup script:
+
+```bash
+./setup_environment.sh
+```
+
+This will:
+- Install miniconda (if needed)
+- Create the `giblet-py311` conda environment
+- Install all dependencies
+- Download the Sherlock dataset
+- Verify the installation
+
+For manual setup or troubleshooting, see [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md).
+
+### Joining the Team
+
+1. Fork this repository and clone the fork to your computer
+2. Add yourself to the "Team CDL contributors" list below (you'll need to add yourself to your fork and then submit a pull request).  By adding yourself to the team, you agree to:
     - Maintain clear, open, and regular communications with your fellow team members related to work on this challenge project.  This includes joining the associated [slack channel](https://context-lab.slack.com/archives/C020V4HJFT4) and checking/contributing to it regularly while the project is active.
     - Participate in the hackathons related to the project
     - Take responsibility for the methods, code, and results

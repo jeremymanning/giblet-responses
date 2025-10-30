@@ -2,9 +2,32 @@
 
 Complete instructions for setting up the giblet-responses environment for cluster deployment.
 
-**Date Updated:** 2025-10-29
+**Date Updated:** 2025-10-30
 **Python Version:** 3.11.12
 **Verified On:** macOS 13+, Linux (Ubuntu/Debian)
+
+## Automated Setup (Recommended)
+
+For the easiest setup experience, use the automated setup script:
+
+```bash
+./setup_environment.sh
+```
+
+This script will:
+- Detect your OS (Linux/macOS) and architecture (x86_64/arm64)
+- Install miniconda if not found
+- Create conda environment `giblet-py311` with Python 3.11
+- Install all dependencies from `requirements_conda.txt`
+- Optionally download the Sherlock dataset (~11GB)
+- Verify the installation
+- Run quick validation tests
+
+The script is idempotent (safe to run multiple times) and handles errors gracefully.
+
+## Manual Setup
+
+If you prefer manual setup or the automated script doesn't work for your system:
 
 ## Quick Start
 
