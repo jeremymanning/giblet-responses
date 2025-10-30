@@ -252,7 +252,8 @@ class FMRIProcessor:
         features: np.ndarray,
         coordinates: np.ndarray,
         output_path: Union[str, Path],
-        template_img: Optional[nib.Nifti1Image] = None
+        template_img: Optional[nib.Nifti1Image] = None,
+        template_shape: Optional[Tuple[int, int, int]] = None
     ) -> nib.Nifti1Image:
         """
         Reconstruct NIfTI file from feature matrix.
@@ -267,6 +268,8 @@ class FMRIProcessor:
             Path for output NIfTI file
         template_img : nib.Nifti1Image, optional
             Template NIfTI image for affine and header info
+        template_shape : tuple of int, optional
+            3D shape (x, y, z) of original volume. If None, infers from coordinates.
 
         Returns
         -------
@@ -278,6 +281,7 @@ class FMRIProcessor:
         - Reconstructs full 4D volume from masked voxels
         - Non-brain voxels are set to zero
         - Uses template affine and header if provided
+        - Uses template_shape if provided, otherwise infers from max coordinates
         """
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -288,18 +292,28 @@ class FMRIProcessor:
         if template_img is not None:
             affine = template_img.affine
             header = template_img.header.copy()
+            if template_shape is None:
+                template_shape = template_img.shape[:3]
         elif self._template_affine is not None:
             affine = self._template_affine
             header = self._template_header.copy()
+            if template_shape is None and self._shared_mask is not None:
+                template_shape = self._shared_mask.shape
         elif self._shared_mask_img is not None:
             affine = self._shared_mask_img.affine
             header = self._shared_mask_img.header.copy()
+            if template_shape is None:
+                template_shape = self._shared_mask_img.shape[:3]
         else:
             raise RuntimeError("No template image or affine available")
 
-        # Determine volume shape from coordinates
-        max_coords = np.max(coordinates, axis=0) + 1
-        vol_shape = tuple(max_coords.astype(int))
+        # Determine volume shape
+        if template_shape is not None:
+            vol_shape = template_shape
+        else:
+            # Fallback: infer from coordinates (may result in cropped volume)
+            max_coords = np.max(coordinates, axis=0) + 1
+            vol_shape = tuple(max_coords.astype(int))
 
         # Reconstruct 4D volume
         data = np.zeros((*vol_shape, n_trs), dtype=np.float32)
@@ -307,7 +321,9 @@ class FMRIProcessor:
         # Fill in brain voxels
         for t in range(n_trs):
             for i, (x, y, z) in enumerate(coordinates):
-                data[x, y, z, t] = features[t, i]
+                x, y, z = int(x), int(y), int(z)
+                if x < vol_shape[0] and y < vol_shape[1] and z < vol_shape[2]:
+                    data[x, y, z, t] = features[t, i]
 
         # Create NIfTI image
         img = nib.Nifti1Image(data, affine, header)
@@ -394,11 +410,16 @@ class FMRIProcessor:
         Notes
         -----
         - Creates shared mask if not already created
-        - Processes all subjects in sorted order
+        - Processes all subjects in sorted order (numeric, not alphabetic)
         - Extracts subject IDs from filenames
         """
         data_dir = Path(data_dir)
-        nii_files = sorted(data_dir.glob(pattern))
+        # Sort numerically by subject ID (e.g., s1, s2, ..., s17)
+        # not alphabetically (which would give s1, s10, s11, ..., s2)
+        nii_files = sorted(
+            data_dir.glob(pattern),
+            key=lambda f: int(f.name.split('_')[-1].split('.')[0][1:])
+        )
 
         if len(nii_files) == 0:
             raise FileNotFoundError(f"No files found matching {pattern} in {data_dir}")

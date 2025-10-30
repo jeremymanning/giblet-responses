@@ -34,7 +34,8 @@ class TestFMRIProcessor:
     @pytest.fixture
     def nii_files(self):
         """Get list of all NIfTI files."""
-        files = sorted(DATA_DIR.glob("sherlock_movie_s*.nii.gz"))
+        files = sorted(DATA_DIR.glob("sherlock_movie_s*.nii.gz"),
+                      key=lambda f: int(f.name.split('_')[-1].split('.')[0][1:]))
         assert len(files) == N_SUBJECTS, f"Expected {N_SUBJECTS} files, found {len(files)}"
         return files
 
@@ -193,6 +194,10 @@ class TestFMRIProcessor:
         # Create mask
         processor.create_shared_mask(nii_files)
 
+        # Load original to get its shape
+        original_img = nib.load(str(nii_files[0]))
+        original_shape = original_img.shape[:3]
+
         # Load original
         test_file = nii_files[0]
         print(f"Original: {test_file.name}")
@@ -206,7 +211,8 @@ class TestFMRIProcessor:
         reconstructed_img = processor.features_to_nii(
             features,
             coordinates,
-            output_path
+            output_path,
+            template_shape=original_shape
         )
 
         print(f"Reconstructed: {output_path}")
@@ -215,8 +221,7 @@ class TestFMRIProcessor:
         reconstructed_data = reconstructed_img.get_fdata()
         print(f"Reconstructed shape: {reconstructed_data.shape}")
 
-        # Load original with truncation
-        original_img = nib.load(str(test_file))
+        # Get original with truncation
         original_data = original_img.get_fdata()[:, :, :, :MAX_TRS]
         print(f"Original truncated shape: {original_data.shape}")
 

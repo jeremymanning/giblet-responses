@@ -1,83 +1,75 @@
 ================================================================================
-Text Embedding Validation Test
+REAL BGE EMBEDDING VALIDATION
+Model: BAAI/bge-large-en-v1.5
 ================================================================================
-Test run: 2025-10-29 11:52:30
 
-1. Initializing TextProcessor with BGE-large-en-v1.5...
-   ✓ TextProcessor initialized
 
-2. Loading model and getting info...
-   Model: BAAI/bge-large-en-v1.5
-   Embedding dimension: 1024
-   Device: mps:0
-   TR: 1.5s
-   Aggregation: mean
-   Gap fill: forward_fill
-   ✓ Model loaded successfully without segfault!
+Annotation 0:
+--------------------------------------------------------------------------------
+ORIGINAL: People in popcorn, candy, and soft drink costumes are parading down a crowd of people singing "Let's all go to the lobby x 3, to get ourselves a treat!"
+RECOVERED (nearest): People in popcorn, candy, and soft drink costumes are parading down a crowd of people singing "Let's all go to the lobby x 3, to get ourselves a treat!"
+Cosine similarity: 1.0000
+✅ PERFECT MATCH (same annotation)
 
-3. Loading annotations from data/annotations.xlsx...
-   ✓ Loaded 1000 annotation segments
-   Columns: ['Segment Number', 'Start Time (s)', 'End Time (s)', 'Start Time (TRs, 1.5s)', 'End Time (TRs, 1.5s)', 'Scene Segments', 'Scene Details - A Level', 'Space-In/Outdoor', 'Name - All', 'Name - Focus', 'Name - Speaking', 'Location', 'Camera Angle', 'Music Presence', 'Words on Screen', 'Arousal - Rater 1', 'Valence - Rater 1', 'Arousal - Rater 2', 'Valence - Rater 2', 'Arousal - Rater 3', 'Valence - Rater 3', 'Arousal - Rater 4', 'Valence - Rater 4']
+Annotation 1:
+--------------------------------------------------------------------------------
+ORIGINAL: Popcorn is being popped in a large popcorn machine made of glass. A young woman sings: "Delicious things to eat!"
+RECOVERED (nearest): Popcorn is being popped in a large popcorn machine made of glass. A young woman sings: "Delicious things to eat!"
+Cosine similarity: 1.0000
+✅ PERFECT MATCH (same annotation)
 
-4. Processing first 10 annotation segments...
-   ✓ Combined text from 10 segments (with text)
+Annotation 2:
+--------------------------------------------------------------------------------
+ORIGINAL: Men sing in reply: "the popcorn can't be beat!"
+RECOVERED (nearest): Men sing in reply: "the popcorn can't be beat!"
+Cosine similarity: 1.0000
+✅ PERFECT MATCH (same annotation)
 
-   Sample texts:
-     [1] People in popcorn, candy, and soft drink costumes are parading down a crowd of people singing "Let's...
-     [2] Popcorn is being popped in a large popcorn machine made of glass. A young woman sings: "Delicious th...
-     [3] Men sing in reply: "the popcorn can't be beat!"; Male Singers; Cartoon World
-     [4] A family of four, a father with a black suit, a little boy with a striped shirt, his older sister wi...
-     [5] A view of the lobby with a display of snacks for the movies. A woman is at the cash register.  Backg...
+Annotation 3:
+--------------------------------------------------------------------------------
+ORIGINAL: A family of four, a father with a black suit, a little boy with a striped shirt, his older sister with a red shirt and red hair and red bow as well as a mother with a green shirt and grey skirt are seen snacking on popcorn and candy. Background singers sing: "The sparkling drinks are just dandy, the chocolate bars and the candy..."
+RECOVERED (nearest): A family of four, a father with a black suit, a little boy with a striped shirt, his older sister with a red shirt and red hair and red bow as well as a mother with a green shirt and grey skirt are seen snacking on popcorn and candy. Background singers sing: "The sparkling drinks are just dandy, the chocolate bars and the candy..."
+Cosine similarity: 1.0000
+✅ PERFECT MATCH (same annotation)
 
-5. Embedding text segments...
-   ✓ Generated embeddings: shape (10, 1024)
-   Embedding stats:
-     Mean: -0.000221
-     Std: 0.031249
-     Min: -0.101655
-     Max: 0.264512
+Annotation 4:
+--------------------------------------------------------------------------------
+ORIGINAL: A view of the lobby with a display of snacks for the movies. A woman is at the cash register.  Background singers: "So, let's all go to the lobby to get ourselves a treat"
+RECOVERED (nearest): A view of the lobby with a display of snacks for the movies. A woman is at the cash register.  Background singers: "So, let's all go to the lobby to get ourselves a treat"
+Cosine similarity: 1.0000
+✅ PERFECT MATCH (same annotation)
 
-6. Testing nearest-neighbor recovery...
-   ✓ Computed similarity matrix: shape (10, 10)
+Annotation 5:
+--------------------------------------------------------------------------------
+ORIGINAL: Let's all go to the Lobby to get Ourselves a Treat! Is seen as on-screen text. Singers sing "Let's all go to the lobby…" 
+RECOVERED (nearest): Let's all go to the Lobby to get Ourselves a Treat! Is seen as on-screen text. Singers sing "Let's all go to the lobby…" 
+Cosine similarity: 1.0000
+✅ PERFECT MATCH (same annotation)
 
-   Recovery test (each embedding should match itself perfectly):
-     [0] Self-similarity: 1.000000, Next best: 0.740445 (idx 5)
-     [1] Self-similarity: 1.000000, Next best: 0.697107 (idx 4)
-     [2] Self-similarity: 1.000000, Next best: 0.692798 (idx 1)
+Annotation 6:
+--------------------------------------------------------------------------------
+ORIGINAL: There is an on-screen countdown from 3…2…1… as the background singers finish singing: "... to get ourselves a treeeaaaat!". The music ceases.
+RECOVERED (nearest): There is an on-screen countdown from 3…2…1… as the background singers finish singing: "... to get ourselves a treeeaaaat!". The music ceases.
+Cosine similarity: 1.0000
+✅ PERFECT MATCH (same annotation)
 
-   ✓ Perfect self-recovery: 10/10 (100.0%)
+Annotation 7:
+--------------------------------------------------------------------------------
+ORIGINAL: Gunfire by a soldier along a wall made of stacked stones 
+RECOVERED (nearest): Gunfire by a soldier along a wall made of stacked stones 
+Cosine similarity: 1.0000
+✅ PERFECT MATCH (same annotation)
 
-   Text recovery test (recovering original text from embedding):
+Annotation 8:
+--------------------------------------------------------------------------------
+ORIGINAL: A bomb or land mine goes off in the middle of a grassy field
+RECOVERED (nearest): A bomb or land mine goes off in the middle of a grassy field
+Cosine similarity: 1.0000
+✅ PERFECT MATCH (same annotation)
 
-   Query [0]:
-     Original: People in popcorn, candy, and soft drink costumes are parading down a crowd of p...
-     Recovered: EXACT MATCH (similarity: 1.000000)
-
-   Query [1]:
-     Original: Popcorn is being popped in a large popcorn machine made of glass. A young woman ...
-     Recovered: EXACT MATCH (similarity: 1.000000)
-
-   Query [2]:
-     Original: Men sing in reply: "the popcorn can't be beat!"; Male Singers; Cartoon World
-     Recovered: EXACT MATCH (similarity: 1.000000)
-
-7. Testing stability with different batch sizes...
-   ✓ Batch size 1: shape (1, 1024)
-   ✓ Batch size 5: shape (5, 1024)
-   ✓ Batch size 10: shape (10, 1024)
-
-8. Testing alignment to TR grid...
-   ✓ Aligned to TR grid: shape (20, 1024)
-   TRs with segments: 20/20
-   TRs with gaps: 0/20
-
-   First 5 TRs:
-     TR 0: [0.0s - 1.5s] 1 segments
-     TR 1: [1.5s - 3.0s] 1 segments
-     TR 2: [3.0s - 4.5s] 1 segments
-     TR 3: [4.5s - 6.0s] 1 segments
-     TR 4: [6.0s - 7.5s] 1 segments
-
-================================================================================
-✓ ALL TESTS PASSED - No segfaults detected!
-================================================================================
+Annotation 9:
+--------------------------------------------------------------------------------
+ORIGINAL: A Soldier kicks open a door. Soldiers shooting at a target off screen behind a wall. Other soldiers are sitting ducked beneath the wall. 
+RECOVERED (nearest): A Soldier kicks open a door. Soldiers shooting at a target off screen behind a wall. Other soldiers are sitting ducked beneath the wall. 
+Cosine similarity: 1.0000
+✅ PERFECT MATCH (same annotation)

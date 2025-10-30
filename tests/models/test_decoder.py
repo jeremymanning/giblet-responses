@@ -19,7 +19,7 @@ class TestMultimodalDecoder:
         return MultimodalDecoder(
             bottleneck_dim=5000,
             video_dim=43200,
-            audio_dim=128,
+            audio_dim=2048,
             text_dim=1024,
             hidden_dim=2048,
             dropout=0.3
@@ -31,7 +31,7 @@ class TestMultimodalDecoder:
         return MultimodalDecoder(
             bottleneck_dim=100,
             video_dim=43200,
-            audio_dim=128,
+            audio_dim=2048,
             text_dim=1024,
             hidden_dim=256,
             dropout=0.1
@@ -41,7 +41,7 @@ class TestMultimodalDecoder:
         """Test decoder initializes with correct architecture."""
         assert decoder.bottleneck_dim == 5000
         assert decoder.video_dim == 43200
-        assert decoder.audio_dim == 128
+        assert decoder.audio_dim == 2048
         assert decoder.text_dim == 1024
         assert decoder.hidden_dim == 2048
 
@@ -69,7 +69,7 @@ class TestMultimodalDecoder:
 
         # Check output shapes
         assert video.shape == (batch_size, 43200)
-        assert audio.shape == (batch_size, 128)
+        assert audio.shape == (batch_size, 2048)
         assert text.shape == (batch_size, 1024)
 
         # Check video is in [0, 1] range (sigmoid output)
@@ -94,7 +94,7 @@ class TestMultimodalDecoder:
 
         # Check output shapes
         assert video.shape == (batch_size, 43200)
-        assert audio.shape == (batch_size, 128)
+        assert audio.shape == (batch_size, 2048)
         assert text.shape == (batch_size, 1024)
 
         # Check video is in [0, 1] range
@@ -133,7 +133,7 @@ class TestMultimodalDecoder:
         audio = decoder.decode_audio_only(bottleneck)
 
         # Check shape
-        assert audio.shape == (batch_size, 128)
+        assert audio.shape == (batch_size, 2048)
 
         # Check no NaN
         assert not torch.isnan(audio).any()
@@ -173,7 +173,7 @@ class TestMultimodalDecoder:
 
         # Check final outputs match expected shapes
         assert outputs['video'].shape == (batch_size, 43200)
-        assert outputs['audio'].shape == (batch_size, 128)
+        assert outputs['audio'].shape == (batch_size, 2048)
         assert outputs['text'].shape == (batch_size, 1024)
 
     def test_count_parameters(self, decoder):
@@ -224,7 +224,7 @@ class TestMultimodalDecoder:
             video, audio, text = decoder(bottleneck)
 
             assert video.shape == (batch_size, 43200)
-            assert audio.shape == (batch_size, 128)
+            assert audio.shape == (batch_size, 2048)
             assert text.shape == (batch_size, 1024)
 
     def test_different_hidden_dimensions(self):
@@ -243,7 +243,7 @@ class TestMultimodalDecoder:
             video, audio, text = decoder(bottleneck)
 
             assert video.shape == (batch_size, 43200)
-            assert audio.shape == (batch_size, 128)
+            assert audio.shape == (batch_size, 2048)
             assert text.shape == (batch_size, 1024)
 
     def test_gradient_flow(self, small_decoder):
@@ -330,7 +330,7 @@ class TestMultimodalDecoder:
         video, audio, text = small_decoder(bottleneck)
 
         assert video.shape == (batch_size, 43200)
-        assert audio.shape == (batch_size, 128)
+        assert audio.shape == (batch_size, 2048)
         assert text.shape == (batch_size, 1024)
 
     def test_consistency_across_runs(self, small_decoder):
@@ -404,7 +404,7 @@ class TestDecoderIntegration:
             video, audio, text = decoder(bottleneck)
 
             assert video.shape == (batch_size, 43200)
-            assert audio.shape == (batch_size, 128)
+            assert audio.shape == (batch_size, 2048)
             assert text.shape == (batch_size, 1024)
 
     def test_tr_batch_processing(self):
@@ -461,7 +461,7 @@ class TestDecoderIntegration:
         video, audio, text = decoder(bottleneck)
 
         assert video.shape == (batch_size, 43200)
-        assert audio.shape == (batch_size, 128)
+        assert audio.shape == (batch_size, 2048)
         assert text.shape == (batch_size, 1024)
 
 

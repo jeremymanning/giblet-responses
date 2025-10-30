@@ -72,7 +72,7 @@ class TestMultimodalAutoencoder:
         assert outputs['bottleneck'].shape == (batch_size, 8000)
         assert outputs['predicted_fmri'].shape == (batch_size, 85810)
         assert outputs['video_recon'].shape == (batch_size, 43200)  # 160*90*3
-        assert outputs['audio_recon'].shape == (batch_size, 128)
+        assert outputs['audio_recon'].shape == (batch_size, 2048)
         assert outputs['text_recon'].shape == (batch_size, 1024)
 
         # No losses in eval mode
@@ -230,7 +230,7 @@ class TestMultimodalAutoencoder:
             video_recon, audio_recon, text_recon = model.decode_only(bottleneck)
 
         assert video_recon.shape == (batch_size, 43200)
-        assert audio_recon.shape == (batch_size, 128)
+        assert audio_recon.shape == (batch_size, 2048)
         assert text_recon.shape == (batch_size, 1024)
 
     def test_parameter_count(self):
