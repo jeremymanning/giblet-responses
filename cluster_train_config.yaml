@@ -1,0 +1,116 @@
+# Production Training Configuration for 8-GPU Cluster (tensor01/tensor02)
+# ============================================================================
+# Hardware: 8× NVIDIA RTX A6000 (48GB VRAM each)
+# Dataset: Sherlock fMRI (17 subjects, 85,810 voxels)
+# Expected training time: ~8-12 hours for 100 epochs (depends on convergence)
+#
+# Memory usage estimate:
+#   - Model parameters: ~2GB per GPU
+#   - Batch of 16: ~8-12GB per GPU (video frames are memory-intensive)
+#   - Total per GPU: ~15-20GB (well within 48GB limit)
+#   - Effective batch size: 16 per GPU × 8 GPUs = 128 total
+#
+# Usage:
+#   python scripts/train.py --config cluster_train_config.yaml
+#   Or use the deployment script:
+#   ./cluster_scripts/run_giblet.sh --gpus 8 --config cluster_train_config.yaml
+# ============================================================================
+
+# Optimizer parameters
+learning_rate: 1.0e-4  # Conservative learning rate for stable training
+batch_size: 16  # Per GPU (total effective batch: 128)
+num_epochs: 100  # Full training run
+weight_decay: 1.0e-5  # L2 regularization to prevent overfitting
+
+# Loss function weights
+# These balance the different reconstruction objectives
+reconstruction_weight: 1.0  # Overall reconstruction loss weight
+fmri_weight: 1.0  # fMRI prediction accuracy
+video_weight: 1.0  # Video frame reconstruction
+audio_weight: 1.0  # Audio spectrogram reconstruction
+text_weight: 1.0  # Text embedding reconstruction
+fmri_loss_type: 'mse'  # Options: 'mse', 'mae', 'correlation'
+
+# Learning rate scheduling
+# Cosine annealing provides smooth learning rate decay
+scheduler_type: 'cosine'  # Options: 'cosine', 'step', 'none'
+warmup_epochs: 5  # Gradual warmup prevents early training instability
+min_lr: 1.0e-6  # Minimum learning rate at end of cosine schedule
+
+# Training settings
+gradient_clip_val: 1.0  # Prevents gradient explosion
+use_mixed_precision: true  # FP16 training for 2x speedup and reduced memory
+num_workers: 4  # Data loading workers per GPU (4 × 8 = 32 total)
+pin_memory: true  # Faster GPU data transfer
+
+# Checkpointing and logging
+checkpoint_dir: 'checkpoints'  # Directory for model checkpoints
+log_dir: 'logs'  # Directory for TensorBoard logs
+save_every: 5  # Save checkpoint every 5 epochs
+validate_every: 1  # Run validation every epoch
+
+# Early stopping
+# Stops training if validation loss doesn't improve
+early_stopping_patience: 10  # Wait 10 epochs before stopping
+early_stopping_delta: 1.0e-4  # Minimum improvement to count as progress
+
+# Resume training
+resume_from: null  # Set to checkpoint path to resume (e.g., 'checkpoints/epoch_50.pt')
+
+# Data settings
+data:
+  data_dir: 'data/'  # Root directory containing sherlock_nii/*.nii.gz files
+  subjects: 'all'  # Use all 17 subjects (maximizes training data)
+  apply_hrf: true  # Apply hemodynamic response function for realistic fMRI modeling
+  mode: 'per_subject'  # Train separate model per subject vs. cross-subject
+  train_split: 'train'  # Use training split of data
+  val_split: 'val'  # Use validation split for early stopping
+
+# Model architecture
+# These settings define the autoencoder structure
+model:
+  # Input dimensions
+  video_height: 90  # Video frame height (downsampled from original)
+  video_width: 160  # Video frame width (downsampled from original)
+  audio_mels: 2048  # CRITICAL: Must be 2048 (from stimulus preprocessing)
+  text_dim: 1024  # Text embedding dimension (from GPT-2)
+  n_voxels: 85810  # Total voxels across all subjects in MNI space
+
+  # Bottleneck layer
+  bottleneck_dim: 8000  # Compressed representation (matches fMRI dimensionality)
+
+  # Encoder hidden dimensions
+  video_features: 1024  # Video encoder output features
+  audio_features: 256  # Audio encoder output features
+  text_features: 256  # Text encoder output features
+
+  # Decoder architecture
+  decoder_hidden_dim: 2048  # Hidden layer size in decoder
+  decoder_dropout: 0.3  # Dropout rate to prevent overfitting
+
+# Multi-GPU training settings
+# These are automatically configured by run_giblet.sh
+distributed:
+  enabled: true  # Enable distributed training (set by run_giblet.sh when gpus > 1)
+  backend: 'nccl'  # NCCL backend optimized for NVIDIA GPUs
+  world_size: 8  # Number of GPUs (8 total across tensor01/tensor02)
+  master_addr: 'localhost'  # Master node address
+  master_port: '12355'  # Port for inter-process communication
+
+# ============================================================================
+# Training Progress Expectations:
+# ============================================================================
+# Epoch 1-10:   Rapid initial convergence, losses decrease quickly
+# Epoch 10-30:  Steady improvement, validation loss stabilizes
+# Epoch 30-60:  Slower improvement, fine-tuning representations
+# Epoch 60-100: Minimal improvement, early stopping may trigger
+#
+# Expected final losses (approximate):
+#   - fMRI MSE: 0.05-0.15 (normalized voxel intensities)
+#   - Video MSE: 0.01-0.05 (normalized pixel values)
+#   - Audio MSE: 0.01-0.03 (normalized mel spectrogram)
+#   - Text MSE: 0.05-0.10 (normalized embeddings)
+#
+# Checkpoints are saved every 5 epochs in: checkpoints/
+# Monitor training with: tensorboard --logdir logs/
+# ============================================================================
