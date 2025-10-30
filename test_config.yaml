@@ -1,0 +1,71 @@
+# Minimal training configuration for testing
+# Quick 2-epoch test run with small batch size
+
+# Optimizer parameters
+learning_rate: 1.0e-4
+batch_size: 2  # Very small for quick testing
+num_epochs: 2  # Just 2 epochs for testing
+weight_decay: 1.0e-5
+
+# Loss function weights
+reconstruction_weight: 1.0
+fmri_weight: 1.0
+video_weight: 1.0
+audio_weight: 1.0
+text_weight: 1.0
+fmri_loss_type: 'mse'
+
+# Learning rate scheduling
+scheduler_type: 'cosine'
+warmup_epochs: 0  # No warmup for quick test
+min_lr: 1.0e-6
+
+# Training settings
+gradient_clip_val: 1.0
+use_mixed_precision: true
+num_workers: 2  # Fewer workers for testing
+pin_memory: true
+
+# Checkpointing and logging
+checkpoint_dir: 'test_checkpoints'
+log_dir: 'test_logs'
+save_every: 1  # Save every epoch for testing
+validate_every: 1
+
+# Early stopping (disabled for testing)
+early_stopping_patience: 100
+early_stopping_delta: 1.0e-4
+
+# Resume training (optional)
+resume_from: null
+
+# Data settings
+data:
+  data_dir: 'data/'
+  subjects: [1]  # Just one subject for quick testing
+  apply_hrf: true
+  mode: 'per_subject'
+  train_split: 'train'
+  val_split: 'val'
+
+# Model architecture
+model:
+  video_height: 90
+  video_width: 160
+  audio_mels: 2048  # Corrected from 128 to 2048
+  text_dim: 1024
+  n_voxels: 85810
+  bottleneck_dim: 8000
+  video_features: 1024
+  audio_features: 256
+  text_features: 256
+  decoder_hidden_dim: 2048
+  decoder_dropout: 0.3
+
+# Multi-GPU training settings
+distributed:
+  enabled: false
+  backend: 'nccl'
+  world_size: 8
+  master_addr: 'localhost'
+  master_port: '12355'
