@@ -82,6 +82,10 @@ matplotlib>=3.10.7
 seaborn>=0.13.2
 plotly>=6.3.1
 
+# Network architecture visualization
+torchview>=0.2.6  # Recommended for architecture diagrams with horizontal layout
+torchviz>=0.0.3   # Optional: computational graph visualization
+
 # ============================================================================
 # TESTING
 # ============================================================================
