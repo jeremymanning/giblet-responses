@@ -1,0 +1,330 @@
+================================================================================
+TEXT TEMPORAL ALIGNMENT VALIDATION REPORT
+================================================================================
+
+Dataset: data/annotations.xlsx
+Total annotations: 1000
+TR: 1.5 seconds
+TRs analyzed: 920
+TRs in detailed report: 50
+
+SUMMARY STATISTICS
+--------------------------------------------------------------------------------
+TRs with annotations: 920/920 (100.0%)
+TRs with gaps: 0/920 (0.0%)
+Max annotations per TR: 4
+Mean annotations per TR: 2.67
+Median annotations per TR: 3.0
+
+================================================================================
+DETAILED TR-BY-TR ALIGNMENT (First 50 TRs)
+================================================================================
+
+TR   0: [   0.0s,    1.5s)
+  2 annotation(s) overlap:
+    Seg    0: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+    Seg  482: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+
+TR   1: [   1.5s,    3.0s)
+  2 annotation(s) overlap:
+    Seg    0: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+    Seg  482: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+
+TR   2: [   3.0s,    4.5s)
+  2 annotation(s) overlap:
+    Seg    0: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+    Seg  482: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+
+TR   3: [   4.5s,    6.0s)
+  2 annotation(s) overlap:
+    Seg    0: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+    Seg  482: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+
+TR   4: [   6.0s,    7.5s)
+  2 annotation(s) overlap:
+    Seg    0: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+    Seg  482: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+
+TR   5: [   7.5s,    9.0s)
+  2 annotation(s) overlap:
+    Seg    0: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+    Seg  482: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+
+TR   6: [   9.0s,   10.5s)
+  2 annotation(s) overlap:
+    Seg    0: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+    Seg  482: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+
+TR   7: [  10.5s,   12.0s)
+  2 annotation(s) overlap:
+    Seg    0: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+    Seg  482: [   0.0s,   12.0s) - People in popcorn, candy, and soft drink costumes are parading down a crowd of p
+
+TR   8: [  12.0s,   13.5s)
+  2 annotation(s) overlap:
+    Seg    1: [  12.0s,   15.0s) - Popcorn is being popped in a large popcorn machine made of glass. A young woman 
+    Seg  483: [  12.0s,   15.0s) - Popcorn is being popped in a large popcorn machine made of glass. A young woman 
+
+TR   9: [  13.5s,   15.0s)
+  2 annotation(s) overlap:
+    Seg    1: [  12.0s,   15.0s) - Popcorn is being popped in a large popcorn machine made of glass. A young woman 
+    Seg  483: [  12.0s,   15.0s) - Popcorn is being popped in a large popcorn machine made of glass. A young woman 
+
+TR  10: [  15.0s,   16.5s)
+  2 annotation(s) overlap:
+    Seg    2: [  15.0s,   17.0s) - Men sing in reply: "the popcorn can't be beat!"
+    Seg  484: [  15.0s,   17.0s) - Men sing in reply: "the popcorn can't be beat!"
+
+TR  11: [  16.5s,   18.0s)
+  4 annotation(s) overlap:
+    Seg    2: [  15.0s,   17.0s) - Men sing in reply: "the popcorn can't be beat!"
+    Seg    3: [  17.0s,   23.0s) - A family of four, a father with a black suit, a little boy with a striped shirt,
+    Seg  484: [  15.0s,   17.0s) - Men sing in reply: "the popcorn can't be beat!"
+    Seg  485: [  17.0s,   23.0s) - A family of four, a father with a black suit, a little boy with a striped shirt,
+
+TR  12: [  18.0s,   19.5s)
+  2 annotation(s) overlap:
+    Seg    3: [  17.0s,   23.0s) - A family of four, a father with a black suit, a little boy with a striped shirt,
+    Seg  485: [  17.0s,   23.0s) - A family of four, a father with a black suit, a little boy with a striped shirt,
+
+TR  13: [  19.5s,   21.0s)
+  2 annotation(s) overlap:
+    Seg    3: [  17.0s,   23.0s) - A family of four, a father with a black suit, a little boy with a striped shirt,
+    Seg  485: [  17.0s,   23.0s) - A family of four, a father with a black suit, a little boy with a striped shirt,
+
+TR  14: [  21.0s,   22.5s)
+  2 annotation(s) overlap:
+    Seg    3: [  17.0s,   23.0s) - A family of four, a father with a black suit, a little boy with a striped shirt,
+    Seg  485: [  17.0s,   23.0s) - A family of four, a father with a black suit, a little boy with a striped shirt,
+
+TR  15: [  22.5s,   24.0s)
+  4 annotation(s) overlap:
+    Seg    3: [  17.0s,   23.0s) - A family of four, a father with a black suit, a little boy with a striped shirt,
+    Seg    4: [  23.0s,   29.0s) - A view of the lobby with a display of snacks for the movies. A woman is at the c
+    Seg  485: [  17.0s,   23.0s) - A family of four, a father with a black suit, a little boy with a striped shirt,
+    Seg  486: [  23.0s,   29.0s) - A view of the lobby with a display of snacks for the movies. A woman is at the c
+
+TR  16: [  24.0s,   25.5s)
+  2 annotation(s) overlap:
+    Seg    4: [  23.0s,   29.0s) - A view of the lobby with a display of snacks for the movies. A woman is at the c
+    Seg  486: [  23.0s,   29.0s) - A view of the lobby with a display of snacks for the movies. A woman is at the c
+
+TR  17: [  25.5s,   27.0s)
+  2 annotation(s) overlap:
+    Seg    4: [  23.0s,   29.0s) - A view of the lobby with a display of snacks for the movies. A woman is at the c
+    Seg  486: [  23.0s,   29.0s) - A view of the lobby with a display of snacks for the movies. A woman is at the c
+
+TR  18: [  27.0s,   28.5s)
+  2 annotation(s) overlap:
+    Seg    4: [  23.0s,   29.0s) - A view of the lobby with a display of snacks for the movies. A woman is at the c
+    Seg  486: [  23.0s,   29.0s) - A view of the lobby with a display of snacks for the movies. A woman is at the c
+
+TR  19: [  28.5s,   30.0s)
+  4 annotation(s) overlap:
+    Seg    4: [  23.0s,   29.0s) - A view of the lobby with a display of snacks for the movies. A woman is at the c
+    Seg    5: [  29.0s,   34.0s) - Let's all go to the Lobby to get Ourselves a Treat! Is seen as on-screen text. S
+    Seg  486: [  23.0s,   29.0s) - A view of the lobby with a display of snacks for the movies. A woman is at the c
+    Seg  487: [  29.0s,   34.0s) - Let's all go to the Lobby to get Ourselves a Treat! Is seen as on-screen text. S
+
+TR  20: [  30.0s,   31.5s)
+  2 annotation(s) overlap:
+    Seg    5: [  29.0s,   34.0s) - Let's all go to the Lobby to get Ourselves a Treat! Is seen as on-screen text. S
+    Seg  487: [  29.0s,   34.0s) - Let's all go to the Lobby to get Ourselves a Treat! Is seen as on-screen text. S
+
+TR  21: [  31.5s,   33.0s)
+  2 annotation(s) overlap:
+    Seg    5: [  29.0s,   34.0s) - Let's all go to the Lobby to get Ourselves a Treat! Is seen as on-screen text. S
+    Seg  487: [  29.0s,   34.0s) - Let's all go to the Lobby to get Ourselves a Treat! Is seen as on-screen text. S
+
+TR  22: [  33.0s,   34.5s)
+  4 annotation(s) overlap:
+    Seg    5: [  29.0s,   34.0s) - Let's all go to the Lobby to get Ourselves a Treat! Is seen as on-screen text. S
+    Seg    6: [  34.0s,   39.0s) - There is an on-screen countdown from 3…2…1… as the background singers finish sin
+    Seg  487: [  29.0s,   34.0s) - Let's all go to the Lobby to get Ourselves a Treat! Is seen as on-screen text. S
+    Seg  488: [  34.0s,   39.0s) - There is an on-screen countdown from 3…2…1… as the background singers finish sin
+
+TR  23: [  34.5s,   36.0s)
+  2 annotation(s) overlap:
+    Seg    6: [  34.0s,   39.0s) - There is an on-screen countdown from 3…2…1… as the background singers finish sin
+    Seg  488: [  34.0s,   39.0s) - There is an on-screen countdown from 3…2…1… as the background singers finish sin
+
+TR  24: [  36.0s,   37.5s)
+  2 annotation(s) overlap:
+    Seg    6: [  34.0s,   39.0s) - There is an on-screen countdown from 3…2…1… as the background singers finish sin
+    Seg  488: [  34.0s,   39.0s) - There is an on-screen countdown from 3…2…1… as the background singers finish sin
+
+TR  25: [  37.5s,   39.0s)
+  2 annotation(s) overlap:
+    Seg    6: [  34.0s,   39.0s) - There is an on-screen countdown from 3…2…1… as the background singers finish sin
+    Seg  488: [  34.0s,   39.0s) - There is an on-screen countdown from 3…2…1… as the background singers finish sin
+
+TR  26: [  39.0s,   40.5s)
+  3 annotation(s) overlap:
+    Seg    7: [  39.0s,   40.0s) - Gunfire by a soldier along a wall made of stacked stones 
+    Seg    8: [  40.0s,   41.0s) - A bomb or land mine goes off in the middle of a grassy field
+    Seg  489: [  39.0s,   45.0s) - Sherlock enters the house on Lauriston Gardens. John follows and Sherlock leads 
+
+TR  27: [  40.5s,   42.0s)
+  3 annotation(s) overlap:
+    Seg    8: [  40.0s,   41.0s) - A bomb or land mine goes off in the middle of a grassy field
+    Seg    9: [  41.0s,   42.0s) - A Soldier kicks open a door. Soldiers shooting at a target off screen behind a w
+    Seg  489: [  39.0s,   45.0s) - Sherlock enters the house on Lauriston Gardens. John follows and Sherlock leads 
+
+TR  28: [  42.0s,   43.5s)
+  3 annotation(s) overlap:
+    Seg   10: [  42.0s,   43.0s) - Close up view of John tossing in bed while sleeping
+    Seg   11: [  43.0s,   45.0s) - More gunfire. Two soldiers seen hand signalling to each other in the battlefield
+    Seg  489: [  39.0s,   45.0s) - Sherlock enters the house on Lauriston Gardens. John follows and Sherlock leads 
+
+TR  29: [  43.5s,   45.0s)
+  2 annotation(s) overlap:
+    Seg   11: [  43.0s,   45.0s) - More gunfire. Two soldiers seen hand signalling to each other in the battlefield
+    Seg  489: [  39.0s,   45.0s) - Sherlock enters the house on Lauriston Gardens. John follows and Sherlock leads 
+
+TR  30: [  45.0s,   46.5s)
+  4 annotation(s) overlap:
+    Seg   13: [  45.0s,   46.0s) - One of the soldiers that was signalling collapses 
+    Seg   14: [  46.0s,   47.0s) - A soldier runs across the batttlefield. Cut to another soldier standing and aimi
+    Seg  490: [  45.0s,   46.0s) - Sherlock points to some coveralls on the table and says to John: "Wear one of th
+    Seg  491: [  46.0s,   47.0s) - Lestrade asks Sherlock: "Who's this?"
+
+TR  31: [  46.5s,   48.0s)
+  4 annotation(s) overlap:
+    Seg   14: [  46.0s,   47.0s) - A soldier runs across the batttlefield. Cut to another soldier standing and aimi
+    Seg   15: [  47.0s,   48.0s) - Quick shot of John's face in pain as he is lying down on the battlefield and som
+    Seg  491: [  46.0s,   47.0s) - Lestrade asks Sherlock: "Who's this?"
+    Seg  492: [  47.0s,   49.0s) - Sherlock (taking his gloves off): "He's with me."
+
+TR  32: [  48.0s,   49.5s)
+  4 annotation(s) overlap:
+    Seg   16: [  48.0s,   49.0s) - Random gunfire by a soldier standing nearby and a full body view of John lying d
+    Seg   17: [  49.0s,   52.0s) - First person view of a soldier running in battle with fellow soldiers. Someone i
+    Seg  492: [  47.0s,   49.0s) - Sherlock (taking his gloves off): "He's with me."
+    Seg  493: [  49.0s,   50.0s) - Lestrade insists: "But who is he?"
+
+TR  33: [  49.5s,   51.0s)
+  3 annotation(s) overlap:
+    Seg   17: [  49.0s,   52.0s) - First person view of a soldier running in battle with fellow soldiers. Someone i
+    Seg  493: [  49.0s,   50.0s) - Lestrade insists: "But who is he?"
+    Seg  494: [  50.0s,   54.0s) - Sherlock firmly replies: "I said he's with me." Lestrade doesn't say more. 
+
+TR  34: [  51.0s,   52.5s)
+  3 annotation(s) overlap:
+    Seg   17: [  49.0s,   52.0s) - First person view of a soldier running in battle with fellow soldiers. Someone i
+    Seg   18: [  52.0s,   53.0s) - John's eyes open at the sound of an echoing voice.
+    Seg  494: [  50.0s,   54.0s) - Sherlock firmly replies: "I said he's with me." Lestrade doesn't say more. 
+
+TR  35: [  52.5s,   54.0s)
+  3 annotation(s) overlap:
+    Seg   18: [  52.0s,   53.0s) - John's eyes open at the sound of an echoing voice.
+    Seg   19: [  53.0s,   55.0s) - John immediately gets up from his bed. 
+    Seg  494: [  50.0s,   54.0s) - Sherlock firmly replies: "I said he's with me." Lestrade doesn't say more. 
+
+TR  36: [  54.0s,   55.5s)
+  3 annotation(s) overlap:
+    Seg   19: [  53.0s,   55.0s) - John immediately gets up from his bed. 
+    Seg   20: [  55.0s,   59.0s) - John is panting and his breathing is rough from his nightmares. 
+    Seg  495: [  54.0s,   59.0s) - John has taken off his jacket and picks up a coverall.He looks at Sherlock who h
+
+TR  37: [  55.5s,   57.0s)
+  2 annotation(s) overlap:
+    Seg   20: [  55.0s,   59.0s) - John is panting and his breathing is rough from his nightmares. 
+    Seg  495: [  54.0s,   59.0s) - John has taken off his jacket and picks up a coverall.He looks at Sherlock who h
+
+TR  38: [  57.0s,   58.5s)
+  2 annotation(s) overlap:
+    Seg   20: [  55.0s,   59.0s) - John is panting and his breathing is rough from his nightmares. 
+    Seg  495: [  54.0s,   59.0s) - John has taken off his jacket and picks up a coverall.He looks at Sherlock who h
+
+TR  39: [  58.5s,   60.0s)
+  4 annotation(s) overlap:
+    Seg   20: [  55.0s,   59.0s) - John is panting and his breathing is rough from his nightmares. 
+    Seg   21: [  59.0s,   65.0s) - John is slowly calming down, his breathing is getting slower. 
+    Seg  495: [  54.0s,   59.0s) - John has taken off his jacket and picks up a coverall.He looks at Sherlock who h
+    Seg  496: [  59.0s,   60.0s) - Sherlock asks Lestrade: "So where are we?" 
+
+TR  40: [  60.0s,   61.5s)
+  2 annotation(s) overlap:
+    Seg   21: [  59.0s,   65.0s) - John is slowly calming down, his breathing is getting slower. 
+    Seg  497: [  60.0s,   62.0s) - Lestrade (pickingup another pair of latex gloves) replies: "Upstairs."
+
+TR  41: [  61.5s,   63.0s)
+  3 annotation(s) overlap:
+    Seg   21: [  59.0s,   65.0s) - John is slowly calming down, his breathing is getting slower. 
+    Seg  497: [  60.0s,   62.0s) - Lestrade (pickingup another pair of latex gloves) replies: "Upstairs."
+    Seg  498: [  62.0s,   67.0s) - A top view of the spiral staircase from the 3rd floor. There is a foreboding fee
+
+TR  42: [  63.0s,   64.5s)
+  2 annotation(s) overlap:
+    Seg   21: [  59.0s,   65.0s) - John is slowly calming down, his breathing is getting slower. 
+    Seg  498: [  62.0s,   67.0s) - A top view of the spiral staircase from the 3rd floor. There is a foreboding fee
+
+TR  43: [  64.5s,   66.0s)
+  3 annotation(s) overlap:
+    Seg   21: [  59.0s,   65.0s) - John is slowly calming down, his breathing is getting slower. 
+    Seg   22: [  65.0s,   83.0s) - John lies back down and continues to calm his breathing. He begins to weep.
+    Seg  498: [  62.0s,   67.0s) - A top view of the spiral staircase from the 3rd floor. There is a foreboding fee
+
+TR  44: [  66.0s,   67.5s)
+  3 annotation(s) overlap:
+    Seg   22: [  65.0s,   83.0s) - John lies back down and continues to calm his breathing. He begins to weep.
+    Seg  498: [  62.0s,   67.0s) - A top view of the spiral staircase from the 3rd floor. There is a foreboding fee
+    Seg  499: [  67.0s,   72.0s) - Lestrade leads Sherlock and John up a circular staircase. He and John are wearin
+
+TR  45: [  67.5s,   69.0s)
+  2 annotation(s) overlap:
+    Seg   22: [  65.0s,   83.0s) - John lies back down and continues to calm his breathing. He begins to weep.
+    Seg  499: [  67.0s,   72.0s) - Lestrade leads Sherlock and John up a circular staircase. He and John are wearin
+
+TR  46: [  69.0s,   70.5s)
+  2 annotation(s) overlap:
+    Seg   22: [  65.0s,   83.0s) - John lies back down and continues to calm his breathing. He begins to weep.
+    Seg  499: [  67.0s,   72.0s) - Lestrade leads Sherlock and John up a circular staircase. He and John are wearin
+
+TR  47: [  70.5s,   72.0s)
+  2 annotation(s) overlap:
+    Seg   22: [  65.0s,   83.0s) - John lies back down and continues to calm his breathing. He begins to weep.
+    Seg  499: [  67.0s,   72.0s) - Lestrade leads Sherlock and John up a circular staircase. He and John are wearin
+
+TR  48: [  72.0s,   73.5s)
+  2 annotation(s) overlap:
+    Seg   22: [  65.0s,   83.0s) - John lies back down and continues to calm his breathing. He begins to weep.
+    Seg  500: [  72.0s,   73.0s) - Sherlock casually states: "May need longer." 
+
+TR  49: [  73.5s,   75.0s)
+  2 annotation(s) overlap:
+    Seg   22: [  65.0s,   83.0s) - John lies back down and continues to calm his breathing. He begins to weep.
+    Seg  501: [  74.0s,   84.0s) - Lestrade explains as they go up the stairs: "Her name's Jennifer Wilson accordin
+
+================================================================================
+EDGE CASES ANALYSIS
+================================================================================
+
+No gap TRs found (all TRs have annotations)
+
+TRs with multiple annotations: 918 total
+  Top 10 TRs by annotation count:
+    TR 11: 4 annotations
+    TR 15: 4 annotations
+    TR 19: 4 annotations
+    TR 22: 4 annotations
+    TR 30: 4 annotations
+    TR 31: 4 annotations
+    TR 32: 4 annotations
+    TR 39: 4 annotations
+    TR 71: 4 annotations
+    TR 78: 4 annotations
+
+Annotations at exact TR boundaries:
+  Found 572 annotations at TR boundaries
+    Seg 0: [0.0s, 12.0s)
+    Seg 1: [12.0s, 15.0s)
+    Seg 2: [15.0s, 17.0s)
+    Seg 6: [34.0s, 39.0s)
+    Seg 7: [39.0s, 40.0s)
+    Seg 9: [41.0s, 42.0s)
+    Seg 10: [42.0s, 43.0s)
+    Seg 11: [43.0s, 45.0s)
+    Seg 12: [45.0s, 45.0s)
+    Seg 13: [45.0s, 46.0s)
+

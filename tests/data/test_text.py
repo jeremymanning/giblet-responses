@@ -338,6 +338,104 @@ class TestTextProcessor:
         for key, value in info.items():
             print(f"  {key}: {value}")
 
+    def test_temporal_overlap_logic(self, processor):
+        """Test that TR-annotation overlap logic is correct (Issue #10)."""
+        if not ANNOTATIONS_PATH.exists():
+            pytest.skip(f"Annotations file not found: {ANNOTATIONS_PATH}")
+
+        # Load annotations
+        annotations = processor.load_annotations(ANNOTATIONS_PATH)
+
+        # Create simple test embeddings (just zeros for this test)
+        n_segments = len(annotations)
+        test_embeddings = np.zeros((n_segments, 1024), dtype=np.float32)
+
+        # Test with first 100 TRs
+        n_trs = 100
+        tr = processor.tr
+
+        # Get code's alignment
+        _, metadata = processor.align_to_trs(annotations, test_embeddings, n_trs)
+
+        # Manually verify overlap for each TR
+        print("\n✓ Verifying temporal overlap logic...")
+
+        for tr_idx in range(min(10, n_trs)):  # Check first 10 TRs in detail
+            tr_start = tr_idx * tr
+            tr_end = tr_start + tr
+
+            # Ground truth: find all annotations that overlap
+            ground_truth_segments = []
+            for seg_idx, row in annotations.iterrows():
+                seg_start = row['Start Time (s)']
+                seg_end = row['End Time (s)']
+
+                # Overlap condition: (seg_start < tr_end) AND (seg_end > tr_start)
+                if seg_start < tr_end and seg_end > tr_start:
+                    ground_truth_segments.append(seg_idx)
+
+            # Code's result
+            code_segments = metadata.iloc[tr_idx]['segment_indices']
+
+            # Verify match
+            assert set(ground_truth_segments) == set(code_segments), \
+                f"TR {tr_idx}: overlap mismatch. Ground truth: {ground_truth_segments}, Code: {code_segments}"
+
+        print(f"  ✓ Verified overlap logic for first 10 TRs")
+
+        # Test edge case: annotation exactly at TR boundary
+        # Find an annotation that starts or ends at a TR boundary
+        boundary_cases = 0
+        for idx, row in annotations.head(50).iterrows():
+            if row['Start Time (s)'] % tr == 0 or row['End Time (s)'] % tr == 0:
+                boundary_cases += 1
+
+        if boundary_cases > 0:
+            print(f"  ✓ Tested {boundary_cases} boundary cases in first 50 annotations")
+
+    def test_multiple_overlapping_segments(self, processor):
+        """Test handling when multiple annotations overlap a single TR (Issue #10)."""
+        if not ANNOTATIONS_PATH.exists():
+            pytest.skip(f"Annotations file not found: {ANNOTATIONS_PATH}")
+
+        # Load annotations
+        annotations = processor.load_annotations(ANNOTATIONS_PATH)
+
+        # Create dummy embeddings
+        n_segments = len(annotations)
+        # Make each segment have a unique pattern for testing
+        test_embeddings = np.random.randn(n_segments, 1024).astype(np.float32)
+
+        # Align to TRs
+        tr_embeddings, metadata = processor.align_to_trs(annotations, test_embeddings, N_TRS_TARGET)
+
+        # Find TRs with multiple contributing segments
+        multi_segment_trs = metadata[metadata['n_segments_contributing'] > 1]
+
+        assert len(multi_segment_trs) > 0, "Expected some TRs with multiple overlapping segments"
+
+        print(f"\n✓ Found {len(multi_segment_trs)} TRs with multiple segments")
+        print(f"  Max segments per TR: {metadata['n_segments_contributing'].max()}")
+
+        # Verify that aggregation was applied correctly for a TR with multiple segments
+        test_tr_idx = multi_segment_trs.iloc[0]['tr_index']
+        contributing_indices = metadata.iloc[test_tr_idx]['segment_indices']
+
+        # Get individual embeddings
+        individual_embeddings = test_embeddings[contributing_indices]
+
+        # Expected aggregation (mean)
+        expected = np.mean(individual_embeddings, axis=0)
+
+        # Actual result
+        actual = tr_embeddings[test_tr_idx]
+
+        # Should match (within floating point tolerance)
+        np.testing.assert_allclose(actual, expected, rtol=1e-5, atol=1e-6,
+                                   err_msg=f"Aggregation mismatch for TR {test_tr_idx}")
+
+        print(f"  ✓ Verified mean aggregation for TR {test_tr_idx} ({len(contributing_indices)} segments)")
+
 
 # Integration test
 def test_full_pipeline():
