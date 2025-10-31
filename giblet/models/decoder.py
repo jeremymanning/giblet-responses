@@ -1,15 +1,16 @@
 """
 Decoder module for multimodal fMRI autoencoder.
 
-Architecture mirrors the encoder in reverse (Layers 7-11):
-- Layer 7: Expand from bottleneck
-- Layer 8: Feature deconvolution + ReLU
-- Layer 9: Unpool features
-- Layer 10A/B/C: Separate video/audio/text paths
-- Layer 11: Output video + audio + text
+Architecture mirrors the encoder in reverse (Layers 8-13):
+- Layer 8: Expand from bottleneck (2048 → 8000)
+- Layer 9: Feature expansion (8000 → 4096)
+- Layer 10: Feature deconvolution + ReLU (4096 → 2048)
+- Layer 11: Unpool features (2048 → 1536)
+- Layer 12A/B/C: Separate video/audio/text paths
+- Layer 13: Output video + audio + text
 
-Input: fMRI voxel-space features (~5000-10000 dimensions)
-Output: Separate video (43,200), audio (128), text (1024) features
+Input: 2048-dimensional bottleneck features
+Output: Separate video (43,200), audio (2048), text (1024) features
 """
 
 import torch
@@ -25,46 +26,54 @@ class MultimodalDecoder(nn.Module):
     expanding them through multiple layers to reconstruct the original
     video frames, audio mel spectrograms, and text embeddings.
 
+    Architecture (Layers 8-13):
+    - Layer 8: 2048 → 8000 (mirror Encoder Layer 6)
+    - Layer 9: 8000 → 4096 (mirror Encoder Layer 5)
+    - Layer 10: 4096 → 2048 (mirror Encoder Layer 4)
+    - Layer 11: 2048 → 1536 (mirror Encoder Layer 3)
+    - Layer 12A/B/C: Modality decoders (mirror Encoder Layer 2A/B/C)
+    - Layer 13: Output reconstruction (mirror Encoder Layer 1)
+
     Parameters
     ----------
-    bottleneck_dim : int
-        Dimension of the bottleneck/middle layer (fMRI feature space)
+    bottleneck_dim : int, default=2048
+        Dimension of the bottleneck/middle layer (Layer 7)
     video_dim : int, default=43200
         Output dimension for video (160×90×3 = 43,200)
     audio_dim : int, default=2048
         Output dimension for audio (2048 mels)
     text_dim : int, default=1024
         Output dimension for text (1024 embeddings)
-    hidden_dim : int, default=2048
-        Hidden layer dimension for intermediate processing
     dropout : float, default=0.3
         Dropout rate for regularization
 
     Attributes
     ----------
-    layer7 : nn.Sequential
-        Expansion from bottleneck
     layer8 : nn.Sequential
-        Feature deconvolution with ReLU
+        Expansion from bottleneck (2048 → 8000)
     layer9 : nn.Sequential
-        Feature unpooling
-    layer10_video : nn.Sequential
-        Video-specific path
-    layer10_audio : nn.Sequential
-        Audio-specific path
-    layer10_text : nn.Sequential
-        Text-specific path
-    layer11_video : nn.Linear
+        Feature expansion (8000 → 4096)
+    layer10 : nn.Sequential
+        Feature deconvolution (4096 → 2048)
+    layer11 : nn.Sequential
+        Feature unpooling (2048 → 1536)
+    layer12_video : nn.Sequential
+        Video-specific decoder path
+    layer12_audio : nn.Sequential
+        Audio-specific decoder path
+    layer12_text : nn.Sequential
+        Text-specific decoder path
+    layer13_video : nn.Sequential
         Final video output layer
-    layer11_audio : nn.Linear
+    layer13_audio : nn.Linear
         Final audio output layer
-    layer11_text : nn.Linear
+    layer13_text : nn.Linear
         Final text output layer
 
     Examples
     --------
-    >>> decoder = MultimodalDecoder(bottleneck_dim=5000)
-    >>> bottleneck = torch.randn(32, 5000)  # batch_size=32
+    >>> decoder = MultimodalDecoder(bottleneck_dim=2048)
+    >>> bottleneck = torch.randn(32, 2048)  # batch_size=32
     >>> video, audio, text = decoder(bottleneck)
     >>> video.shape, audio.shape, text.shape
     (torch.Size([32, 43200]), torch.Size([32, 2048]), torch.Size([32, 1024]))
@@ -72,11 +81,10 @@ class MultimodalDecoder(nn.Module):
 
     def __init__(
         self,
-        bottleneck_dim: int,
+        bottleneck_dim: int = 2048,
         video_dim: int = 43200,
         audio_dim: int = 2048,
         text_dim: int = 1024,
-        hidden_dim: int = 2048,
         dropout: float = 0.3
     ):
         super().__init__()
@@ -85,90 +93,102 @@ class MultimodalDecoder(nn.Module):
         self.video_dim = video_dim
         self.audio_dim = audio_dim
         self.text_dim = text_dim
-        self.hidden_dim = hidden_dim
 
-        # Calculate intermediate dimensions
-        # Layer 9 output -> Layer 8 input
-        intermediate_dim_1 = hidden_dim * 2  # ~4096
-        # Layer 8 output -> Layer 7 input
-        intermediate_dim_2 = hidden_dim * 4  # ~8192
-
-        # Layer 7: Expand from bottleneck
-        # Maps from fMRI voxel space to larger feature space
-        self.layer7 = nn.Sequential(
-            nn.Linear(bottleneck_dim, hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout)
-        )
-
-        # Layer 8: Feature deconvolution + ReLU
-        # Expands features further with nonlinear transformation
+        # Layer 8: Expand from bottleneck (2048 → 8000)
+        # Mirror of Encoder Layer 6 (8000 → 2048)
         self.layer8 = nn.Sequential(
-            nn.Linear(hidden_dim, intermediate_dim_1),
-            nn.BatchNorm1d(intermediate_dim_1),
+            nn.Linear(2048, 8000),
+            nn.BatchNorm1d(8000),
             nn.ReLU(),
             nn.Dropout(dropout)
         )
 
-        # Layer 9: Unpool features
-        # Further expansion before modality split
+        # Layer 9: Feature expansion (8000 → 4096)
+        # Mirror of Encoder Layer 5 (4096 → 8000)
         self.layer9 = nn.Sequential(
-            nn.Linear(intermediate_dim_1, intermediate_dim_2),
-            nn.BatchNorm1d(intermediate_dim_2),
+            nn.Linear(8000, 4096),
+            nn.BatchNorm1d(4096),
             nn.ReLU(),
             nn.Dropout(dropout)
         )
 
-        # Layer 10A/B/C: Separate paths for each modality
-        # Video path: needs large capacity for 43,200 outputs
-        self.layer10_video = nn.Sequential(
-            nn.Linear(intermediate_dim_2, hidden_dim * 4),
-            nn.BatchNorm1d(hidden_dim * 4),
+        # Layer 10: Feature deconvolution (4096 → 2048)
+        # Mirror of Encoder Layer 4 (2048 → 4096)
+        self.layer10 = nn.Sequential(
+            nn.Linear(4096, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Dropout(dropout)
+        )
+
+        # Layer 11: Unpool features (2048 → 1536)
+        # Mirror of Encoder Layer 3 (1536 → 2048)
+        self.layer11 = nn.Sequential(
+            nn.Linear(2048, 1536),
+            nn.BatchNorm1d(1536),
+            nn.ReLU(),
+            nn.Dropout(dropout)
+        )
+
+        # Layer 12A/B/C: Modality-specific decoder paths
+        # Mirror of Encoder Layer 2A/B/C
+
+        # Layer 12A: Video decoder path (1536 → video features)
+        # Needs large capacity for 43,200 outputs
+        self.layer12_video = nn.Sequential(
+            nn.Linear(1536, 2048),
+            nn.BatchNorm1d(2048),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hidden_dim * 4, hidden_dim * 2),
-            nn.BatchNorm1d(hidden_dim * 2),
+            nn.Linear(2048, 4096),
+            nn.BatchNorm1d(4096),
             nn.ReLU(),
             nn.Dropout(dropout)
         )
 
-        # Audio path: smaller, targeted for 128 mel features
-        self.layer10_audio = nn.Sequential(
-            nn.Linear(intermediate_dim_2, hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
+        # Layer 12B: Audio decoder path (1536 → audio features)
+        # Smaller, targeted for 2048 mel features
+        self.layer12_audio = nn.Sequential(
+            nn.Linear(1536, 1024),
+            nn.BatchNorm1d(1024),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.BatchNorm1d(hidden_dim // 2),
+            nn.Linear(1024, 1024),
+            nn.BatchNorm1d(1024),
             nn.ReLU(),
             nn.Dropout(dropout)
         )
 
-        # Text path: moderate size for 1024 embeddings
-        self.layer10_text = nn.Sequential(
-            nn.Linear(intermediate_dim_2, hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
+        # Layer 12C: Text decoder path (1536 → text features)
+        # Moderate size for 1024 embeddings
+        self.layer12_text = nn.Sequential(
+            nn.Linear(1536, 1024),
+            nn.BatchNorm1d(1024),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
+            nn.Linear(1024, 1024),
+            nn.BatchNorm1d(1024),
             nn.ReLU(),
             nn.Dropout(dropout)
         )
 
-        # Layer 11: Output layers for each modality
-        # Video: output 43,200 features with sigmoid for [0, 1] range
-        self.layer11_video = nn.Sequential(
-            nn.Linear(hidden_dim * 2, video_dim),
-            nn.Sigmoid()  # Video pixels in [0, 1] range
+        # Layer 13: Output reconstruction
+        # Mirror of Encoder Layer 1
+
+        # Layer 13A: Video output (4096 → 43,200)
+        # Sigmoid for [0, 1] pixel range
+        self.layer13_video = nn.Sequential(
+            nn.Linear(4096, video_dim),
+            nn.Sigmoid()
         )
 
-        # Audio: output 2048 mel features (no activation, dB scale)
-        self.layer11_audio = nn.Linear(hidden_dim // 2, audio_dim)
+        # Layer 13B: Audio output (1024 → 2048)
+        # No activation (dB scale)
+        self.layer13_audio = nn.Linear(1024, audio_dim)
 
-        # Text: output 1024 embeddings (normalized in loss/post-processing)
-        self.layer11_text = nn.Linear(hidden_dim, text_dim)
+        # Layer 13C: Text output (1024 → 1024)
+        # No activation (normalized in loss/post-processing)
+        self.layer13_text = nn.Linear(1024, text_dim)
 
         # Initialize weights
         self._initialize_weights()
@@ -194,7 +214,7 @@ class MultimodalDecoder(nn.Module):
         Parameters
         ----------
         bottleneck : torch.Tensor
-            Shape (batch_size, bottleneck_dim) bottleneck features
+            Shape (batch_size, 2048) bottleneck features from Layer 7
 
         Returns
         -------
@@ -205,24 +225,27 @@ class MultimodalDecoder(nn.Module):
         text : torch.Tensor
             Shape (batch_size, text_dim) reconstructed text features
         """
-        # Layer 7: Expand from bottleneck
-        x = self.layer7(bottleneck)
+        # Layer 8: Expand from bottleneck (2048 → 8000)
+        x = self.layer8(bottleneck)
 
-        # Layer 8: Feature deconvolution + ReLU
-        x = self.layer8(x)
-
-        # Layer 9: Unpool features
+        # Layer 9: Feature expansion (8000 → 4096)
         x = self.layer9(x)
 
-        # Layer 10A/B/C: Separate modality paths
-        video_features = self.layer10_video(x)
-        audio_features = self.layer10_audio(x)
-        text_features = self.layer10_text(x)
+        # Layer 10: Feature deconvolution (4096 → 2048)
+        x = self.layer10(x)
 
-        # Layer 11: Generate outputs
-        video = self.layer11_video(video_features)
-        audio = self.layer11_audio(audio_features)
-        text = self.layer11_text(text_features)
+        # Layer 11: Unpool features (2048 → 1536)
+        x = self.layer11(x)
+
+        # Layer 12A/B/C: Separate modality decoder paths
+        video_features = self.layer12_video(x)    # 1536 → 4096
+        audio_features = self.layer12_audio(x)    # 1536 → 1024
+        text_features = self.layer12_text(x)      # 1536 → 1024
+
+        # Layer 13: Output reconstruction
+        video = self.layer13_video(video_features)  # 4096 → 43,200
+        audio = self.layer13_audio(audio_features)  # 1024 → 2,048
+        text = self.layer13_text(text_features)     # 1024 → 1,024
 
         return video, audio, text
 
@@ -233,18 +256,19 @@ class MultimodalDecoder(nn.Module):
         Parameters
         ----------
         bottleneck : torch.Tensor
-            Shape (batch_size, bottleneck_dim) bottleneck features
+            Shape (batch_size, 2048) bottleneck features
 
         Returns
         -------
         video : torch.Tensor
             Shape (batch_size, video_dim) reconstructed video features
         """
-        x = self.layer7(bottleneck)
-        x = self.layer8(x)
+        x = self.layer8(bottleneck)
         x = self.layer9(x)
-        video_features = self.layer10_video(x)
-        video = self.layer11_video(video_features)
+        x = self.layer10(x)
+        x = self.layer11(x)
+        video_features = self.layer12_video(x)
+        video = self.layer13_video(video_features)
         return video
 
     def decode_audio_only(self, bottleneck: torch.Tensor) -> torch.Tensor:
@@ -254,18 +278,19 @@ class MultimodalDecoder(nn.Module):
         Parameters
         ----------
         bottleneck : torch.Tensor
-            Shape (batch_size, bottleneck_dim) bottleneck features
+            Shape (batch_size, 2048) bottleneck features
 
         Returns
         -------
         audio : torch.Tensor
             Shape (batch_size, audio_dim) reconstructed audio features
         """
-        x = self.layer7(bottleneck)
-        x = self.layer8(x)
+        x = self.layer8(bottleneck)
         x = self.layer9(x)
-        audio_features = self.layer10_audio(x)
-        audio = self.layer11_audio(audio_features)
+        x = self.layer10(x)
+        x = self.layer11(x)
+        audio_features = self.layer12_audio(x)
+        audio = self.layer13_audio(audio_features)
         return audio
 
     def decode_text_only(self, bottleneck: torch.Tensor) -> torch.Tensor:
@@ -275,18 +300,19 @@ class MultimodalDecoder(nn.Module):
         Parameters
         ----------
         bottleneck : torch.Tensor
-            Shape (batch_size, bottleneck_dim) bottleneck features
+            Shape (batch_size, 2048) bottleneck features
 
         Returns
         -------
         text : torch.Tensor
             Shape (batch_size, text_dim) reconstructed text features
         """
-        x = self.layer7(bottleneck)
-        x = self.layer8(x)
+        x = self.layer8(bottleneck)
         x = self.layer9(x)
-        text_features = self.layer10_text(x)
-        text = self.layer11_text(text_features)
+        x = self.layer10(x)
+        x = self.layer11(x)
+        text_features = self.layer12_text(x)
+        text = self.layer13_text(text_features)
         return text
 
     def get_layer_outputs(
@@ -299,41 +325,45 @@ class MultimodalDecoder(nn.Module):
         Parameters
         ----------
         bottleneck : torch.Tensor
-            Shape (batch_size, bottleneck_dim) bottleneck features
+            Shape (batch_size, 2048) bottleneck features
 
         Returns
         -------
         outputs : dict
-            Dictionary with keys: 'layer7', 'layer8', 'layer9',
-            'layer10_video', 'layer10_audio', 'layer10_text',
+            Dictionary with keys: 'layer8', 'layer9', 'layer10', 'layer11',
+            'layer12_video', 'layer12_audio', 'layer12_text',
             'video', 'audio', 'text'
         """
         outputs = {}
 
-        # Layer 7
-        x = self.layer7(bottleneck)
-        outputs['layer7'] = x.detach()
-
         # Layer 8
-        x = self.layer8(x)
+        x = self.layer8(bottleneck)
         outputs['layer8'] = x.detach()
 
         # Layer 9
         x = self.layer9(x)
         outputs['layer9'] = x.detach()
 
-        # Layer 10A/B/C
-        video_features = self.layer10_video(x)
-        audio_features = self.layer10_audio(x)
-        text_features = self.layer10_text(x)
-        outputs['layer10_video'] = video_features.detach()
-        outputs['layer10_audio'] = audio_features.detach()
-        outputs['layer10_text'] = text_features.detach()
+        # Layer 10
+        x = self.layer10(x)
+        outputs['layer10'] = x.detach()
 
         # Layer 11
-        video = self.layer11_video(video_features)
-        audio = self.layer11_audio(audio_features)
-        text = self.layer11_text(text_features)
+        x = self.layer11(x)
+        outputs['layer11'] = x.detach()
+
+        # Layer 12A/B/C
+        video_features = self.layer12_video(x)
+        audio_features = self.layer12_audio(x)
+        text_features = self.layer12_text(x)
+        outputs['layer12_video'] = video_features.detach()
+        outputs['layer12_audio'] = audio_features.detach()
+        outputs['layer12_text'] = text_features.detach()
+
+        # Layer 13
+        video = self.layer13_video(video_features)
+        audio = self.layer13_audio(audio_features)
+        text = self.layer13_text(text_features)
         outputs['video'] = video.detach()
         outputs['audio'] = audio.detach()
         outputs['text'] = text.detach()
@@ -353,14 +383,15 @@ class MultimodalDecoder(nn.Module):
             return sum(p.numel() for p in module.parameters() if p.requires_grad)
 
         return {
-            'layer7': count_params(self.layer7),
             'layer8': count_params(self.layer8),
             'layer9': count_params(self.layer9),
-            'layer10_video': count_params(self.layer10_video),
-            'layer10_audio': count_params(self.layer10_audio),
-            'layer10_text': count_params(self.layer10_text),
-            'layer11_video': count_params(self.layer11_video),
-            'layer11_audio': count_params(self.layer11_audio),
-            'layer11_text': count_params(self.layer11_text),
+            'layer10': count_params(self.layer10),
+            'layer11': count_params(self.layer11),
+            'layer12_video': count_params(self.layer12_video),
+            'layer12_audio': count_params(self.layer12_audio),
+            'layer12_text': count_params(self.layer12_text),
+            'layer13_video': count_params(self.layer13_video),
+            'layer13_audio': count_params(self.layer13_audio),
+            'layer13_text': count_params(self.layer13_text),
             'total': count_params(self)
         }

@@ -137,3 +137,6 @@ cluster_config/*.json
 
 # macOS
 .DS_Store
+
+# Validation outputs (generated files, can be large)
+validation_outputs/

@@ -70,7 +70,7 @@ class MultimodalAutoencoder(nn.Module):
         audio_mels: int = 2048,
         text_dim: int = 1024,
         n_voxels: int = 85810,
-        bottleneck_dim: int = 8000,
+        bottleneck_dim: int = 2048,
         video_features: int = 1024,
         audio_features: int = 256,
         text_features: int = 256,
@@ -400,8 +400,8 @@ def create_autoencoder(
         Dimensionality of text embeddings
     n_voxels : int, default=85810
         Number of brain voxels
-    bottleneck_dim : int, default=8000
-        Dimensionality of bottleneck layer
+    bottleneck_dim : int, default=2048
+        Dimensionality of bottleneck layer (Layer 7, smallest in autoencoder)
     reconstruction_weight : float, default=1.0
         Weight for reconstruction loss
     fmri_weight : float, default=1.0

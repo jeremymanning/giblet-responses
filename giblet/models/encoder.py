@@ -286,13 +286,14 @@ class MultimodalEncoder(nn.Module):
 
     Maps stimulus features (video + audio + text) to brain activity (fMRI).
 
-    Architecture:
+    Architecture (Encoder half of 13-layer autoencoder):
     - Layer 1: Input (video + audio + text)
     - Layer 2A/B/C: Modality-specific encoders (convolutions/linear)
-    - Layer 3: Pooled multimodal features
-    - Layer 4: Feature space convolution + ReLU
-    - Layer 5: Linear mapping to brain voxels
-    - Layer 6: Bottleneck (compressed brain representation)
+    - Layer 3: Pooled multimodal features (1536 dims)
+    - Layer 4: Feature space convolution + ReLU (1536 dims)
+    - Layer 5: First expansion (1536 → 4096 dims)
+    - Layer 6: Second expansion (4096 → 8000 dims)
+    - Layer 7: BOTTLENECK compression (8000 → 2048 dims, smallest layer)
 
     Parameters
     ----------
@@ -306,8 +307,8 @@ class MultimodalEncoder(nn.Module):
         Dimensionality of text embeddings
     n_voxels : int, default=85810
         Number of brain voxels
-    bottleneck_dim : int, default=8000
-        Dimensionality of bottleneck layer (middle layer)
+    bottleneck_dim : int, default=2048
+        Dimensionality of bottleneck layer (middle layer, smallest in autoencoder)
     video_features : int, default=1024
         Video encoder output features
     audio_features : int, default=256
@@ -323,7 +324,7 @@ class MultimodalEncoder(nn.Module):
         audio_mels: int = 2048,
         text_dim: int = 1024,
         n_voxels: int = 85810,
-        bottleneck_dim: int = 8000,
+        bottleneck_dim: int = 2048,
         video_features: int = 1024,
         audio_features: int = 256,
         text_features: int = 256
@@ -368,24 +369,31 @@ class MultimodalEncoder(nn.Module):
             nn.Dropout(0.2)
         )
 
-        # Layer 5 + 6: Direct compression to bottleneck, then expansion to voxels
-        # This is more parameter-efficient than going pooled → voxels → bottleneck
-        # Following autoencoder principle: compress first, then expand if needed
-
-        # Compress to bottleneck (middle layer)
-        self.to_bottleneck = nn.Sequential(
+        # Layer 5: First expansion (1536 → 4096)
+        self.layer5 = nn.Sequential(
             nn.Linear(self.pooled_dim, 4096),
             nn.BatchNorm1d(4096),
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(4096, bottleneck_dim),
-            nn.BatchNorm1d(bottleneck_dim),
-            nn.ReLU(),
-            nn.Dropout(0.2)
+            nn.Dropout(0.3)
         )
 
-        # Expand from bottleneck to voxel space (used for training)
-        # This layer is only used when we need voxel-level predictions
+        # Layer 6: Second expansion (4096 → 8000)
+        self.layer6 = nn.Sequential(
+            nn.Linear(4096, 8000),
+            nn.BatchNorm1d(8000),
+            nn.ReLU(),
+            nn.Dropout(0.3)
+        )
+
+        # Layer 7: BOTTLENECK - compression to smallest dimension (8000 → 2048)
+        # No ReLU after bottleneck to allow negative values in latent space
+        self.layer7_bottleneck = nn.Sequential(
+            nn.Linear(8000, 2048),  # Layer 7: BOTTLENECK (smallest layer)
+            nn.BatchNorm1d(bottleneck_dim)
+        )
+
+        # Optional: Expand from bottleneck to voxel space (for direct voxel prediction)
+        # This is NOT part of the main 13-layer architecture but useful for auxiliary loss
         self.bottleneck_to_voxels = nn.Sequential(
             nn.Linear(bottleneck_dim, 16384),
             nn.BatchNorm1d(16384),
@@ -437,10 +445,16 @@ class MultimodalEncoder(nn.Module):
         pooled = torch.cat([video_feat, audio_feat, text_feat], dim=1)  # (B, pooled_dim)
 
         # Layer 4: Feature space convolution + ReLU
-        conv_feat = self.feature_conv(pooled)       # (B, pooled_dim)
+        conv_feat = self.feature_conv(pooled)       # (B, pooled_dim=1536)
 
-        # Layer 5 + 6: Compress to bottleneck (middle layer)
-        bottleneck = self.to_bottleneck(conv_feat)  # (B, bottleneck_dim)
+        # Layer 5: First expansion (1536 → 4096)
+        layer5_out = self.layer5(conv_feat)         # (B, 4096)
+
+        # Layer 6: Second expansion (4096 → 8000)
+        layer6_out = self.layer6(layer5_out)        # (B, 8000)
+
+        # Layer 7: BOTTLENECK - compress to smallest dimension (8000 → 2048)
+        bottleneck = self.layer7_bottleneck(layer6_out)  # (B, bottleneck_dim=2048)
 
         # Optionally expand to voxel space
         if return_voxels:
@@ -465,7 +479,9 @@ class MultimodalEncoder(nn.Module):
             'audio_encoder': count_params(self.audio_encoder),
             'text_encoder': count_params(self.text_encoder),
             'feature_conv': count_params(self.feature_conv),
-            'to_bottleneck': count_params(self.to_bottleneck),
+            'layer5': count_params(self.layer5),
+            'layer6': count_params(self.layer6),
+            'layer7_bottleneck': count_params(self.layer7_bottleneck),
             'bottleneck_to_voxels': count_params(self.bottleneck_to_voxels),
             'total': count_params(self)
         }
@@ -477,7 +493,7 @@ def create_encoder(
     audio_mels: int = 2048,
     text_dim: int = 1024,
     n_voxels: int = 85810,
-    bottleneck_dim: int = 8000
+    bottleneck_dim: int = 2048
 ) -> MultimodalEncoder:
     """
     Factory function to create MultimodalEncoder with default parameters.
@@ -494,8 +510,8 @@ def create_encoder(
         Dimensionality of text embeddings
     n_voxels : int, default=85810
         Number of brain voxels
-    bottleneck_dim : int, default=8000
-        Dimensionality of bottleneck layer
+    bottleneck_dim : int, default=2048
+        Dimensionality of bottleneck layer (Layer 7, smallest in autoencoder)
 
     Returns
     -------

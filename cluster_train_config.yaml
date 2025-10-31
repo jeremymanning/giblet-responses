@@ -77,7 +77,7 @@ model:
   n_voxels: 85810  # Total voxels across all subjects in MNI space
 
   # Bottleneck layer
-  bottleneck_dim: 8000  # Compressed representation (matches fMRI dimensionality)
+  bottleneck_dim: 2048  # Layer 7: BOTTLENECK (smallest layer in 13-layer architecture)
 
   # Encoder hidden dimensions
   video_features: 1024  # Video encoder output features

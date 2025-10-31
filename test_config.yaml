@@ -52,10 +52,10 @@ data:
 model:
   video_height: 90
   video_width: 160
-  audio_mels: 2048  # Corrected from 128 to 2048
+  audio_mels: 2048
   text_dim: 1024
   n_voxels: 85810
-  bottleneck_dim: 8000
+  bottleneck_dim: 2048  # Layer 7: BOTTLENECK (smallest layer)
   video_features: 1024
   audio_features: 256
   text_features: 256
