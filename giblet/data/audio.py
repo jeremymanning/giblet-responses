@@ -73,6 +73,8 @@ class AudioProcessor:
         """
         Convert audio to mel spectrogram features aligned to fMRI TRs.
 
+        FIXED: Now preserves temporal structure within each TR instead of averaging.
+
         Parameters
         ----------
         audio_source : str or Path
@@ -85,15 +87,17 @@ class AudioProcessor:
         Returns
         -------
         features : np.ndarray
-            Shape (n_trs, n_mels) mel spectrogram in dB scale
+            Shape (n_trs, n_mels, frames_per_tr) mel spectrogram in dB scale
+            CHANGED: Now 3D array preserving temporal frames within each TR
         metadata : pd.DataFrame
-            DataFrame with: tr_index, start_time, end_time
+            DataFrame with: tr_index, start_time, end_time, n_frames
 
         Notes
         -----
         - Uses librosa to extract mel spectrogram
         - Converts to log scale (dB)
-        - Aggregates spectrogram frames within each TR bin
+        - Preserves ALL temporal frames within each TR (no averaging)
+        - Pads/crops frames to consistent frames_per_tr
         """
         audio_source = Path(audio_source)
 
@@ -126,12 +130,14 @@ class AudioProcessor:
         # Convert to dB scale
         mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
 
-        # Aggregate to TRs
-        features = np.zeros((n_trs, self.n_mels), dtype=np.float32)
-        tr_metadata = []
-
+        # Calculate expected frames per TR
         samples_per_tr = int(self.tr * sr)
-        frames_per_sample = self.hop_length
+        max_frames_per_tr = int(np.ceil(samples_per_tr / self.hop_length))
+
+        # Preserve temporal frames within each TR (NO AVERAGING)
+        # Output shape: (n_trs, n_mels, max_frames_per_tr)
+        features = np.zeros((n_trs, self.n_mels, max_frames_per_tr), dtype=np.float32)
+        tr_metadata = []
 
         for tr_idx in range(n_trs):
             # Time window
@@ -146,19 +152,29 @@ class AudioProcessor:
             start_frame = start_sample // self.hop_length
             end_frame = end_sample // self.hop_length
 
-            # Average spectrogram frames within TR
+            # Extract frames for this TR
             if end_frame > start_frame:
-                features[tr_idx] = np.mean(
-                    mel_spec_db[:, start_frame:end_frame],
-                    axis=1
-                )
+                tr_frames = mel_spec_db[:, start_frame:end_frame]  # (n_mels, n_frames)
             else:
-                features[tr_idx] = mel_spec_db[:, start_frame]
+                tr_frames = mel_spec_db[:, start_frame:start_frame+1]
+
+            # Pad or crop to max_frames_per_tr
+            n_frames = tr_frames.shape[1]
+            if n_frames < max_frames_per_tr:
+                # Pad with zeros
+                padding = max_frames_per_tr - n_frames
+                tr_frames = np.pad(tr_frames, ((0, 0), (0, padding)), mode='constant', constant_values=-80.0)
+            elif n_frames > max_frames_per_tr:
+                # Crop to max_frames_per_tr
+                tr_frames = tr_frames[:, :max_frames_per_tr]
+
+            features[tr_idx] = tr_frames  # (n_mels, max_frames_per_tr)
 
             tr_metadata.append({
                 'tr_index': tr_idx,
                 'start_time': start_time,
-                'end_time': end_time
+                'end_time': end_time,
+                'n_frames': n_frames
             })
 
         metadata_df = pd.DataFrame(tr_metadata)
@@ -173,10 +189,13 @@ class AudioProcessor:
         """
         Reconstruct audio from mel spectrogram features using Griffin-Lim.
 
+        FIXED: Now handles 3D features with preserved temporal structure.
+
         Parameters
         ----------
         features : np.ndarray
-            Shape (n_trs, n_mels) mel spectrogram in dB scale
+            Shape (n_trs, n_mels, frames_per_tr) mel spectrogram in dB scale
+            CHANGED: Now expects 3D array with temporal frames
         output_path : str or Path
             Path for output audio file
 
@@ -184,29 +203,31 @@ class AudioProcessor:
         -----
         - Uses Griffin-Lim algorithm for phase reconstruction
         - Reconstructed audio will be at self.sample_rate Hz
-        - Griffin-Lim may produce slightly shorter output than exact TR duration
+        - Temporal structure within each TR is preserved
         """
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        n_trs = features.shape[0]
+        # Handle both 2D (old format) and 3D (new format) features
+        if features.ndim == 2:
+            print("Warning: 2D features detected (old format). Converting to 3D...")
+            # Old format: (n_trs, n_mels)
+            n_trs = features.shape[0]
+            samples_per_tr = int(self.tr * self.sample_rate)
+            frames_per_tr = samples_per_tr // self.hop_length
 
-        # Expand TR-level features to frames
-        # Each TR needs to be expanded to fill self.tr seconds
-        samples_per_tr = int(self.tr * self.sample_rate)
-        frames_per_tr = samples_per_tr // self.hop_length
+            # Repeat features across frames (old behavior)
+            features_3d = np.zeros((n_trs, self.n_mels, frames_per_tr), dtype=np.float32)
+            for tr_idx in range(n_trs):
+                features_3d[tr_idx] = features[tr_idx:tr_idx+1].T  # Broadcast
+            features = features_3d
 
-        # Build full mel spectrogram by repeating each TR
-        full_mel_spec_db = np.zeros(
-            (self.n_mels, n_trs * frames_per_tr),
-            dtype=np.float32
-        )
+        # Now features is 3D: (n_trs, n_mels, frames_per_tr)
+        n_trs, n_mels, frames_per_tr = features.shape
 
-        for tr_idx in range(n_trs):
-            start_frame = tr_idx * frames_per_tr
-            end_frame = start_frame + frames_per_tr
-            # Repeat the TR's features across all frames in that TR
-            full_mel_spec_db[:, start_frame:end_frame] = features[tr_idx:tr_idx+1].T
+        # Concatenate all TRs along time axis
+        # Reshape from (n_trs, n_mels, frames_per_tr) to (n_mels, n_trs * frames_per_tr)
+        full_mel_spec_db = features.transpose(1, 0, 2).reshape(n_mels, -1)
 
         # Convert from dB to power
         mel_spec = librosa.db_to_power(full_mel_spec_db)

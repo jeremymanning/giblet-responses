@@ -335,9 +335,17 @@ class MultimodalDataset(Dataset):
             raise ValueError(f"Unknown mode: {self.mode}")
 
         # Store feature dimensions
+        # Note: audio features are now 3D (n_mels, frames_per_tr)
+        if self.audio_features.ndim == 3:
+            # New format: (n_subjects/1, n_trs, n_mels, frames_per_tr)
+            audio_dim = self.audio_features.shape[-2:]  # (n_mels, frames_per_tr)
+        else:
+            # Old format: (n_subjects/1, n_trs, n_mels)
+            audio_dim = self.audio_features.shape[-1]
+
         self.feature_dims = {
             'video': self.video_features.shape[-1],
-            'audio': self.audio_features.shape[-1],
+            'audio': audio_dim,
             'text': self.text_features.shape[-1],
             'fmri': self.fmri_features.shape[-1]
         }

@@ -25,11 +25,12 @@ def _resample_features(features: np.ndarray, current_trs: int, target_trs: int) 
     Resample feature matrix from current_trs to target_trs.
 
     Uses linear interpolation along the temporal axis.
+    Handles both 2D (n_trs, n_features) and 3D (n_trs, n_mels, frames_per_tr) arrays.
 
     Parameters
     ----------
     features : np.ndarray
-        Input features with shape (current_trs, n_features)
+        Input features with shape (current_trs, n_features) or (current_trs, n_mels, frames_per_tr)
     current_trs : int
         Current number of TRs
     target_trs : int
@@ -38,11 +39,33 @@ def _resample_features(features: np.ndarray, current_trs: int, target_trs: int) 
     Returns
     -------
     resampled : np.ndarray
-        Resampled features with shape (target_trs, n_features)
+        Resampled features with shape (target_trs, n_features) or (target_trs, n_mels, frames_per_tr)
     """
     if current_trs == target_trs:
         return features.copy()
 
+    # Handle 3D audio features (n_trs, n_mels, frames_per_tr)
+    if features.ndim == 3:
+        n_trs, n_mels, frames_per_tr = features.shape
+
+        # Create time indices for current and target grids
+        current_indices = np.arange(current_trs)
+        target_indices = np.linspace(0, current_trs - 1, target_trs)
+
+        # Interpolate each mel × frame combination
+        resampled = np.zeros((target_trs, n_mels, frames_per_tr), dtype=features.dtype)
+
+        for mel_idx in range(n_mels):
+            for frame_idx in range(frames_per_tr):
+                resampled[:, mel_idx, frame_idx] = np.interp(
+                    target_indices,
+                    current_indices,
+                    features[:, mel_idx, frame_idx]
+                )
+
+        return resampled
+
+    # Handle 2D features (n_trs, n_features) - original code
     # Create time indices for current and target grids
     # Current grid: 0, 1, 2, ..., current_trs-1
     # Target grid: 0, 1, 2, ..., target_trs-1

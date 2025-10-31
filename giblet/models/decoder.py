@@ -84,6 +84,7 @@ class MultimodalDecoder(nn.Module):
         bottleneck_dim: int = 2048,
         video_dim: int = 43200,
         audio_dim: int = 2048,
+        audio_frames_per_tr: int = 65,  # NEW: temporal frames per TR
         text_dim: int = 1024,
         dropout: float = 0.3
     ):
@@ -92,6 +93,7 @@ class MultimodalDecoder(nn.Module):
         self.bottleneck_dim = bottleneck_dim
         self.video_dim = video_dim
         self.audio_dim = audio_dim
+        self.audio_frames_per_tr = audio_frames_per_tr
         self.text_dim = text_dim
 
         # Layer 8: Expand from bottleneck (2048 → 8000)
@@ -147,17 +149,38 @@ class MultimodalDecoder(nn.Module):
         )
 
         # Layer 12B: Audio decoder path (1536 → audio features)
-        # Smaller, targeted for 2048 mel features
+        # UPDATED: Includes temporal upsampling for 3D output
         self.layer12_audio = nn.Sequential(
-            nn.Linear(1536, 1024),
-            nn.BatchNorm1d(1024),
+            nn.Linear(1536, 2048),
+            nn.BatchNorm1d(2048),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(1024, 1024),
-            nn.BatchNorm1d(1024),
+            nn.Linear(2048, 2048),
+            nn.BatchNorm1d(2048),
             nn.ReLU(),
             nn.Dropout(dropout)
         )
+
+        # Temporal upsampling for audio (NEW)
+        # Start with 8 frames, upsample to 16, 32, then target frames_per_tr
+        # Calculate number of upsampling stages needed
+        self.audio_temporal_init_frames = 8
+        self.audio_temporal_upsample = nn.Sequential(
+            # 8 → 16 frames
+            nn.ConvTranspose1d(audio_dim, audio_dim, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm1d(audio_dim),
+            nn.ReLU(),
+            # 16 → 32 frames
+            nn.ConvTranspose1d(audio_dim, audio_dim, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm1d(audio_dim),
+            nn.ReLU(),
+            # 32 → 64 frames (close to target ~65)
+            nn.ConvTranspose1d(audio_dim, audio_dim, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm1d(audio_dim),
+            nn.ReLU()
+        )
+        # Final adjustment layer to get exact frames_per_tr
+        self.audio_temporal_adjust = nn.Conv1d(audio_dim, audio_dim, kernel_size=3, padding=1)
 
         # Layer 12C: Text decoder path (1536 → text features)
         # Moderate size for 1024 embeddings
@@ -182,9 +205,9 @@ class MultimodalDecoder(nn.Module):
             nn.Sigmoid()
         )
 
-        # Layer 13B: Audio output (1024 → 2048)
-        # No activation (dB scale)
-        self.layer13_audio = nn.Linear(1024, audio_dim)
+        # Layer 13B: Audio output (2048 → audio_dim * init_frames)
+        # UPDATED: Outputs initial temporal features that will be upsampled
+        self.layer13_audio = nn.Linear(2048, audio_dim * self.audio_temporal_init_frames)
 
         # Layer 13C: Text output (1024 → 1024)
         # No activation (normalized in loss/post-processing)
@@ -221,7 +244,8 @@ class MultimodalDecoder(nn.Module):
         video : torch.Tensor
             Shape (batch_size, video_dim) reconstructed video features
         audio : torch.Tensor
-            Shape (batch_size, audio_dim) reconstructed audio features
+            Shape (batch_size, audio_dim, frames_per_tr) reconstructed audio features
+            CHANGED: Now returns 3D audio with temporal dimension
         text : torch.Tensor
             Shape (batch_size, text_dim) reconstructed text features
         """
@@ -239,12 +263,27 @@ class MultimodalDecoder(nn.Module):
 
         # Layer 12A/B/C: Separate modality decoder paths
         video_features = self.layer12_video(x)    # 1536 → 4096
-        audio_features = self.layer12_audio(x)    # 1536 → 1024
+        audio_features = self.layer12_audio(x)    # 1536 → 2048
         text_features = self.layer12_text(x)      # 1536 → 1024
 
         # Layer 13: Output reconstruction
         video = self.layer13_video(video_features)  # 4096 → 43,200
-        audio = self.layer13_audio(audio_features)  # 1024 → 2,048
+
+        # Audio with temporal upsampling (NEW)
+        audio = self.layer13_audio(audio_features)  # 2048 → audio_dim * init_frames
+        batch_size = audio.size(0)
+        audio = audio.view(batch_size, self.audio_dim, self.audio_temporal_init_frames)  # (B, mels, 8)
+        audio = self.audio_temporal_upsample(audio)  # (B, mels, 64)
+        audio = self.audio_temporal_adjust(audio)    # (B, mels, 64)
+
+        # Crop or pad to exact frames_per_tr
+        current_frames = audio.size(2)
+        if current_frames > self.audio_frames_per_tr:
+            audio = audio[:, :, :self.audio_frames_per_tr]
+        elif current_frames < self.audio_frames_per_tr:
+            padding = self.audio_frames_per_tr - current_frames
+            audio = torch.nn.functional.pad(audio, (0, padding))
+
         text = self.layer13_text(text_features)     # 1024 → 1,024
 
         return video, audio, text
@@ -283,14 +322,30 @@ class MultimodalDecoder(nn.Module):
         Returns
         -------
         audio : torch.Tensor
-            Shape (batch_size, audio_dim) reconstructed audio features
+            Shape (batch_size, audio_dim, frames_per_tr) reconstructed audio features
+            CHANGED: Now returns 3D audio with temporal dimension
         """
         x = self.layer8(bottleneck)
         x = self.layer9(x)
         x = self.layer10(x)
         x = self.layer11(x)
         audio_features = self.layer12_audio(x)
+
+        # Audio with temporal upsampling
         audio = self.layer13_audio(audio_features)
+        batch_size = audio.size(0)
+        audio = audio.view(batch_size, self.audio_dim, self.audio_temporal_init_frames)
+        audio = self.audio_temporal_upsample(audio)
+        audio = self.audio_temporal_adjust(audio)
+
+        # Crop or pad to exact frames_per_tr
+        current_frames = audio.size(2)
+        if current_frames > self.audio_frames_per_tr:
+            audio = audio[:, :, :self.audio_frames_per_tr]
+        elif current_frames < self.audio_frames_per_tr:
+            padding = self.audio_frames_per_tr - current_frames
+            audio = torch.nn.functional.pad(audio, (0, padding))
+
         return audio
 
     def decode_text_only(self, bottleneck: torch.Tensor) -> torch.Tensor:

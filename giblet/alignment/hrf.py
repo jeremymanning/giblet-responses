@@ -71,11 +71,15 @@ def apply_hrf(features, tr=1.5, mode='same'):
     to predict the resulting BOLD response. This accounts for the temporal blurring
     introduced by neurovascular coupling.
 
+    UPDATED: Now handles 3D audio features (n_trs, n_mels, frames_per_tr).
+
     Parameters
     ----------
     features : numpy.ndarray
-        Input stimulus features with shape (n_timepoints,) for 1D or
-        (n_timepoints, n_features) for multiple feature channels.
+        Input stimulus features with shape:
+        - (n_timepoints,) for 1D
+        - (n_timepoints, n_features) for 2D
+        - (n_timepoints, n_mels, frames_per_tr) for 3D audio
         Should be sampled at the same TR as the HRF.
     tr : float
         Repetition time in seconds. Must match the sampling rate of features.
@@ -90,8 +94,7 @@ def apply_hrf(features, tr=1.5, mode='same'):
     -------
     convolved : numpy.ndarray
         HRF-convolved features with same shape as input (if mode='same') or
-        shape (n_timepoints + n_hrf - 1, n_features) (if mode='full').
-        For 1D input, output is 1D. For 2D input, output is 2D.
+        expanded along time dimension (if mode='full').
 
     Notes
     -----
@@ -112,16 +115,37 @@ def apply_hrf(features, tr=1.5, mode='same'):
     >>> convolved.shape
     (100, 5)
 
-    >>> # Single feature
-    >>> single_feature = np.random.randn(100)
-    >>> convolved_single = apply_hrf(single_feature, tr=1.5)
-    >>> convolved_single.shape
-    (100,)
+    >>> # 3D audio features
+    >>> audio_features = np.random.randn(100, 2048, 65)
+    >>> convolved_audio = apply_hrf(audio_features, tr=1.5, mode='same')
+    >>> convolved_audio.shape
+    (100, 2048, 65)
     """
     # Get canonical HRF kernel
     hrf = get_canonical_hrf(tr=tr)
 
-    # Handle 1D vs 2D input
+    # Handle 3D audio features (n_trs, n_mels, frames_per_tr)
+    if features.ndim == 3:
+        n_timepoints, n_mels, frames_per_tr = features.shape
+
+        # Determine output shape
+        if mode == 'same':
+            output_shape = (n_timepoints, n_mels, frames_per_tr)
+        else:  # mode == 'full'
+            output_shape = (n_timepoints + len(hrf) - 1, n_mels, frames_per_tr)
+
+        convolved = np.zeros(output_shape, dtype=features.dtype)
+
+        # Convolve each mel × frame combination
+        for mel_idx in range(n_mels):
+            for frame_idx in range(frames_per_tr):
+                convolved[:, mel_idx, frame_idx] = signal.convolve(
+                    features[:, mel_idx, frame_idx], hrf, mode=mode
+                )
+
+        return convolved
+
+    # Handle 1D vs 2D input (original code)
     if features.ndim == 1:
         features = features[:, np.newaxis]
         squeeze_output = True
@@ -152,11 +176,15 @@ def convolve_with_padding(features, tr=1.5, padding_duration=10.0):
     the signal, performing convolution, then trimming back to original size.
     Useful when edge artifacts would bias downstream analyses.
 
+    UPDATED: Now handles 3D audio features (n_trs, n_mels, frames_per_tr).
+
     Parameters
     ----------
     features : numpy.ndarray
-        Input stimulus features with shape (n_timepoints,) or
-        (n_timepoints, n_features).
+        Input stimulus features with shape:
+        - (n_timepoints,) for 1D
+        - (n_timepoints, n_features) for 2D
+        - (n_timepoints, n_mels, frames_per_tr) for 3D audio
     tr : float
         Repetition time in seconds. Default is 1.5 seconds.
     padding_duration : float
@@ -185,20 +213,34 @@ def convolve_with_padding(features, tr=1.5, padding_duration=10.0):
     >>> convolved = convolve_with_padding(features, tr=1.5, padding_duration=10.0)
     >>> convolved.shape
     (100,)
+
+    >>> # 3D audio features
+    >>> audio_features = np.random.randn(100, 2048, 65)
+    >>> convolved_audio = convolve_with_padding(audio_features, tr=1.5)
+    >>> convolved_audio.shape
+    (100, 2048, 65)
     """
     # Determine padding size in samples
     padding_samples = int(np.round(padding_duration / tr))
 
-    # Handle 1D vs 2D
+    # Handle 1D, 2D, and 3D input
     if features.ndim == 1:
         features_padded = np.pad(features, (padding_samples, padding_samples),
                                 mode='constant', constant_values=0)
         squeeze_output = True
-    else:
+    elif features.ndim == 2:
         features_padded = np.pad(features,
                                ((padding_samples, padding_samples), (0, 0)),
                                mode='constant', constant_values=0)
         squeeze_output = False
+    elif features.ndim == 3:
+        # 3D audio: (n_trs, n_mels, frames_per_tr)
+        features_padded = np.pad(features,
+                               ((padding_samples, padding_samples), (0, 0), (0, 0)),
+                               mode='constant', constant_values=0)
+        squeeze_output = False
+    else:
+        raise ValueError(f"Unsupported feature dimensionality: {features.ndim}")
 
     # Convolve with padding
     convolved_padded = apply_hrf(features_padded, tr=tr, mode='full')

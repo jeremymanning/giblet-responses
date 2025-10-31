@@ -126,14 +126,17 @@ class VideoEncoder(nn.Module):
 
 class AudioEncoder(nn.Module):
     """
-    Encode audio mel spectrograms using 1D convolutions.
+    Encode audio mel spectrograms using multi-scale temporal convolutions.
 
-    Processes 2048 mel bins to extract audio features.
+    FIXED: Now processes 3D spectrograms (n_mels, frames_per_tr) with
+    multi-scale temporal convolutions to preserve speech/music detail.
 
     Parameters
     ----------
     input_mels : int, default=2048
         Number of mel frequency bins
+    frames_per_tr : int, default=65
+        Number of temporal frames per TR (~1.5s / 512 hop = 65 frames)
     output_features : int, default=256
         Dimensionality of output features
     """
@@ -141,34 +144,42 @@ class AudioEncoder(nn.Module):
     def __init__(
         self,
         input_mels: int = 2048,
+        frames_per_tr: int = 65,  # 22050 * 1.5 / 512 ≈ 65
         output_features: int = 256
     ):
         super().__init__()
 
         self.input_mels = input_mels
+        self.frames_per_tr = frames_per_tr
         self.output_features = output_features
 
-        # 1D convolutions over frequency dimension
-        # 2048 → 1024 → 512 → 256 → 128
-        self.conv1 = nn.Conv1d(1, 32, kernel_size=3, stride=2, padding=1)
-        self.bn1 = nn.BatchNorm1d(32)
+        # Multi-scale temporal convolutions (parallel branches)
+        # Input: (batch, n_mels, frames_per_tr)
 
-        self.conv2 = nn.Conv1d(32, 64, kernel_size=3, stride=2, padding=1)
-        self.bn2 = nn.BatchNorm1d(64)
+        # Short-range temporal features (kernel_size=3, ~46ms)
+        self.temporal_conv_k3 = nn.Conv1d(input_mels, 64, kernel_size=3, padding=1)
+        self.bn_k3 = nn.BatchNorm1d(64)
 
-        self.conv3 = nn.Conv1d(64, 128, kernel_size=3, stride=2, padding=1)
-        self.bn3 = nn.BatchNorm1d(128)
+        # Medium-range temporal features (kernel_size=5, ~77ms)
+        self.temporal_conv_k5 = nn.Conv1d(input_mels, 64, kernel_size=5, padding=2)
+        self.bn_k5 = nn.BatchNorm1d(64)
 
-        self.conv4 = nn.Conv1d(128, 256, kernel_size=3, stride=2, padding=1)
-        self.bn4 = nn.BatchNorm1d(256)
+        # Long-range temporal features (kernel_size=7, ~108ms)
+        self.temporal_conv_k7 = nn.Conv1d(input_mels, 64, kernel_size=7, padding=3)
+        self.bn_k7 = nn.BatchNorm1d(64)
 
-        # Calculate flattened size
-        self.flat_length = (input_mels + 15) // 16  # After 4 stride-2 convs
-        self.flat_features = 256 * self.flat_length
+        # Adaptive max pooling to collapse temporal dimension (learned, not averaging)
+        self.temporal_pool = nn.AdaptiveMaxPool1d(1)
 
-        # Linear projection
-        self.fc = nn.Linear(self.flat_features, output_features)
-        self.dropout = nn.Dropout(0.2)
+        # Final compression from concatenated features (64*3=192) to output
+        concat_features = 64 * 3
+        self.fc = nn.Sequential(
+            nn.Linear(concat_features, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(256, output_features)
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -177,45 +188,39 @@ class AudioEncoder(nn.Module):
         Parameters
         ----------
         x : torch.Tensor
-            Shape (batch_size, input_mels) mel spectrogram
+            Shape (batch_size, input_mels, frames_per_tr) mel spectrogram
+            CHANGED: Now expects 3D input with temporal dimension
 
         Returns
         -------
         features : torch.Tensor
             Shape (batch_size, output_features) encoded features
         """
-        # Reshape for 1D conv: (batch, 1, mels)
-        x = x.unsqueeze(1)
+        # Handle backward compatibility with 2D input
+        if x.dim() == 2:
+            # Old format: (batch, n_mels) - add temporal dimension
+            print("Warning: 2D audio input detected. Adding temporal dimension...")
+            x = x.unsqueeze(-1)  # (batch, n_mels, 1)
 
-        # Conv block 1
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = F.relu(x)
+        # x shape: (batch, n_mels, frames_per_tr)
 
-        # Conv block 2
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = F.relu(x)
+        # Multi-scale temporal convolutions (parallel branches)
+        feat_k3 = F.relu(self.bn_k3(self.temporal_conv_k3(x)))  # (batch, 64, frames)
+        feat_k5 = F.relu(self.bn_k5(self.temporal_conv_k5(x)))  # (batch, 64, frames)
+        feat_k7 = F.relu(self.bn_k7(self.temporal_conv_k7(x)))  # (batch, 64, frames)
 
-        # Conv block 3
-        x = self.conv3(x)
-        x = self.bn3(x)
-        x = F.relu(x)
+        # Pool temporal dimension (max pooling preserves peaks like phonemes)
+        feat_k3 = self.temporal_pool(feat_k3).squeeze(-1)  # (batch, 64)
+        feat_k5 = self.temporal_pool(feat_k5).squeeze(-1)  # (batch, 64)
+        feat_k7 = self.temporal_pool(feat_k7).squeeze(-1)  # (batch, 64)
 
-        # Conv block 4
-        x = self.conv4(x)
-        x = self.bn4(x)
-        x = F.relu(x)
+        # Concatenate multi-scale features
+        features = torch.cat([feat_k3, feat_k5, feat_k7], dim=1)  # (batch, 192)
 
-        # Flatten
-        x = x.view(x.size(0), -1)
+        # Final compression
+        output = self.fc(features)  # (batch, output_features)
 
-        # Linear projection
-        x = self.fc(x)
-        x = self.dropout(x)
-        x = F.relu(x)
-
-        return x
+        return output
 
 
 class TextEncoder(nn.Module):
@@ -322,6 +327,7 @@ class MultimodalEncoder(nn.Module):
         video_height: int = 90,
         video_width: int = 160,
         audio_mels: int = 2048,
+        audio_frames_per_tr: int = 65,  # NEW: temporal frames per TR
         text_dim: int = 1024,
         n_voxels: int = 85810,
         bottleneck_dim: int = 2048,
@@ -334,6 +340,7 @@ class MultimodalEncoder(nn.Module):
         self.video_height = video_height
         self.video_width = video_width
         self.audio_mels = audio_mels
+        self.audio_frames_per_tr = audio_frames_per_tr
         self.text_dim = text_dim
         self.n_voxels = n_voxels
         self.bottleneck_dim = bottleneck_dim
@@ -345,9 +352,10 @@ class MultimodalEncoder(nn.Module):
             output_features=video_features
         )
 
-        # Layer 2B: Audio encoder
+        # Layer 2B: Audio encoder (updated with temporal processing)
         self.audio_encoder = AudioEncoder(
             input_mels=audio_mels,
+            frames_per_tr=audio_frames_per_tr,
             output_features=audio_features
         )
 
