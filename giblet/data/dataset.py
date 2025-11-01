@@ -121,7 +121,10 @@ class MultimodalDataset(Dataset):
         cache_dir: Optional[Union[str, Path]] = None,
         preprocess: bool = True,
         tr: float = 1.5,
-        max_trs: Optional[int] = None
+        max_trs: Optional[int] = None,
+        use_encodec: bool = True,
+        encodec_bandwidth: float = 3.0,
+        encodec_sample_rate: int = 12000
     ):
         self.data_dir = Path(data_dir)
         self.split = split
@@ -129,6 +132,9 @@ class MultimodalDataset(Dataset):
         self.mode = mode
         self.tr = tr
         self.max_trs = max_trs
+        self.use_encodec = use_encodec
+        self.encodec_bandwidth = encodec_bandwidth
+        self.encodec_sample_rate = encodec_sample_rate
 
         # Set up cache directory
         if cache_dir is None:
@@ -151,7 +157,12 @@ class MultimodalDataset(Dataset):
 
         # Initialize processors
         self.video_processor = VideoProcessor(tr=tr)
-        self.audio_processor = AudioProcessor(tr=tr)
+        self.audio_processor = AudioProcessor(
+            tr=tr,
+            use_encodec=use_encodec,
+            encodec_bandwidth=encodec_bandwidth,
+            sample_rate=encodec_sample_rate
+        )
         if TEXT_PROCESSOR_AVAILABLE:
             self.text_processor = TextProcessor(tr=tr)
         else:
@@ -188,8 +199,22 @@ class MultimodalDataset(Dataset):
                        f"s{'_'.join(map(str, self.subject_ids))}"
         hrf_str = 'hrf' if self.apply_hrf else 'nohrf'
         mode_str = self.mode
-        cache_name = f"sherlock_{subjects_str}_{hrf_str}_{mode_str}.pkl"
+
+        # Include EnCodec parameters in cache name if using EnCodec
+        if self.use_encodec:
+            audio_str = f"encodec_{self.encodec_sample_rate//1000}khz_{self.encodec_bandwidth}kbps"
+        else:
+            audio_str = "mel"
+
+        cache_name = f"sherlock_{subjects_str}_{hrf_str}_{mode_str}_{audio_str}.pkl"
         return self.cache_dir / cache_name
+
+    def _get_encodec_cache_path(self, video_path: Path) -> Path:
+        """Get path for cached EnCodec features."""
+        encodec_cache_dir = self.cache_dir / f"encodec_{self.encodec_sample_rate//1000}khz_{self.encodec_bandwidth}kbps"
+        encodec_cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_name = f"{video_path.stem}_encodec.npz"
+        return encodec_cache_dir / cache_name
 
     def _load_or_preprocess_data(self):
         """Load cached data or preprocess from raw files."""
@@ -232,10 +257,50 @@ class MultimodalDataset(Dataset):
 
         # 2. Process audio (shared across all subjects)
         print("\n2. Processing audio...")
-        audio_features, audio_meta = self.audio_processor.audio_to_features(
-            video_path, max_trs=self.max_trs, from_video=True
-        )
-        print(f"  Audio features: {audio_features.shape}")
+
+        # Check for cached EnCodec features
+        if self.use_encodec:
+            encodec_cache_path = self._get_encodec_cache_path(video_path)
+            if encodec_cache_path.exists():
+                print(f"  Loading cached EnCodec features from {encodec_cache_path}")
+                cached_data = np.load(encodec_cache_path)
+                audio_features = cached_data['features']
+                # Recreate metadata DataFrame
+                audio_meta = pd.DataFrame({
+                    'tr_index': cached_data['tr_indices'],
+                    'start_time': cached_data['start_times'],
+                    'end_time': cached_data['end_times'],
+                    'n_frames': cached_data['n_frames'],
+                    'encoding_mode': ['encodec'] * len(cached_data['tr_indices'])
+                })
+                # Apply max_trs if specified
+                if self.max_trs is not None:
+                    audio_features = audio_features[:self.max_trs]
+                    audio_meta = audio_meta.iloc[:self.max_trs]
+                print(f"  Audio features (cached): {audio_features.shape}")
+            else:
+                print(f"  Computing EnCodec features (will cache to {encodec_cache_path})...")
+                audio_features, audio_meta = self.audio_processor.audio_to_features(
+                    video_path, max_trs=self.max_trs, from_video=True
+                )
+                # Save to cache
+                print(f"  Caching EnCodec features...")
+                np.savez_compressed(
+                    encodec_cache_path,
+                    features=audio_features,
+                    tr_indices=audio_meta['tr_index'].values,
+                    start_times=audio_meta['start_time'].values,
+                    end_times=audio_meta['end_time'].values,
+                    n_frames=audio_meta['n_frames'].values
+                )
+                print(f"  Cached {encodec_cache_path.stat().st_size / 1024 / 1024:.1f} MB")
+                print(f"  Audio features: {audio_features.shape}")
+        else:
+            # Mel spectrogram mode (no caching)
+            audio_features, audio_meta = self.audio_processor.audio_to_features(
+                video_path, max_trs=self.max_trs, from_video=True
+            )
+            print(f"  Audio features: {audio_features.shape}")
 
         # 3. Process text (shared across all subjects)
         print("\n3. Processing text annotations...")
@@ -335,12 +400,15 @@ class MultimodalDataset(Dataset):
             raise ValueError(f"Unknown mode: {self.mode}")
 
         # Store feature dimensions
-        # Note: audio features are now 3D (n_mels, frames_per_tr)
-        if self.audio_features.ndim == 3:
-            # New format: (n_subjects/1, n_trs, n_mels, frames_per_tr)
-            audio_dim = self.audio_features.shape[-2:]  # (n_mels, frames_per_tr)
+        # Note: audio features are now 3D (n_codebooks/n_mels, frames_per_tr)
+        if self.audio_features.ndim == 4:
+            # New format with 4D: (n_subjects/1, n_trs, n_codebooks/n_mels, frames_per_tr)
+            audio_dim = self.audio_features.shape[-2:]  # (n_codebooks/n_mels, frames_per_tr)
+        elif self.audio_features.ndim == 3:
+            # Legacy 3D format for individual subject: (n_trs, n_codebooks/n_mels, frames_per_tr)
+            audio_dim = self.audio_features.shape[-2:]  # (n_codebooks/n_mels, frames_per_tr)
         else:
-            # Old format: (n_subjects/1, n_trs, n_mels)
+            # Old 2D format: (n_subjects/1, n_trs, n_features)
             audio_dim = self.audio_features.shape[-1]
 
         self.feature_dims = {
@@ -466,9 +534,18 @@ class MultimodalDataset(Dataset):
             subject_idx = idx // self.n_trs
             tr_idx = idx % self.n_trs
 
+            # Convert audio to appropriate dtype (int64 for EnCodec, float32 for mel)
+            audio_feat = self.audio_features[subject_idx, tr_idx]
+            if audio_feat.dtype in [np.int32, np.int64]:
+                # EnCodec discrete codes - keep as int64
+                audio_tensor = torch.from_numpy(audio_feat).long()
+            else:
+                # Mel spectrogram - convert to float
+                audio_tensor = torch.from_numpy(audio_feat).float()
+
             sample = {
                 'video': torch.from_numpy(self.video_features[subject_idx, tr_idx]).float(),
-                'audio': torch.from_numpy(self.audio_features[subject_idx, tr_idx]).float(),
+                'audio': audio_tensor,
                 'text': torch.from_numpy(self.text_features[subject_idx, tr_idx]).float(),
                 'fmri': torch.from_numpy(self.fmri_features[subject_idx, tr_idx]).float(),
                 'subject_id': self.subject_ids[subject_idx],
@@ -478,9 +555,18 @@ class MultimodalDataset(Dataset):
         else:  # cross_subject
             tr_idx = idx
 
+            # Convert audio to appropriate dtype
+            audio_feat = self.audio_features[0, tr_idx]
+            if audio_feat.dtype in [np.int32, np.int64]:
+                # EnCodec discrete codes - keep as int64
+                audio_tensor = torch.from_numpy(audio_feat).long()
+            else:
+                # Mel spectrogram - convert to float
+                audio_tensor = torch.from_numpy(audio_feat).float()
+
             sample = {
                 'video': torch.from_numpy(self.video_features[0, tr_idx]).float(),
-                'audio': torch.from_numpy(self.audio_features[0, tr_idx]).float(),
+                'audio': audio_tensor,
                 'text': torch.from_numpy(self.text_features[0, tr_idx]).float(),
                 'fmri': torch.from_numpy(self.fmri_features[0, tr_idx]).float(),
                 'tr_index': tr_idx
