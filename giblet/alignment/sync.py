@@ -24,13 +24,16 @@ def _resample_features(features: np.ndarray, current_trs: int, target_trs: int) 
     """
     Resample feature matrix from current_trs to target_trs.
 
-    Uses linear interpolation along the temporal axis.
+    Uses linear interpolation for continuous features (float dtype).
+    Uses nearest-neighbor interpolation for discrete codes (int dtype).
     Handles both 2D (n_trs, n_features) and 3D (n_trs, n_mels, frames_per_tr) arrays.
 
     Parameters
     ----------
     features : np.ndarray
         Input features with shape (current_trs, n_features) or (current_trs, n_mels, frames_per_tr)
+        For EnCodec codes: dtype should be int64
+        For mel spectrograms: dtype should be float32/float64
     current_trs : int
         Current number of TRs
     target_trs : int
@@ -40,11 +43,25 @@ def _resample_features(features: np.ndarray, current_trs: int, target_trs: int) 
     -------
     resampled : np.ndarray
         Resampled features with shape (target_trs, n_features) or (target_trs, n_mels, frames_per_tr)
+
+    Notes
+    -----
+    Discrete Code Handling (EnCodec):
+    - Integer dtypes (int32, int64) are detected automatically
+    - Uses nearest-neighbor interpolation (no averaging/blending)
+    - Preserves code validity (codes remain in original codebook range)
+
+    Continuous Feature Handling (Mel, Text, Video):
+    - Float dtypes use linear interpolation
+    - Allows smooth temporal transitions
     """
     if current_trs == target_trs:
         return features.copy()
 
-    # Handle 3D audio features (n_trs, n_mels, frames_per_tr)
+    # Detect if features are discrete codes (integer dtype)
+    is_discrete = features.dtype in [np.int32, np.int64]
+
+    # Handle 3D audio features (n_trs, n_mels/n_codebooks, frames_per_tr)
     if features.ndim == 3:
         n_trs, n_mels, frames_per_tr = features.shape
 
@@ -52,20 +69,30 @@ def _resample_features(features: np.ndarray, current_trs: int, target_trs: int) 
         current_indices = np.arange(current_trs)
         target_indices = np.linspace(0, current_trs - 1, target_trs)
 
-        # Interpolate each mel × frame combination
-        resampled = np.zeros((target_trs, n_mels, frames_per_tr), dtype=features.dtype)
+        if is_discrete:
+            # EnCodec codes: Use nearest-neighbor interpolation
+            # Round target indices to nearest integer for code lookup
+            target_indices_int = np.round(target_indices).astype(int)
+            target_indices_int = np.clip(target_indices_int, 0, current_trs - 1)
 
-        for mel_idx in range(n_mels):
-            for frame_idx in range(frames_per_tr):
-                resampled[:, mel_idx, frame_idx] = np.interp(
-                    target_indices,
-                    current_indices,
-                    features[:, mel_idx, frame_idx]
-                )
+            # Direct indexing (no interpolation)
+            resampled = features[target_indices_int]  # Shape: (target_trs, n_codebooks, frames_per_tr)
+
+        else:
+            # Continuous features: Use linear interpolation
+            resampled = np.zeros((target_trs, n_mels, frames_per_tr), dtype=features.dtype)
+
+            for mel_idx in range(n_mels):
+                for frame_idx in range(frames_per_tr):
+                    resampled[:, mel_idx, frame_idx] = np.interp(
+                        target_indices,
+                        current_indices,
+                        features[:, mel_idx, frame_idx]
+                    )
 
         return resampled
 
-    # Handle 2D features (n_trs, n_features) - original code
+    # Handle 2D features (n_trs, n_features)
     # Create time indices for current and target grids
     # Current grid: 0, 1, 2, ..., current_trs-1
     # Target grid: 0, 1, 2, ..., target_trs-1
@@ -73,16 +100,23 @@ def _resample_features(features: np.ndarray, current_trs: int, target_trs: int) 
     current_indices = np.arange(current_trs)
     target_indices = np.linspace(0, current_trs - 1, target_trs)
 
-    # Interpolate each feature dimension
-    n_features = features.shape[1]
-    resampled = np.zeros((target_trs, n_features), dtype=features.dtype)
+    if is_discrete:
+        # Discrete codes (rare for 2D, but handle it)
+        target_indices_int = np.round(target_indices).astype(int)
+        target_indices_int = np.clip(target_indices_int, 0, current_trs - 1)
+        resampled = features[target_indices_int]
 
-    for feat_idx in range(n_features):
-        resampled[:, feat_idx] = np.interp(
-            target_indices,
-            current_indices,
-            features[:, feat_idx]
-        )
+    else:
+        # Continuous features: Interpolate each feature dimension
+        n_features = features.shape[1]
+        resampled = np.zeros((target_trs, n_features), dtype=features.dtype)
+
+        for feat_idx in range(n_features):
+            resampled[:, feat_idx] = np.interp(
+                target_indices,
+                current_indices,
+                features[:, feat_idx]
+            )
 
     return resampled
 

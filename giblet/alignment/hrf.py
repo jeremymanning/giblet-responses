@@ -72,6 +72,7 @@ def apply_hrf(features, tr=1.5, mode='same'):
     introduced by neurovascular coupling.
 
     UPDATED: Now handles 3D audio features (n_trs, n_mels, frames_per_tr).
+    UPDATED: Skips HRF convolution for discrete codes (EnCodec).
 
     Parameters
     ----------
@@ -81,6 +82,8 @@ def apply_hrf(features, tr=1.5, mode='same'):
         - (n_timepoints, n_features) for 2D
         - (n_timepoints, n_mels, frames_per_tr) for 3D audio
         Should be sampled at the same TR as the HRF.
+        For EnCodec codes: dtype int32/int64 → HRF skipped (returns copy)
+        For continuous features: dtype float → HRF applied
     tr : float
         Repetition time in seconds. Must match the sampling rate of features.
         Default is 1.5 seconds.
@@ -95,9 +98,19 @@ def apply_hrf(features, tr=1.5, mode='same'):
     convolved : numpy.ndarray
         HRF-convolved features with same shape as input (if mode='same') or
         expanded along time dimension (if mode='full').
+        For discrete codes: Returns copy without convolution.
 
     Notes
     -----
+    Discrete Code Handling (EnCodec):
+    - Integer dtypes (int32, int64) are detected automatically
+    - HRF convolution is skipped for discrete codes
+    - Rationale: EnCodec codes already encode temporal dynamics through
+      learned representations. Convolving discrete codes would require
+      decoding → convolve → re-encode, which is expensive and may not
+      improve alignment quality.
+    - Returns unchanged copy to maintain consistent API
+
     Edge Effects:
     - mode='same' truncates the convolution to match input size, which can
       introduce edge artifacts at the beginning and end of the signal.
@@ -120,8 +133,25 @@ def apply_hrf(features, tr=1.5, mode='same'):
     >>> convolved_audio = apply_hrf(audio_features, tr=1.5, mode='same')
     >>> convolved_audio.shape
     (100, 2048, 65)
+
+    >>> # EnCodec discrete codes (HRF skipped)
+    >>> encodec_codes = np.random.randint(0, 1024, size=(100, 1, 112), dtype=np.int64)
+    >>> result = apply_hrf(encodec_codes, tr=1.5, mode='same')
+    >>> result.shape
+    (100, 1, 112)
+    >>> np.array_equal(result, encodec_codes)
+    True
     """
-    # Get canonical HRF kernel
+    # Detect if features are discrete codes (integer dtype)
+    is_discrete = features.dtype in [np.int32, np.int64]
+
+    if is_discrete:
+        # Skip HRF convolution for discrete codes (e.g., EnCodec)
+        # EnCodec codes already encode temporal dynamics through learned representations
+        # Convolution would require decode → convolve → re-encode (expensive, questionable benefit)
+        return features.copy()
+
+    # Get canonical HRF kernel for continuous features
     hrf = get_canonical_hrf(tr=tr)
 
     # Handle 3D audio features (n_trs, n_mels, frames_per_tr)
@@ -177,6 +207,7 @@ def convolve_with_padding(features, tr=1.5, padding_duration=10.0):
     Useful when edge artifacts would bias downstream analyses.
 
     UPDATED: Now handles 3D audio features (n_trs, n_mels, frames_per_tr).
+    UPDATED: Skips HRF convolution for discrete codes (EnCodec).
 
     Parameters
     ----------
@@ -185,6 +216,8 @@ def convolve_with_padding(features, tr=1.5, padding_duration=10.0):
         - (n_timepoints,) for 1D
         - (n_timepoints, n_features) for 2D
         - (n_timepoints, n_mels, frames_per_tr) for 3D audio
+        For EnCodec codes: dtype int32/int64 → HRF skipped (returns copy)
+        For continuous features: dtype float → HRF applied with padding
     tr : float
         Repetition time in seconds. Default is 1.5 seconds.
     padding_duration : float
@@ -196,10 +229,15 @@ def convolve_with_padding(features, tr=1.5, padding_duration=10.0):
     -------
     convolved : numpy.ndarray
         HRF-convolved features with same shape as input.
+        For discrete codes: Returns copy without convolution.
 
     Notes
     -----
-    The padding approach:
+    Discrete Code Handling:
+    - Integer dtypes (int32, int64) skip HRF convolution
+    - See apply_hrf() for rationale
+
+    The padding approach (for continuous features):
     1. Adds zero-padding before and after the signal
     2. Performs full convolution on the padded signal
     3. Trims the result back to original timepoints
@@ -219,7 +257,20 @@ def convolve_with_padding(features, tr=1.5, padding_duration=10.0):
     >>> convolved_audio = convolve_with_padding(audio_features, tr=1.5)
     >>> convolved_audio.shape
     (100, 2048, 65)
+
+    >>> # EnCodec discrete codes (HRF skipped)
+    >>> encodec_codes = np.random.randint(0, 1024, size=(100, 1, 112), dtype=np.int64)
+    >>> result = convolve_with_padding(encodec_codes, tr=1.5)
+    >>> np.array_equal(result, encodec_codes)
+    True
     """
+    # Detect if features are discrete codes (integer dtype)
+    is_discrete = features.dtype in [np.int32, np.int64]
+
+    if is_discrete:
+        # Skip HRF convolution for discrete codes
+        return features.copy()
+
     # Determine padding size in samples
     padding_samples = int(np.round(padding_duration / tr))
 

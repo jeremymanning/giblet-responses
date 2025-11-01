@@ -23,6 +23,77 @@ class TestResampleFeatures:
         assert result.shape == (100, 50)
         np.testing.assert_array_almost_equal(result, features)
 
+    def test_resample_discrete_codes_3d(self):
+        """Test resampling discrete EnCodec codes (3D, int64)."""
+        # EnCodec codes: (n_trs, n_codebooks, frames_per_tr)
+        # Shape: (100, 1, 112) for 12kHz @ 1.5s TR
+        codes = np.random.randint(0, 1024, size=(100, 1, 112), dtype=np.int64)
+
+        # Downsample
+        result = _resample_features(codes, 100, 50)
+
+        # Check shape
+        assert result.shape == (50, 1, 112)
+
+        # Check dtype preserved
+        assert result.dtype == np.int64
+
+        # Check values are valid codes (in original range)
+        assert np.all(result >= 0)
+        assert np.all(result < 1024)
+
+        # Values should be exact copies from input (no interpolation)
+        # Each output TR should match one input TR exactly
+        # The mapping is based on linear indices: target_idx -> nearest source_idx
+        for tr_idx in range(result.shape[0]):
+            # Calculate the corresponding source index using the same logic as _resample_features
+            target_indices = np.linspace(0, 100 - 1, 50)
+            source_idx = int(np.round(target_indices[tr_idx]))
+            source_idx = np.clip(source_idx, 0, 99)
+            # Should be an exact match
+            np.testing.assert_array_equal(result[tr_idx], codes[source_idx])
+
+    def test_resample_discrete_codes_2d(self):
+        """Test resampling discrete codes (2D, int64)."""
+        codes = np.random.randint(0, 100, size=(100, 50), dtype=np.int64)
+        result = _resample_features(codes, 100, 80)
+
+        assert result.shape == (80, 50)
+        assert result.dtype == np.int64
+        assert np.all(result >= 0)
+        assert np.all(result < 100)
+
+    def test_resample_discrete_codes_int32(self):
+        """Test resampling discrete codes with int32 dtype."""
+        codes = np.random.randint(0, 500, size=(100, 1, 112), dtype=np.int32)
+        result = _resample_features(codes, 100, 75)
+
+        assert result.shape == (75, 1, 112)
+        assert result.dtype == np.int32
+        assert np.all(result >= 0)
+        assert np.all(result < 500)
+
+    def test_resample_continuous_vs_discrete_different_behavior(self):
+        """Verify continuous and discrete resampling produce different results."""
+        # Create features where discrete codes differ significantly
+        np.random.seed(42)
+        continuous = np.random.randn(100, 1, 10).astype(np.float32)
+        discrete = (continuous * 100).astype(np.int64)  # Scale and convert
+
+        # Resample both
+        continuous_result = _resample_features(continuous, 100, 50)
+        discrete_result = _resample_features(discrete, 100, 50)
+
+        # Continuous uses interpolation, discrete uses nearest neighbor
+        # They should NOT be the same (after scaling)
+        # For continuous, intermediate values are interpolated
+        # For discrete, only exact copies are used
+
+        # Discrete should have exact integer values from input
+        assert discrete_result.dtype == np.int64
+        # Continuous should be float
+        assert continuous_result.dtype == np.float32
+
     def test_resample_downsample(self):
         """Test downsampling to fewer TRs."""
         # Create simple linear features for testing

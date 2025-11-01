@@ -100,6 +100,64 @@ class TestHRFPeakLatency:
 class TestApplyHRF:
     """Test HRF convolution on stimulus features."""
 
+    def test_apply_hrf_discrete_codes_skipped(self):
+        """Discrete codes (int64) should skip HRF convolution."""
+        # EnCodec codes: (n_trs, n_codebooks, frames_per_tr)
+        codes = np.random.randint(0, 1024, size=(100, 1, 112), dtype=np.int64)
+        result = apply_hrf(codes, tr=1.5, mode='same')
+
+        # Should return unchanged copy
+        assert result.shape == codes.shape
+        assert result.dtype == np.int64
+        np.testing.assert_array_equal(result, codes)
+
+    def test_apply_hrf_discrete_codes_int32_skipped(self):
+        """Discrete codes (int32) should also skip HRF convolution."""
+        codes = np.random.randint(0, 500, size=(100, 2, 50), dtype=np.int32)
+        result = apply_hrf(codes, tr=1.5, mode='same')
+
+        assert result.shape == codes.shape
+        assert result.dtype == np.int32
+        np.testing.assert_array_equal(result, codes)
+
+    def test_apply_hrf_discrete_codes_2d_skipped(self):
+        """2D discrete codes should also skip HRF."""
+        codes = np.random.randint(0, 100, size=(100, 50), dtype=np.int64)
+        result = apply_hrf(codes, tr=1.5, mode='same')
+
+        assert result.shape == codes.shape
+        assert result.dtype == np.int64
+        np.testing.assert_array_equal(result, codes)
+
+    def test_apply_hrf_discrete_codes_mode_full_skipped(self):
+        """Discrete codes with mode='full' should still skip HRF."""
+        codes = np.random.randint(0, 1024, size=(100, 1, 112), dtype=np.int64)
+        result = apply_hrf(codes, tr=1.5, mode='full')
+
+        # Should return copy with same shape (not expanded)
+        assert result.shape == codes.shape
+        np.testing.assert_array_equal(result, codes)
+
+    def test_apply_hrf_continuous_vs_discrete_different(self):
+        """Continuous features should be convolved, discrete codes should not."""
+        np.random.seed(42)
+
+        # Create continuous features
+        continuous = np.random.randn(100, 1, 10).astype(np.float32)
+
+        # Create discrete codes (same values, different dtype)
+        discrete = (continuous * 100).astype(np.int64)
+
+        # Apply HRF
+        continuous_result = apply_hrf(continuous, tr=1.5, mode='same')
+        discrete_result = apply_hrf(discrete, tr=1.5, mode='same')
+
+        # Continuous should be modified (convolved)
+        assert not np.array_equal(continuous_result, continuous)
+
+        # Discrete should be unchanged
+        np.testing.assert_array_equal(discrete_result, discrete)
+
     def test_apply_hrf_shape_1d_same(self):
         """1D input should produce 1D output with mode='same'."""
         features = np.random.randn(100)
@@ -217,6 +275,39 @@ class TestApplyHRF:
 
 class TestConvolveWithPadding:
     """Test HRF convolution with padding to reduce edge effects."""
+
+    def test_convolve_with_padding_discrete_codes_skipped(self):
+        """Discrete codes should skip HRF convolution even with padding."""
+        codes = np.random.randint(0, 1024, size=(100, 1, 112), dtype=np.int64)
+        result = convolve_with_padding(codes, tr=1.5, padding_duration=10.0)
+
+        # Should return unchanged copy
+        assert result.shape == codes.shape
+        assert result.dtype == np.int64
+        np.testing.assert_array_equal(result, codes)
+
+    def test_convolve_with_padding_discrete_codes_2d_skipped(self):
+        """2D discrete codes should skip HRF convolution."""
+        codes = np.random.randint(0, 100, size=(100, 50), dtype=np.int64)
+        result = convolve_with_padding(codes, tr=1.5, padding_duration=10.0)
+
+        assert result.shape == codes.shape
+        np.testing.assert_array_equal(result, codes)
+
+    def test_convolve_with_padding_continuous_vs_discrete(self):
+        """Continuous features modified, discrete codes unchanged."""
+        np.random.seed(42)
+        continuous = np.random.randn(100, 5).astype(np.float32)
+        discrete = (continuous * 100).astype(np.int64)
+
+        continuous_result = convolve_with_padding(continuous, tr=1.5)
+        discrete_result = convolve_with_padding(discrete, tr=1.5)
+
+        # Continuous should be modified
+        assert not np.array_equal(continuous_result, continuous)
+
+        # Discrete should be unchanged
+        np.testing.assert_array_equal(discrete_result, discrete)
 
     def test_convolve_with_padding_shape_1d(self):
         """Padded convolution should return original shape for 1D."""
