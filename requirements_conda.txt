@@ -89,3 +89,4 @@ tf-keras  # Backwards compatibility for transformers with Keras 3
 # Development tools (optional)
 # pytest>=7.4.0
 # pytest-cov>=4.1.0
+ffmpeg  # For audio/video processing (conda install -c conda-forge)
