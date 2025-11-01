@@ -84,6 +84,11 @@ model:
   audio_features: 256  # Audio encoder output features
   text_features: 256  # Text encoder output features
 
+  # Audio encoding method (EnCodec for high-quality reconstruction)
+  use_encodec: true  # Use EnCodec neural codec (recommended)
+  encodec_bandwidth: 3.0  # 3.0 kbps (user approved)
+  encodec_sample_rate: 12000  # 12 kHz (user approved - 2× more efficient)
+
   # Decoder architecture
   decoder_hidden_dim: 2048  # Hidden layer size in decoder
   decoder_dropout: 0.3  # Dropout rate to prevent overfitting
