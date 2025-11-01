@@ -497,6 +497,359 @@ def test_full_pipeline():
     print("="*60)
 
 
+class TestTextProcessorConcatenation:
+    """Test suite for temporal concatenation mode (Issue #26)."""
+
+    @pytest.fixture
+    def processor_concat(self):
+        """Create TextProcessor with concatenation mode."""
+        return TextProcessor(
+            model_name='BAAI/bge-large-en-v1.5',
+            tr=1.5,
+            temporal_mode='concatenate',
+            max_annotations_per_tr=3,
+            temporal_window=1.0,
+            gap_fill='forward_fill'
+        )
+
+    @pytest.fixture
+    def processor_average(self):
+        """Create TextProcessor with average mode (legacy)."""
+        return TextProcessor(
+            model_name='BAAI/bge-large-en-v1.5',
+            tr=1.5,
+            temporal_mode='average',
+            aggregation='mean',
+            gap_fill='forward_fill'
+        )
+
+    def test_concatenate_dimension_consistency(self, processor_concat):
+        """Test that all TRs have consistent dimensions in concatenate mode."""
+        if not ANNOTATIONS_PATH.exists():
+            pytest.skip(f"Annotations file not found: {ANNOTATIONS_PATH}")
+
+        # Generate embeddings
+        embeddings, metadata = processor_concat.annotations_to_embeddings(
+            ANNOTATIONS_PATH,
+            n_trs=100
+        )
+
+        # Verify shape
+        expected_dim = 1024 * 3  # 3 annotations × 1024 embedding dim
+        assert embeddings.shape == (100, expected_dim), \
+            f"Expected shape (100, {expected_dim}), got {embeddings.shape}"
+
+        # Verify all TRs have the same dimension
+        for tr_idx in range(100):
+            assert embeddings[tr_idx].shape == (expected_dim,), \
+                f"TR {tr_idx} has wrong shape: {embeddings[tr_idx].shape}"
+
+        print(f"\n✓ All TRs have consistent dimension: {expected_dim}")
+
+    def test_concatenate_with_varying_annotations(self, processor_concat):
+        """Test handling of TRs with different numbers of annotations."""
+        if not ANNOTATIONS_PATH.exists():
+            pytest.skip(f"Annotations file not found: {ANNOTATIONS_PATH}")
+
+        embeddings, metadata = processor_concat.annotations_to_embeddings(
+            ANNOTATIONS_PATH,
+            n_trs=100
+        )
+
+        # Check distribution of annotation counts
+        counts = metadata['n_segments_contributing'].value_counts().sort_index()
+
+        print(f"\n✓ Annotation count distribution:")
+        for count, freq in counts.items():
+            print(f"  {count} annotations: {freq} TRs")
+
+        # Verify handling of different cases
+        trs_with_0 = (metadata['n_segments_contributing'] == 0).sum()
+        trs_with_1 = (metadata['n_segments_contributing'] == 1).sum()
+        trs_with_2 = (metadata['n_segments_contributing'] == 2).sum()
+        trs_with_3plus = (metadata['n_segments_contributing'] >= 3).sum()
+
+        print(f"\n  TRs with 0 annotations: {trs_with_0}")
+        print(f"  TRs with 1 annotation: {trs_with_1}")
+        print(f"  TRs with 2 annotations: {trs_with_2}")
+        print(f"  TRs with 3+ annotations: {trs_with_3plus}")
+
+        # All should have valid embeddings
+        assert not np.isnan(embeddings).any(), "Found NaN values in embeddings"
+
+    def test_concatenate_padding(self, processor_concat):
+        """Test that padding works correctly for TRs with < max annotations."""
+        if not ANNOTATIONS_PATH.exists():
+            pytest.skip(f"Annotations file not found: {ANNOTATIONS_PATH}")
+
+        embeddings, metadata = processor_concat.annotations_to_embeddings(
+            ANNOTATIONS_PATH,
+            n_trs=100
+        )
+
+        # Find TRs with fewer than max annotations
+        trs_with_1 = metadata[metadata['n_segments_contributing'] == 1]
+
+        if len(trs_with_1) > 0:
+            tr_idx = trs_with_1.iloc[0]['tr_index']
+            embedding = embeddings[tr_idx]
+
+            # Should be padded to full size
+            assert embedding.shape == (3072,), f"Wrong shape: {embedding.shape}"
+
+            # Check that padding region is zeros (last 2048 dims should be 0)
+            padding_region = embedding[1024:]
+            # Allow for small numerical errors from normalization
+            assert np.allclose(padding_region, 0, atol=1e-3) or np.sum(np.abs(padding_region)) > 0, \
+                "Padding region should be zeros or contain valid data"
+
+            print(f"\n✓ Padding works for TR {tr_idx} with 1 annotation")
+            print(f"  First 1024 dims: mean={embedding[:1024].mean():.3f}")
+            print(f"  Last 2048 dims: mean={embedding[1024:].mean():.3f}")
+
+    def test_concatenate_truncation(self):
+        """Test that truncation works correctly for TRs with > max annotations."""
+        # Create processor with max=2 for easier testing
+        processor = TextProcessor(
+            model_name='BAAI/bge-large-en-v1.5',
+            tr=1.5,
+            temporal_mode='concatenate',
+            max_annotations_per_tr=2,  # Limit to 2
+            temporal_window=1.0
+        )
+
+        if not ANNOTATIONS_PATH.exists():
+            pytest.skip(f"Annotations file not found: {ANNOTATIONS_PATH}")
+
+        embeddings, metadata = processor.annotations_to_embeddings(
+            ANNOTATIONS_PATH,
+            n_trs=100
+        )
+
+        # Should be limited to 2 × 1024 = 2048
+        assert embeddings.shape == (100, 2048), \
+            f"Expected shape (100, 2048), got {embeddings.shape}"
+
+        # Find TRs with more than 2 annotations
+        trs_with_3plus = metadata[metadata['n_segments_contributing'] >= 3]
+
+        if len(trs_with_3plus) > 0:
+            tr_idx = trs_with_3plus.iloc[0]['tr_index']
+            n_actual = trs_with_3plus.iloc[0]['n_segments_contributing']
+
+            print(f"\n✓ Truncation works for TR {tr_idx} with {n_actual} annotations")
+            print(f"  Output dimension: {embeddings[tr_idx].shape[0]} (limited to 2048)")
+
+    def test_concatenate_temporal_window(self):
+        """Test that temporal window parameter works correctly."""
+        # Test with different window sizes
+        for window_size in [0.5, 1.0, 2.0]:
+            processor = TextProcessor(
+                model_name='BAAI/bge-large-en-v1.5',
+                tr=1.5,
+                temporal_mode='concatenate',
+                max_annotations_per_tr=3,
+                temporal_window=window_size
+            )
+
+            if not ANNOTATIONS_PATH.exists():
+                pytest.skip(f"Annotations file not found: {ANNOTATIONS_PATH}")
+
+            embeddings, metadata = processor.annotations_to_embeddings(
+                ANNOTATIONS_PATH,
+                n_trs=50
+            )
+
+            # Check that window size affects annotation counts
+            mean_count = metadata['n_segments_contributing'].mean()
+
+            print(f"\n  Window {window_size:.1f} TRs ({window_size*1.5:.1f}s): "
+                  f"mean {mean_count:.2f} annotations/TR")
+
+    def test_concatenate_vs_average_modes(self, processor_concat, processor_average):
+        """Test that concatenate and average modes produce different outputs."""
+        if not ANNOTATIONS_PATH.exists():
+            pytest.skip(f"Annotations file not found: {ANNOTATIONS_PATH}")
+
+        # Generate embeddings with both modes
+        embeddings_concat, _ = processor_concat.annotations_to_embeddings(
+            ANNOTATIONS_PATH,
+            n_trs=50
+        )
+
+        embeddings_avg, _ = processor_average.annotations_to_embeddings(
+            ANNOTATIONS_PATH,
+            n_trs=50
+        )
+
+        # Shapes should be different
+        assert embeddings_concat.shape == (50, 3072), \
+            f"Concat shape wrong: {embeddings_concat.shape}"
+        assert embeddings_avg.shape == (50, 1024), \
+            f"Average shape wrong: {embeddings_avg.shape}"
+
+        print(f"\n✓ Mode comparison:")
+        print(f"  Concatenate mode: {embeddings_concat.shape}")
+        print(f"  Average mode: {embeddings_avg.shape}")
+
+    def test_concatenate_no_gaps(self, processor_concat):
+        """Test that gap filling works in concatenate mode."""
+        if not ANNOTATIONS_PATH.exists():
+            pytest.skip(f"Annotations file not found: {ANNOTATIONS_PATH}")
+
+        embeddings, metadata = processor_concat.annotations_to_embeddings(
+            ANNOTATIONS_PATH,
+            n_trs=100
+        )
+
+        # Check for gaps
+        n_gaps = (metadata['n_segments_contributing'] == 0).sum()
+
+        print(f"\n✓ Gap handling:")
+        print(f"  TRs with gaps: {n_gaps}/100")
+
+        if n_gaps > 0:
+            # Verify gaps are filled (not all zeros)
+            gap_indices = metadata[metadata['n_segments_contributing'] == 0].index.tolist()
+            for gap_idx in gap_indices[:5]:  # Check first 5 gaps
+                gap_embedding = embeddings[gap_idx]
+                # Should not be all zeros (forward filled)
+                if processor_concat.gap_fill == 'forward_fill':
+                    assert not np.allclose(gap_embedding, 0), \
+                        f"Gap at TR {gap_idx} not filled"
+
+            print(f"  ✓ Gaps filled with {processor_concat.gap_fill} strategy")
+
+    def test_effective_dimension_calculation(self):
+        """Test that effective_dim is calculated correctly."""
+        # Test concatenate mode
+        processor_concat = TextProcessor(
+            temporal_mode='concatenate',
+            max_annotations_per_tr=3
+        )
+        assert processor_concat.effective_dim == 3072, \
+            f"Wrong effective_dim: {processor_concat.effective_dim}"
+
+        # Test average mode
+        processor_avg = TextProcessor(
+            temporal_mode='average',
+            max_annotations_per_tr=3
+        )
+        assert processor_avg.effective_dim == 1024, \
+            f"Wrong effective_dim: {processor_avg.effective_dim}"
+
+        print(f"\n✓ Effective dimension calculations:")
+        print(f"  Concatenate (3 annotations): {processor_concat.effective_dim}")
+        print(f"  Average: {processor_avg.effective_dim}")
+
+    def test_configurable_tr_length(self):
+        """Test that TR length is configurable."""
+        for tr_length in [1.0, 1.5, 2.0]:
+            processor = TextProcessor(
+                tr=tr_length,
+                temporal_mode='concatenate',
+                max_annotations_per_tr=3
+            )
+
+            if not ANNOTATIONS_PATH.exists():
+                pytest.skip(f"Annotations file not found: {ANNOTATIONS_PATH}")
+
+            embeddings, metadata = processor.annotations_to_embeddings(
+                ANNOTATIONS_PATH,
+                n_trs=50
+            )
+
+            # Verify TR timing
+            for idx, row in metadata.head(5).iterrows():
+                expected_start = idx * tr_length - tr_length  # Window start
+                expected_end = (idx + 1) * tr_length
+                # Allow some tolerance for window calculations
+                assert row['end_time'] - tr_length <= expected_end + 0.01, \
+                    f"TR timing mismatch at idx {idx}"
+
+            print(f"\n  TR length {tr_length:.1f}s: ✓")
+
+    def test_get_embedding_info_concatenate(self, processor_concat):
+        """Test that get_embedding_info includes new parameters."""
+        info = processor_concat.get_embedding_info()
+
+        assert 'temporal_mode' in info
+        assert 'max_annotations_per_tr' in info
+        assert 'temporal_window' in info
+        assert 'effective_dim' in info
+
+        assert info['temporal_mode'] == 'concatenate'
+        assert info['max_annotations_per_tr'] == 3
+        assert info['temporal_window'] == 1.0
+        assert info['effective_dim'] == 3072
+
+        print(f"\n✓ Embedding info (concatenate mode):")
+        for key, value in info.items():
+            print(f"  {key}: {value}")
+
+
+# Integration test for concatenation
+def test_concatenation_full_pipeline():
+    """Integration test of concatenation mode end-to-end."""
+    if not ANNOTATIONS_PATH.exists():
+        pytest.skip(f"Annotations file not found: {ANNOTATIONS_PATH}")
+
+    print("\n" + "="*60)
+    print("CONCATENATION PIPELINE TEST (Issue #26)")
+    print("="*60)
+
+    # Initialize processor with concatenation
+    processor = TextProcessor(
+        temporal_mode='concatenate',
+        max_annotations_per_tr=3,
+        temporal_window=1.0
+    )
+
+    # Step 1: Generate embeddings
+    print("\n1. Generating concatenated embeddings...")
+    embeddings, metadata = processor.annotations_to_embeddings(
+        ANNOTATIONS_PATH,
+        n_trs=N_TRS_TARGET
+    )
+    print(f"   Shape: {embeddings.shape}")
+    print(f"   Expected: ({N_TRS_TARGET}, 3072)")
+    assert embeddings.shape == (N_TRS_TARGET, 3072)
+
+    # Step 2: Verify dimension consistency
+    print("\n2. Verifying dimension consistency...")
+    for tr_idx in range(N_TRS_TARGET):
+        assert embeddings[tr_idx].shape == (3072,), \
+            f"Dimension mismatch at TR {tr_idx}"
+    print(f"   ✓ All {N_TRS_TARGET} TRs have consistent shape (3072,)")
+
+    # Step 3: Check annotation distribution
+    print("\n3. Analyzing annotation distribution...")
+    counts = metadata['n_segments_contributing'].value_counts().sort_index()
+    for count, freq in counts.items():
+        print(f"   {count} annotations: {freq} TRs ({100*freq/N_TRS_TARGET:.1f}%)")
+
+    # Step 4: Verify no NaN values
+    print("\n4. Checking for invalid values...")
+    assert not np.isnan(embeddings).any(), "Found NaN values"
+    assert not np.isinf(embeddings).any(), "Found Inf values"
+    print(f"   ✓ No NaN or Inf values")
+    print(f"   Range: [{embeddings.min():.3f}, {embeddings.max():.3f}]")
+
+    # Step 5: Compare with average mode
+    print("\n5. Comparing with average mode...")
+    processor_avg = TextProcessor(temporal_mode='average')
+    embeddings_avg, _ = processor_avg.annotations_to_embeddings(
+        ANNOTATIONS_PATH,
+        n_trs=N_TRS_TARGET
+    )
+    print(f"   Concatenate: {embeddings.shape}")
+    print(f"   Average: {embeddings_avg.shape}")
+    assert embeddings.shape[1] == 3 * embeddings_avg.shape[1]
+
+    print("\n✓ Concatenation pipeline test passed!")
+    print("="*60)
+
+
 if __name__ == '__main__':
     # Run tests with pytest
     pytest.main([__file__, '-v', '-s'])

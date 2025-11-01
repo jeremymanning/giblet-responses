@@ -2,10 +2,13 @@
 Video processing module for multimodal fMRI autoencoder project.
 
 Handles bidirectional conversion between video files and feature matrices:
-- Video → Features: Extract, downsample, and align frames to fMRI TRs
-- Features → Video: Reconstruct video from feature matrices
+- Video → Features: Extract, downsample, and concatenate temporal windows aligned to fMRI TRs
+- Features → Video: Reconstruct video from concatenated feature matrices
 
-Default temporal alignment uses TR = 1.5 seconds (configurable).
+Temporal alignment:
+- Each TR contains concatenated frames from [t-TR, t]
+- Default TR = 1.5 seconds @ 25fps = ~37 frames per window
+- All TRs have consistent dimensions (frames concatenated as flat vectors)
 """
 
 import cv2
@@ -23,9 +26,14 @@ class VideoProcessor:
     Handles:
     - Frame extraction at native FPS
     - Spatial downsampling (640×360 → 160×90)
-    - Temporal aggregation to match fMRI TR (1.5s bins)
+    - Temporal concatenation: each TR contains frames from [t-TR, t]
     - Normalization to [0, 1] range
-    - Video reconstruction from features
+    - Video reconstruction from concatenated features
+
+    Temporal Concatenation:
+    - Each TR contains all frames from the preceding TR window
+    - For TR=1.5s at 25fps: ~37 frames concatenated into flat vector
+    - Ensures consistent dimensions across all TRs via padding if needed
 
     Parameters
     ----------
@@ -50,7 +58,7 @@ class VideoProcessor:
         self.target_width = target_width
         self.tr = tr
         self.normalize = normalize
-        self.n_features = target_height * target_width * 3  # RGB channels
+        self.frame_features = target_height * target_width * 3  # RGB channels per frame
 
     def video_to_features(
         self,
@@ -58,7 +66,9 @@ class VideoProcessor:
         max_trs: Optional[int] = None
     ) -> Tuple[np.ndarray, pd.DataFrame]:
         """
-        Convert video file to feature matrix aligned to fMRI TRs.
+        Convert video file to feature matrix with temporal concatenation aligned to fMRI TRs.
+
+        Each TR contains concatenated frames from temporal window [t-TR, t].
 
         Parameters
         ----------
@@ -70,16 +80,19 @@ class VideoProcessor:
         Returns
         -------
         features : np.ndarray
-            Shape (n_trs, n_features) where n_features = height * width * 3
-            Features are flattened RGB frames
+            Shape (n_trs, n_features) where n_features = frames_per_tr * height * width * 3
+            Features are concatenated flattened RGB frames from temporal window
         metadata : pd.DataFrame
-            DataFrame with columns: tr_index, start_time, end_time, n_frames_aggregated
+            DataFrame with columns: tr_index, start_time, end_time, n_frames_concatenated,
+            frames_per_tr
 
         Notes
         -----
-        - Aggregates multiple video frames into each TR bin
-        - Uses average pooling across frames within each TR
-        - First TR starts at t=0, subsequent TRs at t=1.5, 3.0, ...
+        - Concatenates all frames within each TR window [t-TR, t]
+        - For TR=1.5s @ 25fps: ~37 frames concatenated per TR
+        - First TR may be padded with zeros (no previous frames available)
+        - Last TR may be padded if incomplete
+        - All TRs guaranteed to have consistent dimensions via padding
         """
         video_path = Path(video_path)
         if not video_path.exists():
@@ -95,69 +108,106 @@ class VideoProcessor:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         duration = total_frames / fps
 
+        # Calculate frames per TR window
+        frames_per_tr = int(np.round(fps * self.tr))
+
         # Calculate number of TRs
         n_trs = int(np.floor(duration / self.tr))
         if max_trs is not None:
             n_trs = min(n_trs, max_trs)
 
         # Pre-allocate feature matrix
-        features = np.zeros((n_trs, self.n_features), dtype=np.float32)
+        # Each TR contains frames_per_tr concatenated frames
+        n_features_per_tr = frames_per_tr * self.frame_features
+        features = np.zeros((n_trs, n_features_per_tr), dtype=np.float32)
 
         # Metadata for each TR
         tr_metadata = []
 
         # Process each TR
         for tr_idx in tqdm(range(n_trs), desc="Processing video"):
-            # Time window for this TR
-            start_time = tr_idx * self.tr
-            end_time = start_time + self.tr
+            # Time window for this TR: [t-TR, t]
+            end_time = (tr_idx + 1) * self.tr
+            start_time = end_time - self.tr
 
-            # Frame indices for this TR
-            start_frame = int(start_time * fps)
+            # Frame indices for this TR window
             end_frame = int(end_time * fps)
+            start_frame = end_frame - frames_per_tr
 
-            # Extract and aggregate frames within this TR
+            # Extract frames within this TR window
             tr_frames = []
             for frame_idx in range(start_frame, end_frame):
-                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-                ret, frame = cap.read()
+                if frame_idx < 0:
+                    # Before video start - create zero-padded frame
+                    zero_frame = np.zeros(
+                        (self.target_height, self.target_width, 3),
+                        dtype=np.float32
+                    )
+                    tr_frames.append(zero_frame)
+                elif frame_idx >= total_frames:
+                    # After video end - create zero-padded frame
+                    zero_frame = np.zeros(
+                        (self.target_height, self.target_width, 3),
+                        dtype=np.float32
+                    )
+                    tr_frames.append(zero_frame)
+                else:
+                    # Normal frame extraction
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+                    ret, frame = cap.read()
 
-                if not ret:
-                    break
+                    if not ret:
+                        # Failed to read frame - use zero padding
+                        zero_frame = np.zeros(
+                            (self.target_height, self.target_width, 3),
+                            dtype=np.float32
+                        )
+                        tr_frames.append(zero_frame)
+                    else:
+                        # Convert BGR to RGB
+                        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-                # Convert BGR to RGB
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        # Downsample
+                        frame = cv2.resize(
+                            frame,
+                            (self.target_width, self.target_height),
+                            interpolation=cv2.INTER_AREA
+                        )
 
-                # Downsample
-                frame = cv2.resize(
-                    frame,
-                    (self.target_width, self.target_height),
-                    interpolation=cv2.INTER_AREA
-                )
+                        # Convert to float and normalize if requested
+                        frame = frame.astype(np.float32)
+                        if self.normalize:
+                            frame = frame / 255.0
 
-                tr_frames.append(frame)
+                        tr_frames.append(frame)
 
-            if len(tr_frames) == 0:
-                # No frames in this TR (shouldn't happen but handle gracefully)
-                print(f"Warning: No frames found for TR {tr_idx}")
-                continue
+            # Ensure we have exactly frames_per_tr frames
+            if len(tr_frames) < frames_per_tr:
+                # Pad with zeros if needed
+                n_padding = frames_per_tr - len(tr_frames)
+                for _ in range(n_padding):
+                    zero_frame = np.zeros(
+                        (self.target_height, self.target_width, 3),
+                        dtype=np.float32
+                    )
+                    tr_frames.append(zero_frame)
+            elif len(tr_frames) > frames_per_tr:
+                # Truncate if somehow we have too many
+                tr_frames = tr_frames[:frames_per_tr]
 
-            # Average frames within TR
-            tr_frame = np.mean(tr_frames, axis=0).astype(np.float32)
+            # Convert to numpy array: (frames_per_tr, H, W, C)
+            tr_frames = np.array(tr_frames, dtype=np.float32)
 
-            # Normalize if requested
-            if self.normalize:
-                tr_frame = tr_frame / 255.0
-
-            # Flatten and store
-            features[tr_idx] = tr_frame.flatten()
+            # Flatten and concatenate all frames into single vector
+            features[tr_idx] = tr_frames.reshape(-1)
 
             # Store metadata
             tr_metadata.append({
                 'tr_index': tr_idx,
                 'start_time': start_time,
                 'end_time': end_time,
-                'n_frames_aggregated': len(tr_frames)
+                'n_frames_concatenated': len(tr_frames),
+                'frames_per_tr': frames_per_tr
             })
 
         cap.release()
@@ -174,12 +224,12 @@ class VideoProcessor:
         metadata: Optional[pd.DataFrame] = None
     ) -> None:
         """
-        Reconstruct video from feature matrix.
+        Reconstruct video from concatenated temporal feature matrix.
 
         Parameters
         ----------
         features : np.ndarray
-            Shape (n_trs, n_features) feature matrix
+            Shape (n_trs, n_features) feature matrix with concatenated temporal windows
         output_path : str or Path
             Path for output video file
         fps : float, default=25
@@ -189,20 +239,25 @@ class VideoProcessor:
 
         Notes
         -----
-        - Each TR's features are duplicated to fill the TR duration at target FPS
-        - For TR=1.5s at 25fps, each feature frame is duplicated ~37-38 times
+        - Each TR contains concatenated frames from temporal window
+        - Extracts the last frame from each window to represent the TR
+        - For TR=1.5s at 25fps: extracts frame 37 of 37 as representative frame
         """
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         n_trs = features.shape[0]
 
+        # Calculate frames per TR
+        frames_per_tr = int(np.round(self.tr * fps))
+
         # Denormalize if needed
         if self.normalize:
             features = features * 255.0
 
-        # Reshape features to frames
-        frames = features.reshape(n_trs, self.target_height, self.target_width, 3)
+        # Reshape features to concatenated frames
+        # (n_trs, frames_per_tr, H, W, C)
+        frames = features.reshape(n_trs, frames_per_tr, self.target_height, self.target_width, 3)
         frames = np.clip(frames, 0, 255).astype(np.uint8)
 
         # Initialize video writer
@@ -219,12 +274,11 @@ class VideoProcessor:
 
         # Write frames
         for tr_idx in tqdm(range(n_trs), desc="Writing video"):
-            # Convert RGB back to BGR for OpenCV
-            frame_bgr = cv2.cvtColor(frames[tr_idx], cv2.COLOR_RGB2BGR)
-
-            # Duplicate frame to fill TR duration
-            frames_per_tr = int(np.round(self.tr * fps))
-            for _ in range(frames_per_tr):
+            # Write all frames from this TR window
+            for frame_idx in range(frames_per_tr):
+                frame = frames[tr_idx, frame_idx]
+                # Convert RGB back to BGR for OpenCV
+                frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 out.write(frame_bgr)
 
         out.release()

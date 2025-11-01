@@ -107,13 +107,14 @@ class AudioProcessor:
         self,
         audio_source: Union[str, Path],
         max_trs: Optional[int] = None,
-        from_video: bool = True
+        from_video: bool = True,
+        tr_length: Optional[float] = None
     ) -> Tuple[np.ndarray, pd.DataFrame]:
         """
         Convert audio to features (EnCodec codes or mel spectrogram) aligned to fMRI TRs.
 
         Two modes:
-        1. EnCodec mode (use_encodec=True): Returns integer codes
+        1. EnCodec mode (use_encodec=True): Returns flattened integer codes
         2. Mel spectrogram mode (use_encodec=False): Returns dB-scale mel features
 
         Parameters
@@ -124,34 +125,45 @@ class AudioProcessor:
             Maximum number of TRs to extract
         from_video : bool, default=True
             If True, extract audio from video file
+        tr_length : float, optional
+            TR duration in seconds (overrides self.tr if provided)
 
         Returns
         -------
         features : np.ndarray
-            EnCodec mode: Shape (n_trs, n_codebooks, frames_per_tr), dtype int64
-                         n_codebooks = 1 for 24kHz mono
-                         frames_per_tr = 75 * TR (75 Hz frame rate)
+            EnCodec mode: Shape (n_trs, n_codebooks * frames_per_tr), dtype int64
+                         Example: TR=1.5s, 8 codebooks, 112 frames → (n_trs, 896)
+                         Flattened for consistent dimensions
             Mel mode: Shape (n_trs, n_mels, frames_per_tr), dtype float32
         metadata : pd.DataFrame
             DataFrame with: tr_index, start_time, end_time, n_frames, encoding_mode
 
         Notes
         -----
-        EnCodec mode:
+        EnCodec mode (temporal concatenation):
         - Resamples to 24kHz mono
         - Encodes with neural codec at specified bandwidth
         - Frame rate: 75 Hz (fixed by EnCodec)
+        - Concatenates codes from [t-TR, t] for each TR
+        - Flattens to 1D for consistent dimensions across all TRs
         - Returns integer codebook indices
 
         Mel spectrogram mode:
         - Uses librosa to extract mel spectrogram
         - Converts to log scale (dB)
         - Preserves temporal frames within each TR
+
+        Examples
+        --------
+        >>> processor = AudioProcessor(use_encodec=True, encodec_bandwidth=3.0, tr=1.5)
+        >>> features, metadata = processor.audio_to_features('video.mp4', max_trs=100)
+        >>> features.shape
+        (100, 896)  # 100 TRs × 896 codes (8 codebooks × 112 frames)
         """
         audio_source = Path(audio_source)
 
         if self.use_encodec:
-            return self._audio_to_features_encodec(audio_source, max_trs, from_video)
+            return self._audio_to_features_encodec(audio_source, max_trs, from_video, tr_length)
         else:
             return self._audio_to_features_mel(audio_source, max_trs, from_video)
 
@@ -159,9 +171,58 @@ class AudioProcessor:
         self,
         audio_source: Union[str, Path],
         max_trs: Optional[int] = None,
-        from_video: bool = True
+        from_video: bool = True,
+        tr_length: Optional[float] = None
     ) -> Tuple[np.ndarray, pd.DataFrame]:
-        """EnCodec-based audio encoding."""
+        """
+        EnCodec-based audio encoding with temporal concatenation.
+
+        For each TR at time t, concatenates EnCodec codes from [t-TR, t].
+        This ensures consistent dimensions across all TRs and preserves
+        temporal structure.
+
+        Parameters
+        ----------
+        audio_source : str or Path
+            Path to audio/video file
+        max_trs : int, optional
+            Maximum number of TRs to extract
+        from_video : bool, default=True
+            If True, extract audio from video file
+        tr_length : float, optional
+            TR duration in seconds (overrides self.tr if provided)
+
+        Returns
+        -------
+        features : np.ndarray
+            Shape: (n_trs, n_codebooks * frames_per_tr)
+            Flattened EnCodec codes for consistent dimensions
+            dtype: int64
+        metadata : pd.DataFrame
+            DataFrame with: tr_index, start_time, end_time, n_frames,
+                           n_codebooks, encoding_mode
+
+        Notes
+        -----
+        EnCodec parameters:
+        - Sample rate: 24kHz (self.encodec_sample_rate)
+        - Frame rate: 75 Hz (fixed by EnCodec architecture)
+        - Bandwidth: self.encodec_bandwidth kbps (default 3.0)
+        - Codebooks: Determined by bandwidth (3.0 kbps → 8 codebooks)
+
+        Temporal concatenation:
+        - TR=1.5s @ 75Hz → 112 frames per TR
+        - 8 codebooks × 112 frames = 896 codes per TR
+        - Output: (n_trs, 896) flattened int64 array
+
+        Dimension mismatch fix:
+        - Previous issue: Variable codebook counts (4 vs 0) across TRs
+        - Solution: Enforce consistent codebook count using bandwidth setting
+        - All TRs now have same shape regardless of audio content
+        """
+        # Use provided TR length or fall back to instance default
+        tr_length = tr_length if tr_length is not None else self.tr
+
         # Load audio
         if from_video:
             y, sr = librosa.load(str(audio_source), sr=self.encodec_sample_rate, mono=False)
@@ -178,11 +239,12 @@ class AudioProcessor:
         duration = len(y) / sr
 
         # Calculate number of TRs
-        n_trs = int(np.floor(duration / self.tr))
+        n_trs = int(np.floor(duration / tr_length))
         if max_trs is not None:
             n_trs = min(n_trs, max_trs)
 
-        # EnCodec encoding
+        # EnCodec encoding with explicit bandwidth setting
+        # This ensures consistent codebook count across all frames
         inputs = self.encodec_processor(raw_audio=y, sampling_rate=sr, return_tensors="pt")
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
@@ -196,50 +258,80 @@ class AudioProcessor:
         # Extract codes: shape is [batch=1, n_codebooks, n_frames]
         codes = encoded.audio_codes[0].cpu()  # [n_codebooks, n_frames]
 
+        # Determine expected codebook count based on bandwidth
+        # EnCodec 24kHz model: 3.0 kbps → 8 codebooks
+        # See: https://github.com/facebookresearch/encodec
+        bandwidth_to_codebooks = {
+            1.5: 2,
+            3.0: 8,
+            6.0: 16,
+            12.0: 32,
+            24.0: 32
+        }
+        expected_codebooks = bandwidth_to_codebooks.get(self.encodec_bandwidth, codes.shape[0])
+
         # EnCodec frame rate is 75 Hz (fixed)
         encodec_frame_rate = 75.0
-        frames_per_tr = int(encodec_frame_rate * self.tr)
+        frames_per_tr = int(encodec_frame_rate * tr_length)
 
-        # Align to TRs
+        # Align to TRs with temporal concatenation
         features = []
         tr_metadata = []
 
         for tr_idx in range(n_trs):
-            start_time = tr_idx * self.tr
-            end_time = start_time + self.tr
+            # Temporal window: [t-TR, t]
+            start_time = tr_idx * tr_length
+            end_time = start_time + tr_length
 
             # Frame indices
             start_frame = int(start_time * encodec_frame_rate)
             end_frame = int(end_time * encodec_frame_rate)
 
-            # Extract frames for this TR
+            # Extract frames for this TR window
             if end_frame <= codes.shape[1]:
                 tr_codes = codes[:, start_frame:end_frame]
             else:
-                # Pad if needed
+                # Pad if needed (end of audio)
                 tr_codes = codes[:, start_frame:]
                 padding_needed = frames_per_tr - tr_codes.shape[1]
                 if padding_needed > 0:
                     tr_codes = torch.nn.functional.pad(tr_codes, (0, padding_needed), value=0)
 
-            # Ensure consistent shape
+            # Ensure consistent temporal dimension
             if tr_codes.shape[1] > frames_per_tr:
                 tr_codes = tr_codes[:, :frames_per_tr]
             elif tr_codes.shape[1] < frames_per_tr:
                 padding = frames_per_tr - tr_codes.shape[1]
                 tr_codes = torch.nn.functional.pad(tr_codes, (0, padding), value=0)
 
-            features.append(tr_codes)
+            # CRITICAL FIX: Ensure consistent codebook dimension
+            # This fixes the "RuntimeError: stack expects each tensor to be equal size,
+            # but got [1, 4, 106697] at entry 0 and [1, 0, 106705] at entry 1" error
+            if tr_codes.shape[0] != expected_codebooks:
+                # Create properly shaped tensor
+                normalized_codes = torch.zeros(expected_codebooks, frames_per_tr, dtype=tr_codes.dtype)
+                # Copy available codebooks (pad with zeros if fewer, crop if more)
+                n_available = min(tr_codes.shape[0], expected_codebooks)
+                normalized_codes[:n_available, :] = tr_codes[:n_available, :]
+                tr_codes = normalized_codes
+
+            # Flatten to 1D: (n_codebooks, frames_per_tr) → (n_codebooks * frames_per_tr,)
+            # This ensures consistent dimensions for torch.stack() and training
+            tr_codes_flat = tr_codes.reshape(-1)
+
+            features.append(tr_codes_flat)
 
             tr_metadata.append({
                 'tr_index': tr_idx,
                 'start_time': start_time,
                 'end_time': end_time,
-                'n_frames': tr_codes.shape[1],
+                'n_frames': frames_per_tr,
+                'n_codebooks': expected_codebooks,
                 'encoding_mode': 'encodec'
             })
 
-        # Stack: (n_trs, n_codebooks, frames_per_tr)
+        # Stack: (n_trs, n_codebooks * frames_per_tr)
+        # All TRs now have identical shape
         features = torch.stack(features).numpy().astype(np.int64)
         metadata_df = pd.DataFrame(tr_metadata)
 
@@ -336,7 +428,9 @@ class AudioProcessor:
     def features_to_audio(
         self,
         features: np.ndarray,
-        output_path: Union[str, Path]
+        output_path: Union[str, Path],
+        n_codebooks: Optional[int] = None,
+        frames_per_tr: Optional[int] = None
     ) -> None:
         """
         Reconstruct audio from features (EnCodec codes or mel spectrogram).
@@ -348,17 +442,27 @@ class AudioProcessor:
         Parameters
         ----------
         features : np.ndarray
-            EnCodec: Shape (n_trs, n_codebooks, frames_per_tr), dtype int64
+            EnCodec (new): Shape (n_trs, n_codebooks * frames_per_tr), dtype int64
+                          Flattened codes from temporal concatenation
+            EnCodec (old): Shape (n_trs, n_codebooks, frames_per_tr), dtype int64
+                          Legacy 3D format (still supported)
             Mel: Shape (n_trs, n_mels, frames_per_tr), dtype float32
             Legacy: Shape (n_trs, n_mels), dtype float32 (2D)
         output_path : str or Path
             Path for output audio file
+        n_codebooks : int, optional
+            Number of codebooks (required for flattened EnCodec format)
+            If not provided, will attempt to infer from bandwidth setting
+        frames_per_tr : int, optional
+            Frames per TR (required for flattened EnCodec format)
+            If not provided, will use default based on self.tr
 
         Notes
         -----
         EnCodec mode:
         - Uses neural decoder for high-quality reconstruction
         - Output sample rate: 24kHz
+        - Supports both flattened (2D) and legacy (3D) formats
 
         Mel spectrogram mode:
         - Uses Griffin-Lim algorithm for phase reconstruction
@@ -370,7 +474,7 @@ class AudioProcessor:
         # Auto-detect format based on dtype and shape
         if features.dtype in [np.int32, np.int64]:
             # EnCodec codes (integer)
-            self._features_to_audio_encodec(features, output_path)
+            self._features_to_audio_encodec(features, output_path, n_codebooks, frames_per_tr)
         else:
             # Mel spectrogram (float)
             self._features_to_audio_mel(features, output_path)
@@ -378,17 +482,79 @@ class AudioProcessor:
     def _features_to_audio_encodec(
         self,
         features: np.ndarray,
-        output_path: Union[str, Path]
+        output_path: Union[str, Path],
+        n_codebooks: Optional[int] = None,
+        frames_per_tr: Optional[int] = None
     ) -> None:
-        """Decode EnCodec codes to audio."""
+        """
+        Decode EnCodec codes to audio.
+
+        Supports both flattened (2D) and legacy (3D) formats.
+
+        Parameters
+        ----------
+        features : np.ndarray
+            Shape: (n_trs, n_codebooks * frames_per_tr) [new flattened format]
+                or (n_trs, n_codebooks, frames_per_tr) [legacy 3D format]
+        output_path : str or Path
+            Output audio file path
+        n_codebooks : int, optional
+            Number of codebooks (for 2D format). If not provided, inferred from bandwidth.
+        frames_per_tr : int, optional
+            Frames per TR (for 2D format). If not provided, calculated from self.tr.
+        """
         if not self.use_encodec:
             raise ValueError("EnCodec decoder not available. Use use_encodec=True when initializing AudioProcessor.")
 
-        # Features shape: (n_trs, n_codebooks, frames_per_tr)
-        n_trs, n_codebooks, frames_per_tr = features.shape
+        # Detect format: 2D (flattened) or 3D (legacy)
+        if features.ndim == 2:
+            # New flattened format: (n_trs, n_codebooks * frames_per_tr)
+            n_trs, flat_dim = features.shape
+
+            # Infer n_codebooks if not provided
+            if n_codebooks is None:
+                bandwidth_to_codebooks = {
+                    1.5: 2,
+                    3.0: 8,
+                    6.0: 16,
+                    12.0: 32,
+                    24.0: 32
+                }
+                n_codebooks = bandwidth_to_codebooks.get(self.encodec_bandwidth, 8)
+
+            # Infer frames_per_tr if not provided
+            if frames_per_tr is None:
+                encodec_frame_rate = 75.0
+                frames_per_tr = int(encodec_frame_rate * self.tr)
+
+            # Verify dimensions
+            expected_flat_dim = n_codebooks * frames_per_tr
+            if flat_dim != expected_flat_dim:
+                # Try to infer from actual dimension
+                if flat_dim % frames_per_tr == 0:
+                    n_codebooks = flat_dim // frames_per_tr
+                elif flat_dim % n_codebooks == 0:
+                    frames_per_tr = flat_dim // n_codebooks
+                else:
+                    raise ValueError(
+                        f"Cannot reshape features with dim {flat_dim} into "
+                        f"({n_codebooks}, {frames_per_tr}). "
+                        f"Expected: {expected_flat_dim}"
+                    )
+
+            # Reshape to 3D: (n_trs, flat_dim) → (n_trs, n_codebooks, frames_per_tr)
+            features_3d = features.reshape(n_trs, n_codebooks, frames_per_tr)
+
+        elif features.ndim == 3:
+            # Legacy 3D format: (n_trs, n_codebooks, frames_per_tr)
+            features_3d = features
+            n_trs, n_codebooks, frames_per_tr = features.shape
+
+        else:
+            raise ValueError(f"Expected 2D or 3D features, got shape {features.shape}")
 
         # Reshape to (1, n_codebooks, total_frames)
-        codes = torch.tensor(features, dtype=torch.long)
+        codes = torch.tensor(features_3d, dtype=torch.long)
         codes = codes.permute(1, 0, 2).reshape(1, n_codebooks, -1).to(self.device)
 
         # Decode with EnCodec

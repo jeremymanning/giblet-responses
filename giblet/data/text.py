@@ -34,6 +34,7 @@ class TextProcessor:
     - Loading annotations from Excel files
     - Text embedding using BAAI/bge-large-en-v1.5 (1024-dim)
     - Temporal alignment to fMRI TRs (1.5s bins)
+    - Temporal concatenation of embeddings within windows
     - Handling overlapping segments and gaps
     - Text recovery using nearest-neighbor search
 
@@ -45,10 +46,21 @@ class TextProcessor:
         fMRI repetition time in seconds
     aggregation : str, default='mean'
         How to handle overlapping segments: 'mean', 'first', 'last', 'max'
+        Used in 'average' mode or for legacy compatibility
     gap_fill : str, default='forward_fill'
         How to handle gaps: 'forward_fill', 'zero', 'interpolate'
     device : str, optional
         Device for model inference ('cuda', 'cpu', or None for auto-detect)
+    temporal_mode : str, default='concatenate'
+        Temporal aggregation mode: 'concatenate' or 'average'
+        - 'concatenate': Stack embeddings from temporal window (Issue #26)
+        - 'average': Average embeddings (legacy behavior)
+    max_annotations_per_tr : int, default=3
+        Maximum annotations to concatenate per TR (used in 'concatenate' mode)
+        Output will be padded/truncated to this size
+    temporal_window : float, default=1.0
+        Temporal window size in TR units (future extensibility)
+        Currently uses [t - window*TR, t] for each TR
     """
 
     def __init__(
@@ -57,7 +69,10 @@ class TextProcessor:
         tr: float = 1.5,
         aggregation: str = 'mean',
         gap_fill: str = 'forward_fill',
-        device: Optional[str] = None
+        device: Optional[str] = None,
+        temporal_mode: str = 'concatenate',
+        max_annotations_per_tr: int = 3,
+        temporal_window: float = 1.0
     ):
         if not SENTENCE_TRANSFORMERS_AVAILABLE:
             raise ImportError(
@@ -70,7 +85,16 @@ class TextProcessor:
         self.aggregation = aggregation
         self.gap_fill = gap_fill
         self.device = device
+        self.temporal_mode = temporal_mode  # 'concatenate' or 'average'
+        self.max_annotations_per_tr = max_annotations_per_tr
+        self.temporal_window = temporal_window  # Window size in TR units
         self.n_features = 1024  # BGE-large-en-v1.5 embedding dimension
+
+        # Calculate effective feature dimension based on mode
+        if temporal_mode == 'concatenate':
+            self.effective_dim = self.n_features * max_annotations_per_tr
+        else:
+            self.effective_dim = self.n_features
 
         # Lazy load model
         self._model = None
@@ -184,7 +208,9 @@ class TextProcessor:
         Returns
         -------
         tr_embeddings : np.ndarray
-            Shape (n_trs, embedding_dim) aligned embeddings
+            Shape (n_trs, effective_dim) aligned embeddings
+            - 'concatenate' mode: (n_trs, n_features * max_annotations_per_tr)
+            - 'average' mode: (n_trs, n_features)
         metadata : pd.DataFrame
             Metadata for each TR: tr_index, start_time, end_time,
             n_segments_contributing, segment_indices
@@ -194,7 +220,22 @@ class TextProcessor:
         - Handles overlapping segments using self.aggregation strategy
         - Fills gaps using self.gap_fill strategy
         - Each TR corresponds to time window [tr_idx * TR, (tr_idx + 1) * TR)
+        - In 'concatenate' mode: stacks embeddings with padding/truncation
+        - In 'average' mode: averages embeddings (legacy behavior)
         """
+        # Choose alignment mode
+        if self.temporal_mode == 'concatenate':
+            return self._align_to_trs_concatenate(annotations, embeddings, n_trs)
+        else:
+            return self._align_to_trs_average(annotations, embeddings, n_trs)
+
+    def _align_to_trs_average(
+        self,
+        annotations: pd.DataFrame,
+        embeddings: np.ndarray,
+        n_trs: int
+    ) -> Tuple[np.ndarray, pd.DataFrame]:
+        """Legacy averaging mode for backward compatibility."""
         tr_embeddings = np.zeros((n_trs, self.n_features), dtype=np.float32)
         tr_metadata = []
 
@@ -257,13 +298,82 @@ class TextProcessor:
 
         return tr_embeddings, metadata_df
 
+    def _align_to_trs_concatenate(
+        self,
+        annotations: pd.DataFrame,
+        embeddings: np.ndarray,
+        n_trs: int
+    ) -> Tuple[np.ndarray, pd.DataFrame]:
+        """
+        Concatenate embeddings from temporal window [t-TR, t].
+
+        For each TR at time t, includes all annotations that overlap
+        with the temporal window [t - temporal_window*TR, t].
+        Concatenates up to max_annotations_per_tr embeddings.
+        """
+        tr_embeddings = np.zeros((n_trs, self.effective_dim), dtype=np.float32)
+        tr_metadata = []
+
+        for tr_idx in range(n_trs):
+            # Define temporal window for this TR
+            tr_end = (tr_idx + 1) * self.tr
+            tr_start = tr_end - (self.temporal_window * self.tr)
+            tr_start = max(0, tr_start)  # Clamp to non-negative time
+
+            # Find annotations overlapping this temporal window
+            overlapping_mask = (
+                (annotations['Start Time (s)'] < tr_end) &
+                (annotations['End Time (s)'] > tr_start)
+            )
+            overlapping_indices = annotations[overlapping_mask].index.tolist()
+
+            # Get embeddings for overlapping annotations
+            n_overlapping = len(overlapping_indices)
+
+            if n_overlapping > 0:
+                # Take up to max_annotations_per_tr embeddings
+                selected_indices = overlapping_indices[:self.max_annotations_per_tr]
+                selected_embeddings = embeddings[selected_indices]
+
+                # Concatenate embeddings
+                concat_embedding = selected_embeddings.flatten()
+
+                # Handle padding/truncation
+                if len(concat_embedding) < self.effective_dim:
+                    # Pad with zeros
+                    padded = np.zeros(self.effective_dim, dtype=np.float32)
+                    padded[:len(concat_embedding)] = concat_embedding
+                    tr_embeddings[tr_idx] = padded
+                elif len(concat_embedding) > self.effective_dim:
+                    # Truncate (shouldn't happen if max_annotations_per_tr is correct)
+                    tr_embeddings[tr_idx] = concat_embedding[:self.effective_dim]
+                else:
+                    # Exact match
+                    tr_embeddings[tr_idx] = concat_embedding
+
+            # Store metadata
+            tr_metadata.append({
+                'tr_index': tr_idx,
+                'start_time': tr_start,
+                'end_time': tr_end,
+                'n_segments_contributing': n_overlapping,
+                'segment_indices': overlapping_indices
+            })
+
+        # Fill gaps (for TRs with no annotations)
+        tr_embeddings = self._fill_gaps_concatenate(tr_embeddings, tr_metadata)
+
+        metadata_df = pd.DataFrame(tr_metadata)
+
+        return tr_embeddings, metadata_df
+
     def _fill_gaps(
         self,
         tr_embeddings: np.ndarray,
         tr_metadata: List[Dict]
     ) -> np.ndarray:
         """
-        Fill gaps where no segments contributed.
+        Fill gaps where no segments contributed (average mode).
 
         Parameters
         ----------
@@ -302,6 +412,77 @@ class TextProcessor:
 
         elif self.gap_fill == 'interpolate':
             # Linear interpolation between valid values
+            for gap_idx in gaps:
+                # Find previous and next valid TRs
+                prev_idx = gap_idx - 1
+                while prev_idx >= 0 and tr_metadata[prev_idx]['n_segments_contributing'] == 0:
+                    prev_idx -= 1
+
+                next_idx = gap_idx + 1
+                while next_idx < n_trs and tr_metadata[next_idx]['n_segments_contributing'] == 0:
+                    next_idx += 1
+
+                if prev_idx >= 0 and next_idx < n_trs:
+                    # Interpolate between prev and next
+                    alpha = (gap_idx - prev_idx) / (next_idx - prev_idx)
+                    filled[gap_idx] = (1 - alpha) * filled[prev_idx] + alpha * filled[next_idx]
+                elif prev_idx >= 0:
+                    # Only previous valid, forward fill
+                    filled[gap_idx] = filled[prev_idx]
+                elif next_idx < n_trs:
+                    # Only next valid, backward fill
+                    filled[gap_idx] = filled[next_idx]
+
+        else:
+            raise ValueError(f"Unknown gap_fill strategy: {self.gap_fill}")
+
+        return filled
+
+    def _fill_gaps_concatenate(
+        self,
+        tr_embeddings: np.ndarray,
+        tr_metadata: List[Dict]
+    ) -> np.ndarray:
+        """
+        Fill gaps where no segments contributed (concatenate mode).
+
+        Parameters
+        ----------
+        tr_embeddings : np.ndarray
+            Shape (n_trs, effective_dim)
+        tr_metadata : list of dict
+            Metadata with n_segments_contributing for each TR
+
+        Returns
+        -------
+        filled_embeddings : np.ndarray
+            Embeddings with gaps filled
+        """
+        filled = tr_embeddings.copy()
+        n_trs = len(tr_metadata)
+
+        # Find gaps (TRs with no contributing segments)
+        gaps = [i for i, meta in enumerate(tr_metadata)
+                if meta['n_segments_contributing'] == 0]
+
+        if len(gaps) == 0:
+            return filled
+
+        if self.gap_fill == 'forward_fill':
+            # Forward fill from last valid value
+            last_valid = None
+            for tr_idx in range(n_trs):
+                if tr_metadata[tr_idx]['n_segments_contributing'] > 0:
+                    last_valid = filled[tr_idx].copy()
+                elif last_valid is not None:
+                    filled[tr_idx] = last_valid
+
+        elif self.gap_fill == 'zero':
+            # Gaps remain zero (already initialized to zero)
+            pass
+
+        elif self.gap_fill == 'interpolate':
+            # Linear interpolation between valid values (works for concatenated embeddings too)
             for gap_idx in gaps:
                 # Find previous and next valid TRs
                 prev_idx = gap_idx - 1
@@ -492,15 +673,19 @@ class TextProcessor:
         Returns
         -------
         info : dict
-            Model name, embedding dimension, device
+            Model name, embedding dimension, device, temporal mode, etc.
         """
         self._load_model()
 
         return {
             'model_name': self.model_name,
             'embedding_dim': self.n_features,
+            'effective_dim': self.effective_dim,
             'device': str(self._model.device),
             'tr': self.tr,
+            'temporal_mode': self.temporal_mode,
+            'max_annotations_per_tr': self.max_annotations_per_tr,
+            'temporal_window': self.temporal_window,
             'aggregation': self.aggregation,
             'gap_fill': self.gap_fill
         }
