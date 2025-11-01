@@ -161,7 +161,7 @@ class TestMultimodalEncoder:
         assert encoder.audio_mels == 2048  # Default is 2048, not 128
         assert encoder.text_dim == 1024
         assert encoder.n_voxels == 85810
-        assert encoder.bottleneck_dim == 8000
+        assert encoder.bottleneck_dim == 2048  # Layer 7: BOTTLENECK (smallest layer)
 
     def test_encoder_forward_single(self):
         """Test encoder forward pass with single sample."""
@@ -178,7 +178,7 @@ class TestMultimodalEncoder:
             bottleneck, voxels = encoder(video, audio, text, return_voxels=True)
 
         # Check output shapes
-        assert bottleneck.shape == (1, 8000)
+        assert bottleneck.shape == (1, 2048)  # Layer 7: BOTTLENECK (smallest layer)
         assert voxels.shape == (1, 85810)
         assert not torch.isnan(bottleneck).any()
         assert not torch.isnan(voxels).any()
@@ -199,7 +199,7 @@ class TestMultimodalEncoder:
             bottleneck, voxels = encoder(video, audio, text, return_voxels=True)
 
         # Check output shapes
-        assert bottleneck.shape == (batch_size, 8000)
+        assert bottleneck.shape == (batch_size, 2048)  # Layer 7: BOTTLENECK (smallest layer)
         assert voxels.shape == (batch_size, 85810)
         assert not torch.isnan(bottleneck).any()
         assert not torch.isnan(voxels).any()
@@ -219,7 +219,7 @@ class TestMultimodalEncoder:
             bottleneck, voxels = encoder(video, audio, text, return_voxels=False)
 
         # Check outputs
-        assert bottleneck.shape == (4, 8000)
+        assert bottleneck.shape == (4, 2048)  # Layer 7: BOTTLENECK (smallest layer)
         assert voxels is None
 
     def test_encoder_parameter_count(self):
@@ -232,7 +232,9 @@ class TestMultimodalEncoder:
         assert 'audio_encoder' in param_dict
         assert 'text_encoder' in param_dict
         assert 'feature_conv' in param_dict
-        assert 'to_bottleneck' in param_dict
+        assert 'layer5' in param_dict
+        assert 'layer6' in param_dict
+        assert 'layer7_bottleneck' in param_dict
         assert 'bottleneck_to_voxels' in param_dict
         assert 'total' in param_dict
 
@@ -305,7 +307,7 @@ class TestCreateEncoder:
         encoder = create_encoder()
         assert isinstance(encoder, MultimodalEncoder)
         assert encoder.n_voxels == 85810
-        assert encoder.bottleneck_dim == 8000
+        assert encoder.bottleneck_dim == 2048  # Layer 7: BOTTLENECK (smallest layer)
 
     def test_create_encoder_custom(self):
         """Test factory function with custom parameters."""
@@ -328,7 +330,7 @@ class TestEncoderIntegration:
             audio_mels=2048,
             text_dim=1024,
             n_voxels=85810,
-            bottleneck_dim=8000
+            bottleneck_dim=2048  # Layer 7: BOTTLENECK (smallest layer)
         )
         encoder.eval()
 
@@ -342,7 +344,7 @@ class TestEncoderIntegration:
             bottleneck, voxels = encoder(video, audio, text, return_voxels=True)
 
         # Verify shapes
-        assert bottleneck.shape == (1, 8000), "Bottleneck should be 8000-dim"
+        assert bottleneck.shape == (1, 2048), "Bottleneck should be 2048-dim (Layer 7: smallest layer)"
         assert voxels.shape == (1, 85810), "Should match 85,810 brain voxels"
 
         # Verify no NaNs or Infs
@@ -364,7 +366,7 @@ class TestEncoderIntegration:
         with torch.no_grad():
             bottleneck, voxels = encoder(video, audio, text, return_voxels=True)
 
-        assert bottleneck.shape == (batch_size, 8000)
+        assert bottleneck.shape == (batch_size, 2048)  # Layer 7: BOTTLENECK (smallest layer)
         assert voxels.shape == (batch_size, 85810)
 
     def test_gradient_flow(self):

@@ -41,11 +41,17 @@ class MultimodalDecoder(nn.Module):
     video_dim : int, default=43200
         Output dimension for video (160×90×3 = 43,200)
     audio_dim : int, default=2048
-        Output dimension for audio (2048 mels)
+        Output dimension for audio (2048 mels for mel spectrograms)
+    audio_frames_per_tr : int, default=65
+        Number of temporal frames per TR (65 for mel @ 44Hz, 112 for EnCodec @ 75Hz)
     text_dim : int, default=1024
         Output dimension for text (1024 embeddings)
     dropout : float, default=0.3
         Dropout rate for regularization
+    use_encodec : bool, default=False
+        If True, predict EnCodec discrete codes; if False, predict mel spectrograms
+    n_codebooks : int, default=8
+        Number of EnCodec codebooks (only used if use_encodec=True)
 
     Attributes
     ----------
@@ -86,7 +92,9 @@ class MultimodalDecoder(nn.Module):
         audio_dim: int = 2048,
         audio_frames_per_tr: int = 65,  # NEW: temporal frames per TR
         text_dim: int = 1024,
-        dropout: float = 0.3
+        dropout: float = 0.3,
+        use_encodec: bool = False,  # NEW: Use EnCodec discrete codes
+        n_codebooks: int = 8  # NEW: Number of EnCodec codebooks
     ):
         super().__init__()
 
@@ -95,6 +103,8 @@ class MultimodalDecoder(nn.Module):
         self.audio_dim = audio_dim
         self.audio_frames_per_tr = audio_frames_per_tr
         self.text_dim = text_dim
+        self.use_encodec = use_encodec
+        self.n_codebooks = n_codebooks
 
         # Layer 8: Expand from bottleneck (2048 → 8000)
         # Mirror of Encoder Layer 6 (8000 → 2048)
@@ -161,26 +171,34 @@ class MultimodalDecoder(nn.Module):
             nn.Dropout(dropout)
         )
 
-        # Temporal upsampling for audio (NEW)
-        # Start with 8 frames, upsample to 16, 32, then target frames_per_tr
-        # Calculate number of upsampling stages needed
-        self.audio_temporal_init_frames = 8
-        self.audio_temporal_upsample = nn.Sequential(
-            # 8 → 16 frames
-            nn.ConvTranspose1d(audio_dim, audio_dim, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm1d(audio_dim),
-            nn.ReLU(),
-            # 16 → 32 frames
-            nn.ConvTranspose1d(audio_dim, audio_dim, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm1d(audio_dim),
-            nn.ReLU(),
-            # 32 → 64 frames (close to target ~65)
-            nn.ConvTranspose1d(audio_dim, audio_dim, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm1d(audio_dim),
-            nn.ReLU()
-        )
-        # Final adjustment layer to get exact frames_per_tr
-        self.audio_temporal_adjust = nn.Conv1d(audio_dim, audio_dim, kernel_size=3, padding=1)
+        # EnCodec-specific or Mel-specific temporal processing
+        if use_encodec:
+            # For EnCodec: Predict discrete codes directly
+            # No temporal upsampling needed - predict codes at target resolution
+            self.audio_temporal_init_frames = None
+            self.audio_temporal_upsample = None
+            self.audio_temporal_adjust = None
+        else:
+            # For Mel spectrograms: Temporal upsampling for 3D output
+            # Start with 8 frames, upsample to 16, 32, then target frames_per_tr
+            # Calculate number of upsampling stages needed
+            self.audio_temporal_init_frames = 8
+            self.audio_temporal_upsample = nn.Sequential(
+                # 8 → 16 frames
+                nn.ConvTranspose1d(audio_dim, audio_dim, kernel_size=4, stride=2, padding=1),
+                nn.BatchNorm1d(audio_dim),
+                nn.ReLU(),
+                # 16 → 32 frames
+                nn.ConvTranspose1d(audio_dim, audio_dim, kernel_size=4, stride=2, padding=1),
+                nn.BatchNorm1d(audio_dim),
+                nn.ReLU(),
+                # 32 → 64 frames (close to target ~65)
+                nn.ConvTranspose1d(audio_dim, audio_dim, kernel_size=4, stride=2, padding=1),
+                nn.BatchNorm1d(audio_dim),
+                nn.ReLU()
+            )
+            # Final adjustment layer to get exact frames_per_tr
+            self.audio_temporal_adjust = nn.Conv1d(audio_dim, audio_dim, kernel_size=3, padding=1)
 
         # Layer 12C: Text decoder path (1536 → text features)
         # Moderate size for 1024 embeddings
@@ -205,9 +223,19 @@ class MultimodalDecoder(nn.Module):
             nn.Sigmoid()
         )
 
-        # Layer 13B: Audio output (2048 → audio_dim * init_frames)
-        # UPDATED: Outputs initial temporal features that will be upsampled
-        self.layer13_audio = nn.Linear(2048, audio_dim * self.audio_temporal_init_frames)
+        # Layer 13B: Audio output
+        # EnCodec: Outputs discrete codes (n_codebooks × frames_per_tr)
+        # Mel: Outputs initial temporal features that will be upsampled
+        if use_encodec:
+            # Predict EnCodec codes: 8 codebooks × frames_per_tr
+            # Update frames_per_tr to 112 for EnCodec (75 Hz × 1.5s)
+            if audio_frames_per_tr == 65:
+                # Default mel value, update for EnCodec
+                self.audio_frames_per_tr = 112
+            self.layer13_audio = nn.Linear(2048, n_codebooks * self.audio_frames_per_tr)
+        else:
+            # Predict mel spectrogram temporal features
+            self.layer13_audio = nn.Linear(2048, audio_dim * self.audio_temporal_init_frames)
 
         # Layer 13C: Text output (1024 → 1024)
         # No activation (normalized in loss/post-processing)
@@ -244,8 +272,10 @@ class MultimodalDecoder(nn.Module):
         video : torch.Tensor
             Shape (batch_size, video_dim) reconstructed video features
         audio : torch.Tensor
-            Shape (batch_size, audio_dim, frames_per_tr) reconstructed audio features
-            CHANGED: Now returns 3D audio with temporal dimension
+            If use_encodec=True: Shape (batch_size, n_codebooks, frames_per_tr)
+                EnCodec codes in [0, 1023] range (continuous during training, discrete during inference)
+            If use_encodec=False: Shape (batch_size, audio_dim, frames_per_tr)
+                Mel spectrogram features (continuous)
         text : torch.Tensor
             Shape (batch_size, text_dim) reconstructed text features
         """
@@ -269,20 +299,37 @@ class MultimodalDecoder(nn.Module):
         # Layer 13: Output reconstruction
         video = self.layer13_video(video_features)  # 4096 → 43,200
 
-        # Audio with temporal upsampling (NEW)
-        audio = self.layer13_audio(audio_features)  # 2048 → audio_dim * init_frames
-        batch_size = audio.size(0)
-        audio = audio.view(batch_size, self.audio_dim, self.audio_temporal_init_frames)  # (B, mels, 8)
-        audio = self.audio_temporal_upsample(audio)  # (B, mels, 64)
-        audio = self.audio_temporal_adjust(audio)    # (B, mels, 64)
+        # Audio decoding: EnCodec or Mel spectrogram
+        if self.use_encodec:
+            # EnCodec: Predict discrete codes
+            audio = self.layer13_audio(audio_features)  # 2048 → n_codebooks * frames_per_tr
+            batch_size = audio.size(0)
+            audio = audio.view(batch_size, self.n_codebooks, self.audio_frames_per_tr)  # (B, 8, 112)
 
-        # Crop or pad to exact frames_per_tr
-        current_frames = audio.size(2)
-        if current_frames > self.audio_frames_per_tr:
-            audio = audio[:, :, :self.audio_frames_per_tr]
-        elif current_frames < self.audio_frames_per_tr:
-            padding = self.audio_frames_per_tr - current_frames
-            audio = torch.nn.functional.pad(audio, (0, padding))
+            # Scale to valid code range [0, 1023]
+            # Use sigmoid to map to [0, 1], then scale to [0, 1023]
+            audio = torch.sigmoid(audio) * 1023.0
+
+            # During inference, round to nearest integer
+            if not self.training:
+                audio = torch.round(audio)
+                # Clip to ensure valid range (defensive)
+                audio = torch.clamp(audio, 0, 1023)
+        else:
+            # Mel spectrogram: Temporal upsampling
+            audio = self.layer13_audio(audio_features)  # 2048 → audio_dim * init_frames
+            batch_size = audio.size(0)
+            audio = audio.view(batch_size, self.audio_dim, self.audio_temporal_init_frames)  # (B, mels, 8)
+            audio = self.audio_temporal_upsample(audio)  # (B, mels, 64)
+            audio = self.audio_temporal_adjust(audio)    # (B, mels, 64)
+
+            # Crop or pad to exact frames_per_tr
+            current_frames = audio.size(2)
+            if current_frames > self.audio_frames_per_tr:
+                audio = audio[:, :, :self.audio_frames_per_tr]
+            elif current_frames < self.audio_frames_per_tr:
+                padding = self.audio_frames_per_tr - current_frames
+                audio = torch.nn.functional.pad(audio, (0, padding))
 
         text = self.layer13_text(text_features)     # 1024 → 1,024
 
@@ -322,8 +369,8 @@ class MultimodalDecoder(nn.Module):
         Returns
         -------
         audio : torch.Tensor
-            Shape (batch_size, audio_dim, frames_per_tr) reconstructed audio features
-            CHANGED: Now returns 3D audio with temporal dimension
+            If use_encodec=True: Shape (batch_size, n_codebooks, frames_per_tr) EnCodec codes
+            If use_encodec=False: Shape (batch_size, audio_dim, frames_per_tr) mel spectrograms
         """
         x = self.layer8(bottleneck)
         x = self.layer9(x)
@@ -331,20 +378,32 @@ class MultimodalDecoder(nn.Module):
         x = self.layer11(x)
         audio_features = self.layer12_audio(x)
 
-        # Audio with temporal upsampling
-        audio = self.layer13_audio(audio_features)
-        batch_size = audio.size(0)
-        audio = audio.view(batch_size, self.audio_dim, self.audio_temporal_init_frames)
-        audio = self.audio_temporal_upsample(audio)
-        audio = self.audio_temporal_adjust(audio)
+        # Audio decoding: EnCodec or Mel
+        if self.use_encodec:
+            # EnCodec: Predict discrete codes
+            audio = self.layer13_audio(audio_features)
+            batch_size = audio.size(0)
+            audio = audio.view(batch_size, self.n_codebooks, self.audio_frames_per_tr)
+            audio = torch.sigmoid(audio) * 1023.0
 
-        # Crop or pad to exact frames_per_tr
-        current_frames = audio.size(2)
-        if current_frames > self.audio_frames_per_tr:
-            audio = audio[:, :, :self.audio_frames_per_tr]
-        elif current_frames < self.audio_frames_per_tr:
-            padding = self.audio_frames_per_tr - current_frames
-            audio = torch.nn.functional.pad(audio, (0, padding))
+            if not self.training:
+                audio = torch.round(audio)
+                audio = torch.clamp(audio, 0, 1023)
+        else:
+            # Mel: Temporal upsampling
+            audio = self.layer13_audio(audio_features)
+            batch_size = audio.size(0)
+            audio = audio.view(batch_size, self.audio_dim, self.audio_temporal_init_frames)
+            audio = self.audio_temporal_upsample(audio)
+            audio = self.audio_temporal_adjust(audio)
+
+            # Crop or pad to exact frames_per_tr
+            current_frames = audio.size(2)
+            if current_frames > self.audio_frames_per_tr:
+                audio = audio[:, :, :self.audio_frames_per_tr]
+            elif current_frames < self.audio_frames_per_tr:
+                padding = self.audio_frames_per_tr - current_frames
+                audio = torch.nn.functional.pad(audio, (0, padding))
 
         return audio
 

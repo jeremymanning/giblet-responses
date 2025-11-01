@@ -77,7 +77,9 @@ class MultimodalAutoencoder(nn.Module):
         decoder_hidden_dim: int = 2048,
         decoder_dropout: float = 0.3,
         reconstruction_weight: float = 1.0,
-        fmri_weight: float = 1.0
+        fmri_weight: float = 1.0,
+        use_encodec: bool = False,  # NEW: Use EnCodec discrete codes
+        audio_frames_per_tr: int = 65  # NEW: Frames per TR (65 mel, 112 EnCodec)
     ):
         super().__init__()
 
@@ -89,6 +91,8 @@ class MultimodalAutoencoder(nn.Module):
         self.bottleneck_dim = bottleneck_dim
         self.reconstruction_weight = reconstruction_weight
         self.fmri_weight = fmri_weight
+        self.use_encodec = use_encodec
+        self.audio_frames_per_tr = audio_frames_per_tr
 
         # Encoder: stimulus → bottleneck → fMRI voxels
         self.encoder = MultimodalEncoder(
@@ -110,9 +114,10 @@ class MultimodalAutoencoder(nn.Module):
             bottleneck_dim=bottleneck_dim,
             video_dim=video_dim,
             audio_dim=audio_mels,
+            audio_frames_per_tr=audio_frames_per_tr,
             text_dim=text_dim,
-            hidden_dim=decoder_hidden_dim,
-            dropout=decoder_dropout
+            dropout=decoder_dropout,
+            use_encodec=use_encodec
         )
 
     def forward(
@@ -173,9 +178,23 @@ class MultimodalAutoencoder(nn.Module):
             # video shape: (B, 3, H, W) → (B, 3*H*W)
             video_flat = video.view(batch_size, -1)
 
-            # Reconstruction loss (MSE for all modalities)
+            # Reconstruction loss
             video_loss = F.mse_loss(video_recon, video_flat)
-            audio_loss = F.mse_loss(audio_recon, audio)
+
+            # Audio loss: Different handling for EnCodec vs mel spectrograms
+            if self.use_encodec:
+                # EnCodec: Predict discrete codes
+                # audio: (batch, n_codebooks, frames_per_tr) integer codes
+                # audio_recon: (batch, n_codebooks, frames_per_tr) continuous predictions
+                # Convert target to float for MSE loss
+                audio_float = audio.float()
+                audio_loss = F.mse_loss(audio_recon, audio_float)
+            else:
+                # Mel spectrograms: Continuous features
+                # audio: (batch, n_mels, frames_per_tr) continuous
+                # audio_recon: (batch, n_mels, frames_per_tr) continuous
+                audio_loss = F.mse_loss(audio_recon, audio)
+
             text_loss = F.mse_loss(text_recon, text)
             reconstruction_loss = video_loss + audio_loss + text_loss
 
@@ -312,7 +331,9 @@ class MultimodalAutoencoder(nn.Module):
                 'n_voxels': self.n_voxels,
                 'bottleneck_dim': self.bottleneck_dim,
                 'reconstruction_weight': self.reconstruction_weight,
-                'fmri_weight': self.fmri_weight
+                'fmri_weight': self.fmri_weight,
+                'use_encodec': self.use_encodec,
+                'audio_frames_per_tr': self.audio_frames_per_tr
             }
         }
 
@@ -363,7 +384,9 @@ class MultimodalAutoencoder(nn.Module):
             n_voxels=arch['n_voxels'],
             bottleneck_dim=arch['bottleneck_dim'],
             reconstruction_weight=arch['reconstruction_weight'],
-            fmri_weight=arch['fmri_weight']
+            fmri_weight=arch['fmri_weight'],
+            use_encodec=arch.get('use_encodec', False),  # Default to False for old checkpoints
+            audio_frames_per_tr=arch.get('audio_frames_per_tr', 65)  # Default to mel value
         )
 
         # Load weights
@@ -383,7 +406,9 @@ def create_autoencoder(
     n_voxels: int = 85810,
     bottleneck_dim: int = 8000,
     reconstruction_weight: float = 1.0,
-    fmri_weight: float = 1.0
+    fmri_weight: float = 1.0,
+    use_encodec: bool = False,
+    audio_frames_per_tr: int = 65
 ) -> MultimodalAutoencoder:
     """
     Factory function to create MultimodalAutoencoder with default parameters.
@@ -406,6 +431,10 @@ def create_autoencoder(
         Weight for reconstruction loss
     fmri_weight : float, default=1.0
         Weight for fMRI matching loss
+    use_encodec : bool, default=False
+        If True, use EnCodec discrete codes; if False, use mel spectrograms
+    audio_frames_per_tr : int, default=65
+        Number of audio frames per TR (65 for mel @ 44Hz, 112 for EnCodec @ 75Hz)
 
     Returns
     -------
@@ -420,7 +449,9 @@ def create_autoencoder(
         n_voxels=n_voxels,
         bottleneck_dim=bottleneck_dim,
         reconstruction_weight=reconstruction_weight,
-        fmri_weight=fmri_weight
+        fmri_weight=fmri_weight,
+        use_encodec=use_encodec,
+        audio_frames_per_tr=audio_frames_per_tr
     )
 
 

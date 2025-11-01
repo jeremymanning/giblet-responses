@@ -126,60 +126,113 @@ class VideoEncoder(nn.Module):
 
 class AudioEncoder(nn.Module):
     """
-    Encode audio mel spectrograms using multi-scale temporal convolutions.
+    Encode audio representations using multi-scale temporal convolutions.
 
-    FIXED: Now processes 3D spectrograms (n_mels, frames_per_tr) with
-    multi-scale temporal convolutions to preserve speech/music detail.
+    Supports two input modes:
+    1. Mel spectrograms: (batch, n_mels, frames_per_tr) - float values
+    2. EnCodec codes: (batch, n_codebooks, frames_per_tr) - integer codes [0, 1023]
 
     Parameters
     ----------
     input_mels : int, default=2048
-        Number of mel frequency bins
+        Number of mel frequency bins (for mel spectrogram mode)
+    input_codebooks : int, default=8
+        Number of EnCodec codebooks (for EnCodec mode)
     frames_per_tr : int, default=65
-        Number of temporal frames per TR (~1.5s / 512 hop = 65 frames)
+        Number of temporal frames per TR
+        - Mel mode: ~1.5s / 512 hop = 65 frames
+        - EnCodec mode: ~112 frames per TR at 3.0 kbps
     output_features : int, default=256
         Dimensionality of output features
+    use_encodec : bool, default=False
+        If True, process EnCodec quantized codes instead of mel spectrograms
+    vocab_size : int, default=1024
+        Size of EnCodec codebook vocabulary (typically 1024)
+    embed_dim : int, default=64
+        Embedding dimension for EnCodec codes
     """
 
     def __init__(
         self,
         input_mels: int = 2048,
-        frames_per_tr: int = 65,  # 22050 * 1.5 / 512 ≈ 65
-        output_features: int = 256
+        input_codebooks: int = 8,
+        frames_per_tr: int = 65,
+        output_features: int = 256,
+        use_encodec: bool = False,
+        vocab_size: int = 1024,
+        embed_dim: int = 64
     ):
         super().__init__()
 
         self.input_mels = input_mels
+        self.input_codebooks = input_codebooks
         self.frames_per_tr = frames_per_tr
         self.output_features = output_features
+        self.use_encodec = use_encodec
+        self.vocab_size = vocab_size
+        self.embed_dim = embed_dim
 
-        # Multi-scale temporal convolutions (parallel branches)
-        # Input: (batch, n_mels, frames_per_tr)
+        if use_encodec:
+            # EnCodec mode: Embed discrete codes then process temporally
+            # Input: (batch, n_codebooks, frames_per_tr) - integers [0, vocab_size)
 
-        # Short-range temporal features (kernel_size=3, ~46ms)
-        self.temporal_conv_k3 = nn.Conv1d(input_mels, 64, kernel_size=3, padding=1)
-        self.bn_k3 = nn.BatchNorm1d(64)
+            # Embedding layer for discrete codes
+            self.code_embedding = nn.Embedding(vocab_size, embed_dim)
 
-        # Medium-range temporal features (kernel_size=5, ~77ms)
-        self.temporal_conv_k5 = nn.Conv1d(input_mels, 64, kernel_size=5, padding=2)
-        self.bn_k5 = nn.BatchNorm1d(64)
+            # After embedding: (batch, n_codebooks * embed_dim, frames_per_tr)
+            conv_input_dim = input_codebooks * embed_dim
 
-        # Long-range temporal features (kernel_size=7, ~108ms)
-        self.temporal_conv_k7 = nn.Conv1d(input_mels, 64, kernel_size=7, padding=3)
-        self.bn_k7 = nn.BatchNorm1d(64)
+            # Multi-scale temporal convolutions on embedded codes
+            self.temporal_conv_k3 = nn.Conv1d(conv_input_dim, 128, kernel_size=3, padding=1)
+            self.bn_k3 = nn.BatchNorm1d(128)
 
-        # Adaptive max pooling to collapse temporal dimension (learned, not averaging)
-        self.temporal_pool = nn.AdaptiveMaxPool1d(1)
+            self.temporal_conv_k5 = nn.Conv1d(conv_input_dim, 128, kernel_size=5, padding=2)
+            self.bn_k5 = nn.BatchNorm1d(128)
 
-        # Final compression from concatenated features (64*3=192) to output
-        concat_features = 64 * 3
-        self.fc = nn.Sequential(
-            nn.Linear(concat_features, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(256, output_features)
-        )
+            self.temporal_conv_k7 = nn.Conv1d(conv_input_dim, 128, kernel_size=7, padding=3)
+            self.bn_k7 = nn.BatchNorm1d(128)
+
+            # Adaptive max pooling to collapse temporal dimension
+            self.temporal_pool = nn.AdaptiveMaxPool1d(1)
+
+            # Final compression from concatenated features (128*3=384) to output
+            concat_features = 128 * 3
+            self.fc = nn.Sequential(
+                nn.Linear(concat_features, 256),
+                nn.BatchNorm1d(256),
+                nn.ReLU(),
+                nn.Dropout(0.2),
+                nn.Linear(256, output_features)
+            )
+        else:
+            # Mel spectrogram mode (original implementation)
+            # Input: (batch, n_mels, frames_per_tr)
+
+            # Multi-scale temporal convolutions (parallel branches)
+            # Short-range temporal features (kernel_size=3, ~46ms)
+            self.temporal_conv_k3 = nn.Conv1d(input_mels, 64, kernel_size=3, padding=1)
+            self.bn_k3 = nn.BatchNorm1d(64)
+
+            # Medium-range temporal features (kernel_size=5, ~77ms)
+            self.temporal_conv_k5 = nn.Conv1d(input_mels, 64, kernel_size=5, padding=2)
+            self.bn_k5 = nn.BatchNorm1d(64)
+
+            # Long-range temporal features (kernel_size=7, ~108ms)
+            self.temporal_conv_k7 = nn.Conv1d(input_mels, 64, kernel_size=7, padding=3)
+            self.bn_k7 = nn.BatchNorm1d(64)
+
+            # Adaptive max pooling to collapse temporal dimension (learned, not averaging)
+            self.temporal_pool = nn.AdaptiveMaxPool1d(1)
+
+            # Final compression from concatenated features (64*3=192) to output
+            concat_features = 64 * 3
+            self.fc = nn.Sequential(
+                nn.Linear(concat_features, 256),
+                nn.BatchNorm1d(256),
+                nn.ReLU(),
+                nn.Dropout(0.2),
+                nn.Linear(256, output_features)
+            )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -188,13 +241,21 @@ class AudioEncoder(nn.Module):
         Parameters
         ----------
         x : torch.Tensor
-            Shape (batch_size, input_mels, frames_per_tr) mel spectrogram
-            CHANGED: Now expects 3D input with temporal dimension
+            Input tensor in one of these formats:
+            - EnCodec mode: (batch_size, n_codebooks, frames_per_tr) - integers [0, vocab_size)
+            - Mel mode: (batch_size, n_mels, frames_per_tr) - float values
+            - Legacy 2D: (batch_size, n_mels) - float values (backward compatible)
 
         Returns
         -------
         features : torch.Tensor
             Shape (batch_size, output_features) encoded features
+
+        Notes
+        -----
+        The encoder automatically detects EnCodec mode vs mel mode based on:
+        1. self.use_encodec flag (set at initialization)
+        2. Input dtype (integer for EnCodec, float for mel)
         """
         # Handle backward compatibility with 2D input
         if x.dim() == 2:
@@ -202,25 +263,59 @@ class AudioEncoder(nn.Module):
             print("Warning: 2D audio input detected. Adding temporal dimension...")
             x = x.unsqueeze(-1)  # (batch, n_mels, 1)
 
-        # x shape: (batch, n_mels, frames_per_tr)
+        if self.use_encodec:
+            # EnCodec mode: Process discrete codes
+            # x shape: (batch, n_codebooks, frames_per_tr) - integers
+            batch_size, n_codebooks, frames = x.shape
 
-        # Multi-scale temporal convolutions (parallel branches)
-        feat_k3 = F.relu(self.bn_k3(self.temporal_conv_k3(x)))  # (batch, 64, frames)
-        feat_k5 = F.relu(self.bn_k5(self.temporal_conv_k5(x)))  # (batch, 64, frames)
-        feat_k7 = F.relu(self.bn_k7(self.temporal_conv_k7(x)))  # (batch, 64, frames)
+            # Ensure codes are integers (in case they're float)
+            x = x.long()
 
-        # Pool temporal dimension (max pooling preserves peaks like phonemes)
-        feat_k3 = self.temporal_pool(feat_k3).squeeze(-1)  # (batch, 64)
-        feat_k5 = self.temporal_pool(feat_k5).squeeze(-1)  # (batch, 64)
-        feat_k7 = self.temporal_pool(feat_k7).squeeze(-1)  # (batch, 64)
+            # Embed codes: (batch, n_codebooks, frames) → (batch, n_codebooks, frames, embed_dim)
+            embedded = self.code_embedding(x)
 
-        # Concatenate multi-scale features
-        features = torch.cat([feat_k3, feat_k5, feat_k7], dim=1)  # (batch, 192)
+            # Reshape for temporal convolution: (batch, n_codebooks * embed_dim, frames)
+            embedded = embedded.view(batch_size, n_codebooks * self.embed_dim, frames)
 
-        # Final compression
-        output = self.fc(features)  # (batch, output_features)
+            # Multi-scale temporal convolutions
+            feat_k3 = F.relu(self.bn_k3(self.temporal_conv_k3(embedded)))  # (batch, 128, frames)
+            feat_k5 = F.relu(self.bn_k5(self.temporal_conv_k5(embedded)))  # (batch, 128, frames)
+            feat_k7 = F.relu(self.bn_k7(self.temporal_conv_k7(embedded)))  # (batch, 128, frames)
 
-        return output
+            # Pool temporal dimension
+            feat_k3 = self.temporal_pool(feat_k3).squeeze(-1)  # (batch, 128)
+            feat_k5 = self.temporal_pool(feat_k5).squeeze(-1)  # (batch, 128)
+            feat_k7 = self.temporal_pool(feat_k7).squeeze(-1)  # (batch, 128)
+
+            # Concatenate multi-scale features
+            features = torch.cat([feat_k3, feat_k5, feat_k7], dim=1)  # (batch, 384)
+
+            # Final compression
+            output = self.fc(features)  # (batch, output_features)
+
+            return output
+
+        else:
+            # Mel spectrogram mode (original implementation)
+            # x shape: (batch, n_mels, frames_per_tr)
+
+            # Multi-scale temporal convolutions (parallel branches)
+            feat_k3 = F.relu(self.bn_k3(self.temporal_conv_k3(x)))  # (batch, 64, frames)
+            feat_k5 = F.relu(self.bn_k5(self.temporal_conv_k5(x)))  # (batch, 64, frames)
+            feat_k7 = F.relu(self.bn_k7(self.temporal_conv_k7(x)))  # (batch, 64, frames)
+
+            # Pool temporal dimension (max pooling preserves peaks like phonemes)
+            feat_k3 = self.temporal_pool(feat_k3).squeeze(-1)  # (batch, 64)
+            feat_k5 = self.temporal_pool(feat_k5).squeeze(-1)  # (batch, 64)
+            feat_k7 = self.temporal_pool(feat_k7).squeeze(-1)  # (batch, 64)
+
+            # Concatenate multi-scale features
+            features = torch.cat([feat_k3, feat_k5, feat_k7], dim=1)  # (batch, 192)
+
+            # Final compression
+            output = self.fc(features)  # (batch, output_features)
+
+            return output
 
 
 class TextEncoder(nn.Module):
@@ -327,23 +422,27 @@ class MultimodalEncoder(nn.Module):
         video_height: int = 90,
         video_width: int = 160,
         audio_mels: int = 2048,
-        audio_frames_per_tr: int = 65,  # NEW: temporal frames per TR
+        audio_codebooks: int = 8,  # NEW: EnCodec codebooks
+        audio_frames_per_tr: int = 65,  # Temporal frames per TR
         text_dim: int = 1024,
         n_voxels: int = 85810,
         bottleneck_dim: int = 2048,
         video_features: int = 1024,
         audio_features: int = 256,
-        text_features: int = 256
+        text_features: int = 256,
+        use_encodec: bool = False  # NEW: Use EnCodec codes instead of mel spectrograms
     ):
         super().__init__()
 
         self.video_height = video_height
         self.video_width = video_width
         self.audio_mels = audio_mels
+        self.audio_codebooks = audio_codebooks
         self.audio_frames_per_tr = audio_frames_per_tr
         self.text_dim = text_dim
         self.n_voxels = n_voxels
         self.bottleneck_dim = bottleneck_dim
+        self.use_encodec = use_encodec
 
         # Layer 2A: Video encoder
         self.video_encoder = VideoEncoder(
@@ -352,11 +451,13 @@ class MultimodalEncoder(nn.Module):
             output_features=video_features
         )
 
-        # Layer 2B: Audio encoder (updated with temporal processing)
+        # Layer 2B: Audio encoder (supports both mel spectrograms and EnCodec codes)
         self.audio_encoder = AudioEncoder(
             input_mels=audio_mels,
+            input_codebooks=audio_codebooks,
             frames_per_tr=audio_frames_per_tr,
-            output_features=audio_features
+            output_features=audio_features,
+            use_encodec=use_encodec
         )
 
         # Layer 2C: Text encoder
@@ -393,10 +494,10 @@ class MultimodalEncoder(nn.Module):
             nn.Dropout(0.3)
         )
 
-        # Layer 7: BOTTLENECK - compression to smallest dimension (8000 → 2048)
+        # Layer 7: BOTTLENECK - compression to smallest dimension (8000 → bottleneck_dim)
         # No ReLU after bottleneck to allow negative values in latent space
         self.layer7_bottleneck = nn.Sequential(
-            nn.Linear(8000, 2048),  # Layer 7: BOTTLENECK (smallest layer)
+            nn.Linear(8000, bottleneck_dim),  # Layer 7: BOTTLENECK (smallest layer)
             nn.BatchNorm1d(bottleneck_dim)
         )
 
