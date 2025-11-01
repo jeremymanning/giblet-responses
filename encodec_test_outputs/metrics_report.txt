@@ -1,0 +1,68 @@
+================================================================================
+EnCodec Quality Metrics Report
+================================================================================
+
+Test Configuration:
+  - Video source: data/stimuli_Sherlock.m4v
+  - Duration tested: 30 seconds
+  - EnCodec bandwidth: 6.0 kbps
+  - Sample rate: 24000 Hz
+  - Test date: 2025-10-31
+
+--------------------------------------------------------------------------------
+Quality Metrics:
+--------------------------------------------------------------------------------
+
+1. Signal-to-Noise Ratio (SNR):
+   Value: 5.15 dB
+   Target: >15 dB
+   Status: FAIL
+   Interpretation: Measures overall signal fidelity. Higher is better.
+
+2. PESQ (Perceptual Evaluation of Speech Quality):
+   Value: 2.556
+   Target: >3.0
+   Status: FAIL
+   Range: -0.5 to 4.5 (higher is better)
+   Interpretation: Perceptual quality metric aligned with human perception.
+
+3. STOI (Short-Time Objective Intelligibility):
+   Value: 0.895
+   Target: >0.7
+   Status: PASS
+   Range: 0 to 1 (higher is better)
+   Interpretation: Measures speech intelligibility.
+
+4. Waveform Correlation:
+   Value: 0.8419
+   Range: -1 to 1 (closer to 1 is better)
+   Interpretation: Measures waveform similarity.
+
+--------------------------------------------------------------------------------
+Overall Assessment:
+--------------------------------------------------------------------------------
+
+Passed tests (1/3): STOI
+Failed tests (2/3): SNR, PESQ
+
+Conclusion: EnCodec produces MODERATE QUALITY audio reconstruction.
+
+================================================================================
+Output Files:
+================================================================================
+
+  - original_30s.wav: Original audio (resampled to 24kHz)
+  - encodec_reconstructed_30s.wav: Reconstructed audio
+  - waveforms_comparison.png: Waveform visualization
+  - spectrograms_comparison.png: Spectrogram visualization
+  - metrics_report.txt: This report
+
+================================================================================
+Next Steps:
+================================================================================
+
+1. Listen to both WAV files to verify perceptual quality
+2. Review spectrograms for frequency content preservation
+3. If quality is acceptable, proceed with full pipeline implementation
+4. Consider testing different bandwidth settings (1.5, 3, 6, 12, 24 kbps)
+

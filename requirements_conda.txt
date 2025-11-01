@@ -24,7 +24,7 @@ torchaudio==2.9.0
 
 # Text processing and embeddings - INSTALL SECOND
 sentence-transformers==5.1.2
-transformers==4.57.1
+transformers==4.57.1  # Includes EnCodec for high-quality audio reconstruction (Issue #24)
 tokenizers==0.22.1
 huggingface-hub==0.36.0
 safetensors==0.6.2

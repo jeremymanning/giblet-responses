@@ -1,0 +1,62 @@
+ID,Component,Task,Priority,Status,Notes,Depends_On,Estimated_Hours
+1.1,audio.py,Add use_encodec parameter to __init__,High,todo,Feature flag for backward compatibility,,0.5
+1.2,audio.py,Add EnCodec model loading in __init__,High,todo,Load facebook/encodec_24khz from transformers,,1.0
+1.3,audio.py,Implement audio_to_features() with EnCodec,High,todo,Replace mel spectrogram extraction with EnCodec encoding,1.2,3.0
+1.4,audio.py,Implement TR grouping in audio_to_features(),High,todo,Group 75 Hz frames into 1.5s TR bins (112 frames/TR),1.3,2.0
+1.5,audio.py,Implement features_to_audio() with EnCodec decoder,High,todo,Concatenate codes and decode with EnCodec,1.2,2.0
+1.6,audio.py,Add backward compatibility for mel spectrograms,High,todo,Keep existing code path with use_encodec=False,1.1,1.0
+1.7,audio.py,Update docstrings,Medium,todo,Document EnCodec format and parameters,1.5,0.5
+2.1,encoder.py,Add use_encodec parameter to AudioEncoder.__init__,High,todo,Feature flag,,0.5
+2.2,encoder.py,Add embedding layers for discrete codes,High,todo,8 embedding layers for 8 codebooks (1024 vocab × 64 dim),2.1,1.5
+2.3,encoder.py,Update forward() to handle discrete codes,High,todo,Embed codes then reshape for Conv1D,2.2,2.0
+2.4,encoder.py,Update temporal convolutions for embedded input,High,todo,Change input channels to n_codebooks * embedding_dim (512),2.3,1.0
+2.5,encoder.py,Add backward compatibility path,High,todo,Keep mel spectrogram processing with use_encodec=False,2.1,1.0
+2.6,encoder.py,Update audio_frames_per_tr default to 112,Medium,todo,Match EnCodec frame rate,,0.25
+2.7,encoder.py,Update docstrings,Medium,todo,Document discrete code processing,2.5,0.5
+3.1,decoder.py,Add use_encodec parameter to MultimodalDecoder.__init__,High,todo,Feature flag,,0.5
+3.2,decoder.py,Update Layer 13B output dimension,High,todo,Change to n_codebooks * frames_per_tr (8 × 112 = 896),3.1,0.5
+3.3,decoder.py,Add sigmoid scaling to [0 1023] range,High,todo,Apply sigmoid then multiply by 1023,3.2,0.5
+3.4,decoder.py,Remove temporal upsampling layers,High,todo,Not needed - predict codes directly at target resolution,3.1,1.0
+3.5,decoder.py,Update forward() to reshape codes,High,todo,Reshape (batch 896) → (batch 8 112),3.2,0.5
+3.6,decoder.py,Add backward compatibility path,High,todo,Keep mel spectrogram decoding with use_encodec=False,3.1,1.0
+3.7,decoder.py,Update decode_audio_only(),Medium,todo,Match changes in main forward(),3.5,0.5
+3.8,decoder.py,Update docstrings,Medium,todo,Document code prediction format,3.6,0.5
+4.1,sync.py,Add discrete code detection,Medium,todo,Check dtype for int32/int64,4.2,0.5
+4.2,sync.py,Update _resample_features() for discrete codes,Medium,todo,Convert to float interpolate round clip,4.1,1.5
+4.3,sync.py,Test with EnCodec codes,Medium,todo,Verify no issues with discrete values,,1.0
+4.4,sync.py,Update docstrings,Low,todo,Document discrete code handling,4.2,0.25
+5.1,hrf.py,Add discrete code detection,Medium,todo,Check dtype for int32/int64,5.2,0.5
+5.2,hrf.py,Update apply_hrf() for discrete codes,Medium,todo,Convert to float convolve round clip,5.1,1.5
+5.3,hrf.py,Update convolve_with_padding() for discrete codes,Medium,todo,Same as apply_hrf(),5.2,0.5
+5.4,hrf.py,Test HRF convolution with codes,Medium,todo,Verify quality after round-trip,,1.0
+5.5,hrf.py,Update docstrings,Low,todo,Document discrete code handling,5.3,0.25
+6.1,dataset.py,Add audio_format field to metadata,Low,todo,Track 'encodec' vs 'mel_3d' vs 'mel_2d',,0.5
+6.2,dataset.py,Implement format detection,Low,todo,Based on shape and dtype,,0.5
+6.3,dataset.py,Update cache filename to include format,Low,todo,Prevent mixing mel and EnCodec caches,6.1,0.5
+6.4,dataset.py,Update docstrings,Low,todo,Document format field,6.2,0.25
+7.1,tests,Unit test: audio_to_features() with EnCodec,High,todo,Verify shape (n_trs 8 112) dtype (int32) range [0 1023],1.3,2.0
+7.2,tests,Unit test: features_to_audio() with EnCodec,High,todo,Test reconstruction quality,1.5,2.0
+7.3,tests,Unit test: EnCodec round-trip,High,todo,Encode then decode verify similarity,1.5,2.0
+7.4,tests,Unit test: AudioEncoder with discrete codes,High,todo,Verify forward pass with codes,2.3,1.5
+7.5,tests,Unit test: AudioDecoder prediction,High,todo,Verify output shape and range,3.5,1.5
+7.6,tests,Unit test: sync._resample_features() with codes,Medium,todo,Test discrete code resampling,4.2,1.5
+7.7,tests,Unit test: hrf.apply_hrf() with codes,Medium,todo,Test HRF convolution on codes,5.2,1.5
+7.8,tests,Integration test: Full pipeline,High,todo,Load process train decode reconstruct,7.1-7.5,3.0
+7.9,tests,Quality comparison: mel vs EnCodec,High,todo,Compare reconstruction quality (PESQ SI-SDR),7.8,2.0
+7.10,tests,Backward compatibility tests,Medium,todo,Test with use_encodec=False,1.6,2.0
+8.1,docs,Update ENCODEC_INTEGRATION_ARCHITECTURE.md,High,complete,Complete integration architecture document,,4.0
+8.2,docs,Update requirements_conda.txt,High,complete,Add EnCodec comments,,0.25
+8.3,docs,Create ENCODEC_QUICK_START.md,Medium,todo,Step-by-step usage guide,1.5,1.0
+8.4,docs,Update README.md,Medium,todo,Mention EnCodec approach,8.3,0.5
+8.5,docs,Create migration guide,Low,todo,How to switch from mel to EnCodec,7.10,1.0
+8.6,docs,Update architecture diagrams,Low,todo,Add EnCodec to pipeline diagrams,,2.0
+9.1,training,Test on 10 TRs subset,High,todo,Quick validation,7.8,4.0
+9.2,training,Tune hyperparameters,Medium,todo,embedding_dim learning_rate etc,9.1,8.0
+9.3,training,Full training with EnCodec,High,todo,Train on all 920 TRs,9.2,24.0
+9.4,training,Compare to mel baseline,High,todo,Evaluate fMRI prediction accuracy,9.3,4.0
+9.5,training,Generate reconstruction samples,High,todo,Create audio demos,9.3,2.0
+9.6,training,Document results,High,todo,Write up findings,9.4,3.0
+10.1,deployment,Switch default to use_encodec=True,Low,todo,After validation,9.4,0.25
+10.2,deployment,Archive mel spectrogram code,Low,todo,Move to legacy/,10.1,0.5
+10.3,deployment,Update production configs,Low,todo,Set use_encodec=True in configs,10.1,0.5
+10.4,deployment,Close Issue #24,Low,todo,Final documentation,10.3,0.5
