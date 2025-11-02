@@ -255,8 +255,9 @@ class AudioProcessor:
                 bandwidth=self.encodec_bandwidth
             )
 
-        # Extract codes: shape is [batch=1, n_codebooks, n_frames]
-        codes = encoded.audio_codes[0].cpu()  # [n_codebooks, n_frames]
+        # Extract codes: encoded.audio_codes is a list with shape [batch=1, n_codebooks, n_frames]
+        # We need to remove BOTH the list index [0] AND the batch dimension [0]
+        codes = encoded.audio_codes[0][0].cpu()  # [n_codebooks, n_frames] - squeeze batch dim
 
         # Determine expected codebook count based on bandwidth
         # EnCodec 24kHz model: 3.0 kbps → 8 codebooks
