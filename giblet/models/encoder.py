@@ -25,59 +25,54 @@ from typing import Tuple, Optional
 
 class VideoEncoder(nn.Module):
     """
-    Encode video frames using 2D convolutions.
+    Encode video features using Linear layers for temporal concatenation.
 
-    Reduces 160×90×3 frames to a lower-dimensional representation.
+    Processes flattened temporal concatenation features where each TR contains
+    concatenated frames from the temporal window [t-TR, t].
+
+    For TR=1.5s @ 25fps: 38 frames × 160×90×3 = 1,641,600 features per TR
+
+    This architecture replaces Conv2d layers with Linear layers to handle
+    the flattened temporal concatenation format. Uses progressive dimensionality
+    reduction similar to AudioEncoder and TextEncoder.
 
     Parameters
     ----------
-    input_channels : int, default=3
-        Number of input channels (RGB)
-    input_height : int, default=90
-        Frame height
-    input_width : int, default=160
-        Frame width
+    input_dim : int, default=1641600
+        Dimensionality of flattened temporal concatenation
+        (frames_per_tr × height × width × channels)
+        Default: 38 × 160 × 90 × 3 = 1,641,600
     output_features : int, default=1024
         Dimensionality of output features
     """
 
     def __init__(
         self,
-        input_channels: int = 3,
-        input_height: int = 90,
-        input_width: int = 160,
+        input_dim: int = 1641600,
         output_features: int = 1024
     ):
         super().__init__()
 
-        self.input_channels = input_channels
-        self.input_height = input_height
-        self.input_width = input_width
+        self.input_dim = input_dim
         self.output_features = output_features
 
-        # Convolutional layers to reduce spatial dimensions
-        # 160×90×3 → 80×45×32 → 40×23×64 → 20×12×128 → 10×6×256
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=2, padding=1)
-        self.bn1 = nn.BatchNorm2d(32)
+        # Progressive dimensionality reduction via Linear layers
+        # 1,641,600 → 4096 → 2048 → 1024
 
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1)
-        self.bn2 = nn.BatchNorm2d(64)
+        # Layer 1: Massive reduction (1.6M → 4K)
+        self.fc1 = nn.Linear(input_dim, 4096)
+        self.bn1 = nn.BatchNorm1d(4096)
+        self.dropout1 = nn.Dropout(0.3)
 
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1)
-        self.bn3 = nn.BatchNorm2d(128)
+        # Layer 2: Further reduction (4K → 2K)
+        self.fc2 = nn.Linear(4096, 2048)
+        self.bn2 = nn.BatchNorm1d(2048)
+        self.dropout2 = nn.Dropout(0.3)
 
-        self.conv4 = nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1)
-        self.bn4 = nn.BatchNorm2d(256)
-
-        # Calculate flattened size after convolutions
-        # After 4 stride-2 convolutions: height // 16, width // 16
-        self.flat_height = (input_height + 15) // 16  # Round up
-        self.flat_width = (input_width + 15) // 16
-        self.flat_features = 256 * self.flat_height * self.flat_width
-
-        # Linear layer to compress to output features
-        self.fc = nn.Linear(self.flat_features, output_features)
-        self.dropout = nn.Dropout(0.2)
+        # Layer 3: Final compression (2K → output)
+        self.fc3 = nn.Linear(2048, output_features)
+        self.bn3 = nn.BatchNorm1d(output_features)
+        self.dropout3 = nn.Dropout(0.2)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -86,40 +81,48 @@ class VideoEncoder(nn.Module):
         Parameters
         ----------
         x : torch.Tensor
-            Shape (batch_size, 3, height, width) video frames
+            Flattened temporal concatenation: (batch_size, input_dim)
+            OR legacy 4D format: (batch_size, 3, height, width) for backward compatibility
 
         Returns
         -------
         features : torch.Tensor
             Shape (batch_size, output_features) encoded features
+
+        Notes
+        -----
+        Handles both:
+        1. Temporal concatenation (2D): [batch, 1641600] - flattened frames
+        2. Legacy single frame (4D): [batch, 3, 90, 160] - will be flattened
+
+        The temporal concatenation format is preferred and expected for training.
         """
-        # Conv block 1
-        x = self.conv1(x)
+        # Handle backward compatibility: if 4D input, flatten it
+        if x.dim() == 4:
+            batch_size = x.size(0)
+            x = x.view(batch_size, -1)
+
+        # Ensure 2D input
+        if x.dim() != 2:
+            raise ValueError(f"Expected 2D input (batch, features), got {x.dim()}D: {x.shape}")
+
+        # Linear layer 1: 1,641,600 → 4096
+        x = self.fc1(x)
         x = self.bn1(x)
         x = F.relu(x)
+        x = self.dropout1(x)
 
-        # Conv block 2
-        x = self.conv2(x)
+        # Linear layer 2: 4096 → 2048
+        x = self.fc2(x)
         x = self.bn2(x)
         x = F.relu(x)
+        x = self.dropout2(x)
 
-        # Conv block 3
-        x = self.conv3(x)
+        # Linear layer 3: 2048 → output_features
+        x = self.fc3(x)
         x = self.bn3(x)
         x = F.relu(x)
-
-        # Conv block 4
-        x = self.conv4(x)
-        x = self.bn4(x)
-        x = F.relu(x)
-
-        # Flatten
-        x = x.view(x.size(0), -1)
-
-        # Linear projection
-        x = self.fc(x)
-        x = self.dropout(x)
-        x = F.relu(x)
+        x = self.dropout3(x)
 
         return x
 
@@ -445,9 +448,13 @@ class MultimodalEncoder(nn.Module):
         self.use_encodec = use_encodec
 
         # Layer 2A: Video encoder
+        # Calculate input dimension for temporal concatenation
+        # Default: 38 frames/TR @ 25fps × 1.5s TR × 160×90×3 = 1,641,600
+        frames_per_tr = 38  # At 25fps × 1.5s TR (hardcoded for now, can parameterize later)
+        video_input_dim = frames_per_tr * video_height * video_width * 3
+
         self.video_encoder = VideoEncoder(
-            input_height=video_height,
-            input_width=video_width,
+            input_dim=video_input_dim,  # Flattened temporal concatenation
             output_features=video_features
         )
 
