@@ -99,12 +99,15 @@ class MultimodalAutoencoder(nn.Module):
             video_height=video_height,
             video_width=video_width,
             audio_mels=audio_mels,
+            audio_codebooks=8,  # EnCodec: 8 codebooks for 3.0 kbps
+            audio_frames_per_tr=audio_frames_per_tr,  # Pass through from autoencoder
             text_dim=text_dim,
             n_voxels=n_voxels,
             bottleneck_dim=bottleneck_dim,
             video_features=video_features,
             audio_features=audio_features,
-            text_features=text_features
+            text_features=text_features,
+            use_encodec=use_encodec  # Pass through from autoencoder
         )
 
         # Decoder: bottleneck → reconstructed stimulus
