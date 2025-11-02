@@ -260,11 +260,27 @@ class AudioEncoder(nn.Module):
         1. self.use_encodec flag (set at initialization)
         2. Input dtype (integer for EnCodec, float for mel)
         """
-        # Handle backward compatibility with 2D input
+        # Handle 2D flattened input (from temporal concatenation)
         if x.dim() == 2:
-            # Old format: (batch, n_mels) - add temporal dimension
-            print("Warning: 2D audio input detected. Adding temporal dimension...")
-            x = x.unsqueeze(-1)  # (batch, n_mels, 1)
+            if self.use_encodec:
+                # EnCodec flattened format: (batch, n_codebooks * frames_per_tr)
+                # Need to reshape to: (batch, n_codebooks, frames_per_tr)
+                batch_size = x.shape[0]
+                expected_flat_dim = self.input_codebooks * self.frames_per_tr
+
+                if x.shape[1] != expected_flat_dim:
+                    raise ValueError(
+                        f"Expected flattened EnCodec dimension {expected_flat_dim} "
+                        f"({self.input_codebooks} codebooks × {self.frames_per_tr} frames), "
+                        f"but got {x.shape[1]}"
+                    )
+
+                # Reshape: (batch, 896) → (batch, 8, 112)
+                x = x.view(batch_size, self.input_codebooks, self.frames_per_tr)
+            else:
+                # Mel spectrogram old format: (batch, n_mels) - add temporal dimension
+                print("Warning: 2D mel spectrogram input detected. Adding temporal dimension...")
+                x = x.unsqueeze(-1)  # (batch, n_mels, 1)
 
         if self.use_encodec:
             # EnCodec mode: Process discrete codes
