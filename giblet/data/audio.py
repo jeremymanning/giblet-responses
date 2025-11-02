@@ -297,7 +297,7 @@ class AudioProcessor:
                 if padding_needed > 0:
                     tr_codes = torch.nn.functional.pad(tr_codes, (0, padding_needed), value=0)
 
-            # Ensure consistent temporal dimension
+            # Ensure consistent temporal dimension FIRST
             if tr_codes.shape[1] > frames_per_tr:
                 tr_codes = tr_codes[:, :frames_per_tr]
             elif tr_codes.shape[1] < frames_per_tr:
@@ -305,15 +305,26 @@ class AudioProcessor:
                 tr_codes = torch.nn.functional.pad(tr_codes, (0, padding), value=0)
 
             # CRITICAL FIX: Ensure consistent codebook dimension
-            # This fixes the "RuntimeError: stack expects each tensor to be equal size,
-            # but got [1, 4, 106697] at entry 0 and [1, 0, 106705] at entry 1" error
+            # Must be done AFTER temporal dimension is fixed
+            # This fixes the "RuntimeError: The expanded size of the tensor (112) must match
+            # the existing size (106697)" error
             if tr_codes.shape[0] != expected_codebooks:
-                # Create properly shaped tensor
-                normalized_codes = torch.zeros(expected_codebooks, frames_per_tr, dtype=tr_codes.dtype)
+                # Create properly shaped tensor with correct temporal dimension
+                normalized_codes = torch.zeros(expected_codebooks, tr_codes.shape[1], dtype=tr_codes.dtype)
                 # Copy available codebooks (pad with zeros if fewer, crop if more)
                 n_available = min(tr_codes.shape[0], expected_codebooks)
+                # Now both tensors have matching temporal dimension
                 normalized_codes[:n_available, :] = tr_codes[:n_available, :]
                 tr_codes = normalized_codes
+
+            # ADDITIONAL FIX: Ensure temporal dimension is correct AFTER codebook normalization
+            # This handles cases where tr_codes still has wrong temporal dimension
+            if tr_codes.shape[1] != frames_per_tr:
+                if tr_codes.shape[1] > frames_per_tr:
+                    tr_codes = tr_codes[:, :frames_per_tr]
+                else:
+                    padding = frames_per_tr - tr_codes.shape[1]
+                    tr_codes = torch.nn.functional.pad(tr_codes, (0, padding), value=0)
 
             # Flatten to 1D: (n_codebooks, frames_per_tr) → (n_codebooks * frames_per_tr,)
             # This ensures consistent dimensions for torch.stack() and training
