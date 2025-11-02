@@ -309,22 +309,15 @@ class AudioProcessor:
             # This fixes the "RuntimeError: The expanded size of the tensor (112) must match
             # the existing size (106697)" error
             if tr_codes.shape[0] != expected_codebooks:
-                # Create properly shaped tensor with correct temporal dimension
-                normalized_codes = torch.zeros(expected_codebooks, tr_codes.shape[1], dtype=tr_codes.dtype)
+                # Create properly shaped tensor with KNOWN correct temporal dimension
+                # Use frames_per_tr directly, NOT tr_codes.shape[1], because tr_codes
+                # was already normalized to frames_per_tr in the previous step (lines 300-305)
+                normalized_codes = torch.zeros(expected_codebooks, frames_per_tr, dtype=tr_codes.dtype)
                 # Copy available codebooks (pad with zeros if fewer, crop if more)
                 n_available = min(tr_codes.shape[0], expected_codebooks)
-                # Now both tensors have matching temporal dimension
+                # Both tensors now have matching temporal dimension (frames_per_tr)
                 normalized_codes[:n_available, :] = tr_codes[:n_available, :]
                 tr_codes = normalized_codes
-
-            # ADDITIONAL FIX: Ensure temporal dimension is correct AFTER codebook normalization
-            # This handles cases where tr_codes still has wrong temporal dimension
-            if tr_codes.shape[1] != frames_per_tr:
-                if tr_codes.shape[1] > frames_per_tr:
-                    tr_codes = tr_codes[:, :frames_per_tr]
-                else:
-                    padding = frames_per_tr - tr_codes.shape[1]
-                    tr_codes = torch.nn.functional.pad(tr_codes, (0, padding), value=0)
 
             # Flatten to 1D: (n_codebooks, frames_per_tr) → (n_codebooks * frames_per_tr,)
             # This ensures consistent dimensions for torch.stack() and training
