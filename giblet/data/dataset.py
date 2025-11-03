@@ -229,15 +229,44 @@ class MultimodalDataset(Dataset):
 
     def _load_or_preprocess_data(self):
         """Load cached data or preprocess from raw files."""
+        import torch.distributed as dist
+
         cache_path = self._get_cache_path()
 
-        if cache_path.exists():
-            print(f"Loading cached features from {cache_path}")
-            self._load_from_cache(cache_path)
+        # DISTRIBUTED FIX (Issue #30): Synchronize caching across ranks
+        # Only rank 0 should preprocess and write cache, others wait
+        is_distributed = dist.is_available() and dist.is_initialized()
+        rank = dist.get_rank() if is_distributed else 0
+
+        if is_distributed:
+            # Check if cache exists (all ranks check)
+            cache_exists = cache_path.exists()
+
+            if not cache_exists and rank == 0:
+                # Only rank 0 preprocesses and creates cache
+                print(f"[Rank 0] Preprocessing data from raw files...")
+                self._preprocess_data()
+                self._save_to_cache(cache_path)
+                print(f"[Rank 0] Cache saved to {cache_path}")
+
+            # Barrier: all ranks wait for rank 0 to finish caching
+            dist.barrier()
+
+            # Now all ranks can safely load from complete cache
+            if cache_path.exists():
+                print(f"[Rank {rank}] Loading cached features from {cache_path}")
+                self._load_from_cache(cache_path)
+            else:
+                raise FileNotFoundError(f"Cache file not created by rank 0: {cache_path}")
         else:
-            print("Preprocessing data from raw files...")
-            self._preprocess_data()
-            self._save_to_cache(cache_path)
+            # Non-distributed: original logic
+            if cache_path.exists():
+                print(f"Loading cached features from {cache_path}")
+                self._load_from_cache(cache_path)
+            else:
+                print("Preprocessing data from raw files...")
+                self._preprocess_data()
+                self._save_to_cache(cache_path)
 
     def _preprocess_data(self):
         """Preprocess all modalities and align them."""
