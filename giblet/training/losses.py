@@ -81,6 +81,22 @@ class ReconstructionLoss(nn.Module):
             Dictionary with individual modality losses
         """
         # Compute MSE for each modality
+        # TEMPORARY: Handle dimension mismatch for temporal concatenation (Issue #29)
+        # video_recon: (B, 43200) single frame from decoder
+        # video_target: (B, 1641600) temporal concatenation from encoder
+        # TODO: Update decoder for temporal concatenation (separate from Issue #29)
+        if video_target.size(1) != video_recon.size(1):
+            # Truncate target to match decoder output
+            video_target = video_target[:, :video_recon.size(1)]
+
+        # Similar handling for audio if needed
+        if audio_target.dim() == 2 and audio_recon.dim() == 3:
+            # Flatten decoder output to match flattened input
+            audio_recon = audio_recon.view(audio_recon.size(0), -1)
+        elif audio_target.dim() == 3 and audio_recon.dim() == 2:
+            # Shouldn't happen, but handle just in case
+            audio_target = audio_target.view(audio_target.size(0), -1)
+
         video_loss = F.mse_loss(video_recon, video_target, reduction=self.reduction)
         audio_loss = F.mse_loss(audio_recon, audio_target, reduction=self.reduction)
         text_loss = F.mse_loss(text_recon, text_target, reduction=self.reduction)
