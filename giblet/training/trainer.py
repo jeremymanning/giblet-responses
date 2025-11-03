@@ -233,17 +233,25 @@ class Trainer:
         # MEMORY OPTIMIZATION (Issue #30): Use 8-bit AdamW to reduce optimizer state memory
         # Standard AdamW needs 2× model params for momentum/variance (~12.5 GB per GPU for 8.36B model)
         # 8-bit AdamW reduces this to ~25% (~3 GB per GPU), saving ~9.5 GB per GPU
+        use_8bit_optimizer = False
         if HAS_BITSANDBYTES:
-            if self.is_main_process:
-                print("  Using 8-bit AdamW optimizer (memory-efficient)")
-                print("  Expected optimizer memory: ~3 GB per GPU (vs ~12.5 GB for standard AdamW)")
-            self.optimizer = bnb.optim.AdamW8bit(
-                self.model.parameters(),
-                lr=config.learning_rate,
-                weight_decay=config.weight_decay
-            )
-        else:
-            if self.is_main_process:
+            try:
+                if self.is_main_process:
+                    print("  Using 8-bit AdamW optimizer (memory-efficient)")
+                    print("  Expected optimizer memory: ~3 GB per GPU (vs ~12.5 GB for standard AdamW)")
+                self.optimizer = bnb.optim.AdamW8bit(
+                    self.model.parameters(),
+                    lr=config.learning_rate,
+                    weight_decay=config.weight_decay
+                )
+                use_8bit_optimizer = True
+            except Exception as e:
+                if self.is_main_process:
+                    print(f"  WARNING: 8-bit optimizer failed ({str(e)[:100]}), falling back to standard AdamW")
+                    print("  This may cause OOM on GPUs with limited memory")
+
+        if not use_8bit_optimizer:
+            if self.is_main_process and not HAS_BITSANDBYTES:
                 print("  WARNING: bitsandbytes not available, using standard AdamW")
                 print("  This may cause OOM on GPUs with <62GB memory")
             self.optimizer = optim.AdamW(

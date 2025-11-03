@@ -66,6 +66,7 @@ model:
   decoder_dropout: 0.3
   use_encodec: true  # Use EnCodec (discrete codes) instead of mel spectrograms
   audio_frames_per_tr: 112  # EnCodec frames per TR (vs 65 for mel)
+  gradient_checkpointing: true  # Issue #30: Enable to save activation memory (~30-50% reduction)
 
 # Multi-GPU training settings
 distributed:
