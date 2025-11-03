@@ -154,7 +154,8 @@ def main():
         split='train',
         apply_hrf=data_config.get('apply_hrf', True),
         mode=data_config.get('mode', 'per_subject'),
-        preprocess=True
+        preprocess=True,
+        frame_skip=data_config.get('frame_skip', 2)  # Issue #30: Memory optimization
     )
 
     val_dataset = MultimodalDataset(
@@ -163,7 +164,8 @@ def main():
         split='val',
         apply_hrf=data_config.get('apply_hrf', True),
         mode=data_config.get('mode', 'per_subject'),
-        preprocess=True
+        preprocess=True,
+        frame_skip=data_config.get('frame_skip', 2)  # Issue #30: Memory optimization
     )
 
     if is_main_process:

@@ -124,7 +124,8 @@ class MultimodalDataset(Dataset):
         max_trs: Optional[int] = None,
         use_encodec: bool = True,
         encodec_bandwidth: float = 3.0,
-        encodec_sample_rate: int = 12000
+        encodec_sample_rate: int = 12000,
+        frame_skip: int = 2  # Issue #30: Memory optimization via frame skipping
     ):
         self.data_dir = Path(data_dir)
         self.split = split
@@ -135,6 +136,7 @@ class MultimodalDataset(Dataset):
         self.use_encodec = use_encodec
         self.encodec_bandwidth = encodec_bandwidth
         self.encodec_sample_rate = encodec_sample_rate
+        self.frame_skip = frame_skip  # Issue #30
 
         # Set up cache directory
         if cache_dir is None:
@@ -156,7 +158,7 @@ class MultimodalDataset(Dataset):
         self.n_subjects = len(self.subject_ids)
 
         # Initialize processors
-        self.video_processor = VideoProcessor(tr=tr)
+        self.video_processor = VideoProcessor(tr=tr, frame_skip=frame_skip)  # Issue #30
         self.audio_processor = AudioProcessor(
             tr=tr,
             use_encodec=use_encodec,
@@ -217,7 +219,10 @@ class MultimodalDataset(Dataset):
         else:
             audio_str = "mel"
 
-        cache_name = f"sherlock_{subjects_str}_{hrf_str}_{mode_str}_{audio_str}.pkl"
+        # Include frame_skip in cache name (Issue #30)
+        frame_skip_str = f"skip{self.frame_skip}"
+
+        cache_name = f"sherlock_{subjects_str}_{hrf_str}_{mode_str}_{audio_str}_{frame_skip_str}.pkl"
         return self.cache_dir / cache_name
 
     def _get_encodec_cache_path(self, video_path: Path) -> Path:
