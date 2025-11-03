@@ -243,7 +243,16 @@ class Trainer:
         self._create_scheduler()
 
         # Mixed precision scaler
-        self.scaler = GradScaler() if config.use_mixed_precision else None
+        # IMPORTANT (Issue #30): GradScaler is NOT compatible with bfloat16!
+        # bfloat16 has same exponent range as float32, so no scaling needed.
+        # Only use GradScaler for float16 mixed precision.
+        model_dtype = next(model.parameters()).dtype
+        use_grad_scaler = config.use_mixed_precision and model_dtype != torch.bfloat16
+        self.scaler = GradScaler() if use_grad_scaler else None
+
+        if config.use_mixed_precision and model_dtype == torch.bfloat16:
+            if self.is_main_process:
+                print("  Using bfloat16 mixed precision WITHOUT GradScaler (bfloat16 doesn't need scaling)")
 
         # Training state
         self.current_epoch = 0
