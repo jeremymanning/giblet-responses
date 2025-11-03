@@ -56,7 +56,7 @@ model:
   video_height: 90
   video_width: 160
   audio_mels: 2048
-  text_dim: 1024
+  text_dim: 3072  # BGE-large (1024) × max_annotations_per_tr (3) in concatenate mode
   n_voxels: 85810
   bottleneck_dim: 2048  # Layer 7: BOTTLENECK
   video_features: 1024
