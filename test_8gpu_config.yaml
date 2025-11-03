@@ -64,6 +64,8 @@ model:
   text_features: 256
   decoder_hidden_dim: 2048
   decoder_dropout: 0.3
+  use_encodec: true  # Use EnCodec (discrete codes) instead of mel spectrograms
+  audio_frames_per_tr: 112  # EnCodec frames per TR (vs 65 for mel)
 
 # Multi-GPU training settings
 distributed:
