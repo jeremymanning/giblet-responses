@@ -43,6 +43,13 @@ from torch.utils.data import DataLoader, DistributedSampler
 from torch.cuda.amp import GradScaler, autocast
 from torch.nn.parallel import DistributedDataParallel as DDP
 
+# MEMORY OPTIMIZATION (Issue #30): Use 8-bit Adam to reduce optimizer memory
+try:
+    import bitsandbytes as bnb
+    HAS_BITSANDBYTES = True
+except ImportError:
+    HAS_BITSANDBYTES = False
+
 import os
 import time
 import json
@@ -223,11 +230,27 @@ class Trainer:
         self._create_dataloaders()
 
         # Create optimizer
-        self.optimizer = optim.AdamW(
-            self.model.parameters(),
-            lr=config.learning_rate,
-            weight_decay=config.weight_decay
-        )
+        # MEMORY OPTIMIZATION (Issue #30): Use 8-bit AdamW to reduce optimizer state memory
+        # Standard AdamW needs 2× model params for momentum/variance (~12.5 GB per GPU for 8.36B model)
+        # 8-bit AdamW reduces this to ~25% (~3 GB per GPU), saving ~9.5 GB per GPU
+        if HAS_BITSANDBYTES:
+            if self.is_main_process:
+                print("  Using 8-bit AdamW optimizer (memory-efficient)")
+                print("  Expected optimizer memory: ~3 GB per GPU (vs ~12.5 GB for standard AdamW)")
+            self.optimizer = bnb.optim.AdamW8bit(
+                self.model.parameters(),
+                lr=config.learning_rate,
+                weight_decay=config.weight_decay
+            )
+        else:
+            if self.is_main_process:
+                print("  WARNING: bitsandbytes not available, using standard AdamW")
+                print("  This may cause OOM on GPUs with <62GB memory")
+            self.optimizer = optim.AdamW(
+                self.model.parameters(),
+                lr=config.learning_rate,
+                weight_decay=config.weight_decay
+            )
 
         # Create loss function
         self.criterion = CombinedAutoEncoderLoss(
