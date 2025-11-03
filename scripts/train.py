@@ -108,6 +108,14 @@ def main():
 
     # Setup distributed training
     if args.distributed:
+        # Configure NCCL for tensor01/tensor02 clusters (Issue #30 fix)
+        # Disable shared memory transport to avoid /dev/shm communication errors
+        # This forces NCCL to use socket transport which is more reliable
+        os.environ['NCCL_SHM_DISABLE'] = '1'  # Disable shared memory
+        os.environ['NCCL_P2P_DISABLE'] = '0'  # Keep P2P enabled (NVLink works)
+        os.environ['NCCL_DEBUG'] = 'INFO'  # Enable debug logging
+        os.environ['NCCL_TIMEOUT'] = '1800'  # 30 min timeout for large model init
+
         # Get rank from environment (set by torchrun)
         local_rank = int(os.environ.get('LOCAL_RANK', args.local_rank))
         world_size = int(os.environ.get('WORLD_SIZE', 1))
