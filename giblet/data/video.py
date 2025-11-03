@@ -45,6 +45,9 @@ class VideoProcessor:
         fMRI repetition time in seconds
     normalize : bool, default=True
         Whether to normalize pixel values to [0, 1]
+    frame_skip : int, default=2
+        Sample every Nth frame (2 = half framerate, 3 = third framerate, etc.)
+        Memory optimization: frame_skip=2 reduces model size by ~50%
     """
 
     def __init__(
@@ -52,12 +55,14 @@ class VideoProcessor:
         target_height: int = 90,
         target_width: int = 160,
         tr: float = 1.5,
-        normalize: bool = True
+        normalize: bool = True,
+        frame_skip: int = 2
     ):
         self.target_height = target_height
         self.target_width = target_width
         self.tr = tr
         self.normalize = normalize
+        self.frame_skip = frame_skip  # MEMORY OPTIMIZATION (Issue #30): Skip frames to reduce model size
         self.frame_features = target_height * target_width * 3  # RGB channels per frame
 
     def video_to_features(
@@ -108,8 +113,12 @@ class VideoProcessor:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         duration = total_frames / fps
 
-        # Calculate frames per TR window
-        frames_per_tr = int(np.round(fps * self.tr))
+        # Calculate frames per TR window (before skipping)
+        frames_per_tr_original = int(np.round(fps * self.tr))
+
+        # MEMORY OPTIMIZATION (Issue #30): Reduce frames by skipping
+        # Example: frame_skip=2 means take every 2nd frame (half the frames)
+        frames_per_tr = int(np.ceil(frames_per_tr_original / self.frame_skip))
 
         # Calculate number of TRs
         n_trs = int(np.floor(duration / self.tr))
@@ -117,7 +126,7 @@ class VideoProcessor:
             n_trs = min(n_trs, max_trs)
 
         # Pre-allocate feature matrix
-        # Each TR contains frames_per_tr concatenated frames
+        # Each TR contains frames_per_tr concatenated frames (after skipping)
         n_features_per_tr = frames_per_tr * self.frame_features
         features = np.zeros((n_trs, n_features_per_tr), dtype=np.float32)
 
@@ -130,13 +139,13 @@ class VideoProcessor:
             end_time = (tr_idx + 1) * self.tr
             start_time = end_time - self.tr
 
-            # Frame indices for this TR window
+            # Frame indices for this TR window (original range before skipping)
             end_frame = int(end_time * fps)
-            start_frame = end_frame - frames_per_tr
+            start_frame = end_frame - frames_per_tr_original
 
-            # Extract frames within this TR window
+            # Extract frames within this TR window (with skipping for memory optimization)
             tr_frames = []
-            for frame_idx in range(start_frame, end_frame):
+            for frame_idx in range(start_frame, end_frame, self.frame_skip):  # Skip frames
                 if frame_idx < 0:
                     # Before video start - create zero-padded frame
                     zero_frame = np.zeros(
