@@ -140,3 +140,11 @@ cluster_config/*.json
 
 # Validation outputs (generated files, can be large)
 validation_outputs/
+
+# Training artifacts (Issue #31: Prevent future clutter)
+*_checkpoints/
+*_outputs/
+*_logs/
+logs/
+encodec_test_outputs/
+encodec_parameter_sweep/
