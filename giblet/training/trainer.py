@@ -477,10 +477,22 @@ class Trainer:
 
             # Forward pass with mixed precision
             if self.config.use_mixed_precision:
-                with autocast():
+                # MEMORY OPTIMIZATION (Issue #30): Use autocast with bfloat16 dtype
+                # Model and inputs are already in bfloat16, autocast ensures ops use appropriate precision
+                with autocast(dtype=torch.bfloat16):
                     outputs = self.model(video, audio, text, fmri_target=fmri)
+
+                    # NUMERICAL STABILITY: Cast to float32 for loss computation
+                    # Loss functions need higher precision to avoid numerical issues
+                    outputs_fp32 = {k: v.float() if torch.is_tensor(v) and torch.is_floating_point(v) else v
+                                    for k, v in outputs.items()}
+                    video_flat_fp32 = video_flat.float()
+                    audio_fp32 = audio.float() if torch.is_floating_point(audio) else audio
+                    text_fp32 = text.float()
+                    fmri_fp32 = fmri.float()
+
                     loss, loss_dict = self.criterion(
-                        outputs, video_flat, audio, text, fmri
+                        outputs_fp32, video_flat_fp32, audio_fp32, text_fp32, fmri_fp32
                     )
             else:
                 outputs = self.model(video, audio, text, fmri_target=fmri)
@@ -574,11 +586,28 @@ class Trainer:
             batch_size = video.size(0)
             video_flat = video.view(batch_size, -1)
 
-            # Forward pass
-            outputs = self.model(video, audio, text, fmri_target=fmri)
-            loss, loss_dict = self.criterion(
-                outputs, video_flat, audio, text, fmri
-            )
+            # Forward pass (no gradient computation in validation)
+            # MEMORY OPTIMIZATION (Issue #30): Use autocast with bfloat16 for validation too
+            if self.config.use_mixed_precision:
+                with autocast(dtype=torch.bfloat16):
+                    outputs = self.model(video, audio, text, fmri_target=fmri)
+
+                    # NUMERICAL STABILITY: Cast to float32 for loss computation
+                    outputs_fp32 = {k: v.float() if torch.is_tensor(v) and torch.is_floating_point(v) else v
+                                    for k, v in outputs.items()}
+                    video_flat_fp32 = video_flat.float()
+                    audio_fp32 = audio.float() if torch.is_floating_point(audio) else audio
+                    text_fp32 = text.float()
+                    fmri_fp32 = fmri.float()
+
+                    loss, loss_dict = self.criterion(
+                        outputs_fp32, video_flat_fp32, audio_fp32, text_fp32, fmri_fp32
+                    )
+            else:
+                outputs = self.model(video, audio, text, fmri_target=fmri)
+                loss, loss_dict = self.criterion(
+                    outputs, video_flat, audio, text, fmri
+                )
 
             # Accumulate losses
             for key in losses.keys():

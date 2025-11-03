@@ -519,35 +519,46 @@ class MultimodalDataset(Dataset):
         -------
         sample : dict
             Dictionary with keys:
-            - 'video': Video features (torch.Tensor)
-            - 'audio': Audio features (torch.Tensor)
-            - 'text': Text features (torch.Tensor)
-            - 'fmri': fMRI features (torch.Tensor)
+            - 'video': Video features (torch.Tensor, bfloat16)
+            - 'audio': Audio features (torch.Tensor, int64 for EnCodec or bfloat16 for mel)
+            - 'text': Text features (torch.Tensor, bfloat16)
+            - 'fmri': fMRI features (torch.Tensor, bfloat16)
             - 'subject_id': Subject ID (int), only for per_subject mode
             - 'tr_index': TR index (int)
+
+        Notes
+        -----
+        MEMORY OPTIMIZATION (Issue #30): Returns bfloat16 tensors instead of float32
+        to reduce memory usage by ~50%. This matches the model's bfloat16 dtype.
         """
         if idx < 0 or idx >= self.n_samples:
             raise IndexError(f"Index {idx} out of range [0, {self.n_samples})")
+
+        # Determine target dtype: bfloat16 if supported, else float32
+        if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+            target_dtype = torch.bfloat16
+        else:
+            target_dtype = torch.float32
 
         if self.mode == 'per_subject':
             # Compute subject and TR indices
             subject_idx = idx // self.n_trs
             tr_idx = idx % self.n_trs
 
-            # Convert audio to appropriate dtype (int64 for EnCodec, float32 for mel)
+            # Convert audio to appropriate dtype (int64 for EnCodec, bfloat16/float32 for mel)
             audio_feat = self.audio_features[subject_idx, tr_idx]
             if audio_feat.dtype in [np.int32, np.int64]:
                 # EnCodec discrete codes - keep as int64
                 audio_tensor = torch.from_numpy(audio_feat).long()
             else:
-                # Mel spectrogram - convert to float
-                audio_tensor = torch.from_numpy(audio_feat).float()
+                # Mel spectrogram - convert to bfloat16 or float32
+                audio_tensor = torch.from_numpy(audio_feat).to(target_dtype)
 
             sample = {
-                'video': torch.from_numpy(self.video_features[subject_idx, tr_idx]).float(),
+                'video': torch.from_numpy(self.video_features[subject_idx, tr_idx]).to(target_dtype),
                 'audio': audio_tensor,
-                'text': torch.from_numpy(self.text_features[subject_idx, tr_idx]).float(),
-                'fmri': torch.from_numpy(self.fmri_features[subject_idx, tr_idx]).float(),
+                'text': torch.from_numpy(self.text_features[subject_idx, tr_idx]).to(target_dtype),
+                'fmri': torch.from_numpy(self.fmri_features[subject_idx, tr_idx]).to(target_dtype),
                 'subject_id': self.subject_ids[subject_idx],
                 'tr_index': tr_idx
             }
@@ -561,14 +572,14 @@ class MultimodalDataset(Dataset):
                 # EnCodec discrete codes - keep as int64
                 audio_tensor = torch.from_numpy(audio_feat).long()
             else:
-                # Mel spectrogram - convert to float
-                audio_tensor = torch.from_numpy(audio_feat).float()
+                # Mel spectrogram - convert to bfloat16 or float32
+                audio_tensor = torch.from_numpy(audio_feat).to(target_dtype)
 
             sample = {
-                'video': torch.from_numpy(self.video_features[0, tr_idx]).float(),
+                'video': torch.from_numpy(self.video_features[0, tr_idx]).to(target_dtype),
                 'audio': audio_tensor,
-                'text': torch.from_numpy(self.text_features[0, tr_idx]).float(),
-                'fmri': torch.from_numpy(self.fmri_features[0, tr_idx]).float(),
+                'text': torch.from_numpy(self.text_features[0, tr_idx]).to(target_dtype),
+                'fmri': torch.from_numpy(self.fmri_features[0, tr_idx]).to(target_dtype),
                 'tr_index': tr_idx
             }
 

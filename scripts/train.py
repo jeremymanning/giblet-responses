@@ -188,6 +188,21 @@ def main():
         audio_frames_per_tr=model_config.get('audio_frames_per_tr', 65)
     )
 
+    # MEMORY OPTIMIZATION (Issue #30): Convert model to bfloat16 for half-precision training
+    # This reduces memory usage from ~62GB to ~31GB per GPU
+    # bfloat16 is preferred over float16 for better numerical stability
+    if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+        if is_main_process:
+            print("\nConverting model to bfloat16 (half-precision) for memory optimization...")
+        model = model.bfloat16()
+        if is_main_process:
+            print("  Model dtype: bfloat16")
+            print("  Expected memory reduction: ~50% (from float32)")
+    else:
+        if is_main_process:
+            print("\nWarning: bfloat16 not supported on this device, keeping float32")
+            print("  This may cause OOM on GPUs with <62GB memory")
+
     if is_main_process:
         param_count = model.get_parameter_count()
         print(f"Model parameters: {param_count['total']:,}")
