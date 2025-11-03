@@ -512,7 +512,8 @@ class Trainer:
             # Backward pass
             self.optimizer.zero_grad()
 
-            if self.config.use_mixed_precision:
+            # Use GradScaler only if it exists (float16), not for bfloat16 (Issue #30)
+            if self.scaler is not None:
                 self.scaler.scale(loss).backward()
                 # Gradient clipping
                 self.scaler.unscale_(self.optimizer)
@@ -523,6 +524,7 @@ class Trainer:
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
             else:
+                # No scaler (bfloat16 or no mixed precision)
                 loss.backward()
                 # Gradient clipping
                 nn.utils.clip_grad_norm_(
