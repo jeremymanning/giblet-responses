@@ -97,6 +97,10 @@ class ReconstructionLoss(nn.Module):
             # Shouldn't happen, but handle just in case
             audio_target = audio_target.view(audio_target.size(0), -1)
 
+        # Convert audio_target to float if it's integer (EnCodec codes)
+        if audio_target.dtype in [torch.int32, torch.int64, torch.long]:
+            audio_target = audio_target.float()
+
         video_loss = F.mse_loss(video_recon, video_target, reduction=self.reduction)
         audio_loss = F.mse_loss(audio_recon, audio_target, reduction=self.reduction)
         text_loss = F.mse_loss(text_recon, text_target, reduction=self.reduction)
