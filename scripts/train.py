@@ -175,7 +175,9 @@ def main():
         n_voxels=model_config.get('n_voxels', 85810),
         bottleneck_dim=model_config.get('bottleneck_dim', 8000),
         reconstruction_weight=training_config.reconstruction_weight,
-        fmri_weight=training_config.fmri_weight
+        fmri_weight=training_config.fmri_weight,
+        use_encodec=model_config.get('use_encodec', False),
+        audio_frames_per_tr=model_config.get('audio_frames_per_tr', 65)
     )
 
     if is_main_process:
