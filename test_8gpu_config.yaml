@@ -3,7 +3,7 @@
 
 # Optimizer parameters
 learning_rate: 1.0e-4
-batch_size: 1  # Per GPU, so 8 total across GPUs
+batch_size: 2  # Per GPU (minimum for BatchNorm), so 16 total across GPUs
 num_epochs: 1  # Just 1 epoch for quick test
 weight_decay: 1.0e-5
 
