@@ -477,6 +477,10 @@ class MultimodalEncoder(nn.Module):
         When return_voxels=True, the voxels are expanded from the bottleneck.
         """
         # Layer 2A/B/C: Encode each modality
+        # Convert audio to float if it's integer (EnCodec codes)
+        if audio.dtype in [torch.int32, torch.int64, torch.long]:
+            audio = audio.float()
+
         video_feat = self.video_encoder(video)      # (B, video_features)
         audio_feat = self.audio_encoder(audio)      # (B, audio_features)
         text_feat = self.text_encoder(text)         # (B, text_features)
