@@ -47,6 +47,9 @@ data:
   mode: 'per_subject'
   train_split: 'train'
   val_split: 'val'
+  frame_skip: 2  # Memory optimization (Issue #30): Skip every other frame (50% reduction)
+  fps: 25.0  # Video frame rate
+  tr: 1.5  # fMRI repetition time
 
 # Model architecture
 model:

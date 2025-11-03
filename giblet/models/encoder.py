@@ -396,7 +396,8 @@ class MultimodalEncoder(nn.Module):
         audio_features: int = 256,
         text_features: int = 256,
         use_encodec: bool = False,  # NEW: Use EnCodec codes instead of mel spectrograms
-        gradient_checkpointing: bool = False  # NEW (Issue #30): Enable gradient checkpointing for memory optimization
+        gradient_checkpointing: bool = False,  # NEW (Issue #30): Enable gradient checkpointing for memory optimization
+        video_frames_per_tr: int = 19  # NEW (Issue #30): Video frames per TR after frame skipping
     ):
         super().__init__()
 
@@ -410,12 +411,12 @@ class MultimodalEncoder(nn.Module):
         self.bottleneck_dim = bottleneck_dim
         self.use_encodec = use_encodec
         self.gradient_checkpointing = gradient_checkpointing
+        self.video_frames_per_tr = video_frames_per_tr
 
         # Layer 2A: Video encoder
         # Calculate input dimension for temporal concatenation
-        # Default: 38 frames/TR @ 25fps × 1.5s TR × 160×90×3 = 1,641,600
-        frames_per_tr = 38  # At 25fps × 1.5s TR (hardcoded for now, can parameterize later)
-        video_input_dim = frames_per_tr * video_height * video_width * 3
+        # Example: 19 frames/TR (with frame_skip=2) × 160×90×3 = 820,800
+        video_input_dim = video_frames_per_tr * video_height * video_width * 3
 
         self.video_encoder = VideoEncoder(
             input_dim=video_input_dim,  # Flattened temporal concatenation

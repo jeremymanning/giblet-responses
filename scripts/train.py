@@ -175,6 +175,7 @@ def main():
         print("\nCreating model...")
 
     model_config = config.get('model', {})
+    data_config = config.get('data', {})
     model = create_autoencoder(
         video_height=model_config.get('video_height', 90),
         video_width=model_config.get('video_width', 160),
@@ -186,7 +187,10 @@ def main():
         fmri_weight=training_config.fmri_weight,
         use_encodec=model_config.get('use_encodec', False),
         audio_frames_per_tr=model_config.get('audio_frames_per_tr', 65),
-        gradient_checkpointing=model_config.get('gradient_checkpointing', False)  # Issue #30: Frame skipping used instead
+        gradient_checkpointing=model_config.get('gradient_checkpointing', False),  # Issue #30: Frame skipping used instead
+        frame_skip=data_config.get('frame_skip', 2),  # Issue #30: Memory optimization via frame skipping
+        fps=data_config.get('fps', 25.0),
+        tr=data_config.get('tr', 1.5)
     )
 
     # MEMORY OPTIMIZATION (Issue #30): Inform user about gradient checkpointing (if enabled)
