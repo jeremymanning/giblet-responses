@@ -424,13 +424,13 @@ ${BOLD}OPTIONS:${NC}
 
 ${BOLD}EXAMPLES:${NC}
     ${GREEN}# Local training with 1 GPU${NC}
-    ./run_giblet.sh --task train --config examples/train_config.yaml --gpus 1
+    ./run_giblet.sh --task train --config configs/training/test_config.yaml --gpus 1
 
     ${GREEN}# Distributed training with 8 GPUs${NC}
-    ./run_giblet.sh --task train --config cluster_train_config.yaml --gpus 8
+    ./run_giblet.sh --task train --config configs/cluster/cluster_train_config.yaml --gpus 8
 
     ${GREEN}# CPU training (no GPU)${NC}
-    ./run_giblet.sh --task train --config examples/train_config.yaml --gpus 0
+    ./run_giblet.sh --task train --config configs/training/test_config.yaml --gpus 0
 
     ${GREEN}# Run tests${NC}
     ./run_giblet.sh --task test
@@ -456,10 +456,11 @@ ${BOLD}CLUSTER USAGE:${NC}
     - Reattach: screen -r training
 
 ${BOLD}FILES:${NC}
-    scripts/train.py              Training script
-    examples/train_config.yaml    Example config file
-    validate_all_modalities.py    Data validation script
-    tests/                        Test directory
+    scripts/train.py                      Training script
+    configs/training/*.yaml               Training config files
+    configs/cluster/cluster_train_config  Cluster training config
+    validate_all_modalities.py            Data validation script
+    tests/                                Test directory
 
 ${BOLD}MORE INFO:${NC}
     - See ENVIRONMENT_SETUP.md for setup instructions
