@@ -185,8 +185,16 @@ def main():
         reconstruction_weight=training_config.reconstruction_weight,
         fmri_weight=training_config.fmri_weight,
         use_encodec=model_config.get('use_encodec', False),
-        audio_frames_per_tr=model_config.get('audio_frames_per_tr', 65)
+        audio_frames_per_tr=model_config.get('audio_frames_per_tr', 65),
+        gradient_checkpointing=model_config.get('gradient_checkpointing', True)  # Issue #30: Enable gradient checkpointing by default
     )
+
+    # MEMORY OPTIMIZATION (Issue #30): Inform user about gradient checkpointing
+    if is_main_process and model_config.get('gradient_checkpointing', True):
+        print("\nGradient checkpointing enabled:")
+        print("  Reduces activation memory by ~30-50%")
+        print("  Training will be ~30-40% slower (recomputes activations during backward pass)")
+        print("  Recommended for large models on GPUs with limited memory")
 
     # MEMORY OPTIMIZATION (Issue #30): Convert model to bfloat16 for half-precision training
     # This reduces memory usage from ~62GB to ~31GB per GPU

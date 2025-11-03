@@ -79,7 +79,8 @@ class MultimodalAutoencoder(nn.Module):
         reconstruction_weight: float = 1.0,
         fmri_weight: float = 1.0,
         use_encodec: bool = False,  # NEW: Use EnCodec discrete codes
-        audio_frames_per_tr: int = 65  # NEW: Frames per TR (65 mel, 112 EnCodec)
+        audio_frames_per_tr: int = 65,  # NEW: Frames per TR (65 mel, 112 EnCodec)
+        gradient_checkpointing: bool = False  # NEW (Issue #30): Enable gradient checkpointing for memory optimization
     ):
         super().__init__()
 
@@ -93,6 +94,7 @@ class MultimodalAutoencoder(nn.Module):
         self.fmri_weight = fmri_weight
         self.use_encodec = use_encodec
         self.audio_frames_per_tr = audio_frames_per_tr
+        self.gradient_checkpointing = gradient_checkpointing
 
         # Encoder: stimulus → bottleneck → fMRI voxels
         self.encoder = MultimodalEncoder(
@@ -107,7 +109,8 @@ class MultimodalAutoencoder(nn.Module):
             video_features=video_features,
             audio_features=audio_features,
             text_features=text_features,
-            use_encodec=use_encodec  # Pass through from autoencoder
+            use_encodec=use_encodec,  # Pass through from autoencoder
+            gradient_checkpointing=gradient_checkpointing  # Pass through gradient checkpointing flag
         )
 
         # Decoder: bottleneck → reconstructed stimulus
@@ -428,7 +431,8 @@ def create_autoencoder(
     reconstruction_weight: float = 1.0,
     fmri_weight: float = 1.0,
     use_encodec: bool = False,
-    audio_frames_per_tr: int = 65
+    audio_frames_per_tr: int = 65,
+    gradient_checkpointing: bool = False
 ) -> MultimodalAutoencoder:
     """
     Factory function to create MultimodalAutoencoder with default parameters.
@@ -455,6 +459,9 @@ def create_autoencoder(
         If True, use EnCodec discrete codes; if False, use mel spectrograms
     audio_frames_per_tr : int, default=65
         Number of audio frames per TR (65 for mel @ 44Hz, 112 for EnCodec @ 75Hz)
+    gradient_checkpointing : bool, default=False
+        If True, use gradient checkpointing in VideoEncoder to reduce activation memory.
+        Trades compute for memory (~30-40% slower, ~30-50% less activation memory).
 
     Returns
     -------
@@ -471,7 +478,8 @@ def create_autoencoder(
         reconstruction_weight=reconstruction_weight,
         fmri_weight=fmri_weight,
         use_encodec=use_encodec,
-        audio_frames_per_tr=audio_frames_per_tr
+        audio_frames_per_tr=audio_frames_per_tr,
+        gradient_checkpointing=gradient_checkpointing
     )
 
 

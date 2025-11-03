@@ -20,6 +20,7 @@ This module implements Layers 1-6 of the architecture.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint
 from typing import Tuple, Optional
 
 
@@ -49,12 +50,14 @@ class VideoEncoder(nn.Module):
     def __init__(
         self,
         input_dim: int = 1641600,
-        output_features: int = 1024
+        output_features: int = 1024,
+        gradient_checkpointing: bool = False
     ):
         super().__init__()
 
         self.input_dim = input_dim
         self.output_features = output_features
+        self.gradient_checkpointing = gradient_checkpointing
 
         # Progressive dimensionality reduction via Linear layers
         # 1,641,600 → 4096 → 2048 → 1024
@@ -106,23 +109,58 @@ class VideoEncoder(nn.Module):
         if x.dim() != 2:
             raise ValueError(f"Expected 2D input (batch, features), got {x.dim()}D: {x.shape}")
 
-        # Linear layer 1: 1,641,600 → 4096
-        x = self.fc1(x)
-        x = self.bn1(x)
-        x = F.relu(x)
-        x = self.dropout1(x)
+        # MEMORY OPTIMIZATION (Issue #30): Use gradient checkpointing to reduce activation memory
+        # Trades compute for memory by not storing intermediate activations during forward pass
+        # Reduces activation memory by ~30-50% at the cost of ~30-40% slower training
 
-        # Linear layer 2: 4096 → 2048
-        x = self.fc2(x)
-        x = self.bn2(x)
-        x = F.relu(x)
-        x = self.dropout2(x)
+        if self.gradient_checkpointing and self.training:
+            # Define checkpointed blocks as lambda functions
+            # PyTorch checkpoint requires functions that take tensors as input
 
-        # Linear layer 3: 2048 → output_features
-        x = self.fc3(x)
-        x = self.bn3(x)
-        x = F.relu(x)
-        x = self.dropout3(x)
+            def block1(x):
+                x = self.fc1(x)
+                x = self.bn1(x)
+                x = F.relu(x)
+                x = self.dropout1(x)
+                return x
+
+            def block2(x):
+                x = self.fc2(x)
+                x = self.bn2(x)
+                x = F.relu(x)
+                x = self.dropout2(x)
+                return x
+
+            def block3(x):
+                x = self.fc3(x)
+                x = self.bn3(x)
+                x = F.relu(x)
+                x = self.dropout3(x)
+                return x
+
+            # Apply checkpointing to each block
+            x = checkpoint(block1, x, use_reentrant=False)
+            x = checkpoint(block2, x, use_reentrant=False)
+            x = checkpoint(block3, x, use_reentrant=False)
+        else:
+            # Standard forward pass (no checkpointing)
+            # Linear layer 1: 1,641,600 → 4096
+            x = self.fc1(x)
+            x = self.bn1(x)
+            x = F.relu(x)
+            x = self.dropout1(x)
+
+            # Linear layer 2: 4096 → 2048
+            x = self.fc2(x)
+            x = self.bn2(x)
+            x = F.relu(x)
+            x = self.dropout2(x)
+
+            # Linear layer 3: 2048 → output_features
+            x = self.fc3(x)
+            x = self.bn3(x)
+            x = F.relu(x)
+            x = self.dropout3(x)
 
         return x
 
@@ -357,7 +395,8 @@ class MultimodalEncoder(nn.Module):
         video_features: int = 1024,
         audio_features: int = 256,
         text_features: int = 256,
-        use_encodec: bool = False  # NEW: Use EnCodec codes instead of mel spectrograms
+        use_encodec: bool = False,  # NEW: Use EnCodec codes instead of mel spectrograms
+        gradient_checkpointing: bool = False  # NEW (Issue #30): Enable gradient checkpointing for memory optimization
     ):
         super().__init__()
 
@@ -370,6 +409,7 @@ class MultimodalEncoder(nn.Module):
         self.n_voxels = n_voxels
         self.bottleneck_dim = bottleneck_dim
         self.use_encodec = use_encodec
+        self.gradient_checkpointing = gradient_checkpointing
 
         # Layer 2A: Video encoder
         # Calculate input dimension for temporal concatenation
@@ -379,7 +419,8 @@ class MultimodalEncoder(nn.Module):
 
         self.video_encoder = VideoEncoder(
             input_dim=video_input_dim,  # Flattened temporal concatenation
-            output_features=video_features
+            output_features=video_features,
+            gradient_checkpointing=gradient_checkpointing  # Pass gradient checkpointing flag
         )
 
         # Layer 2B: Audio encoder (supports both mel spectrograms and EnCodec codes)
