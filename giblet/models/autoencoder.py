@@ -178,8 +178,17 @@ class MultimodalAutoencoder(nn.Module):
         # Compute losses if in training mode
         if self.training:
             # Flatten original video for comparison
-            # video shape: (B, 3, H, W) → (B, 3*H*W)
-            video_flat = video.view(batch_size, -1)
+            # TEMPORARY: Handle dimension mismatch for temporal concatenation
+            # video_recon shape: (B, video_dim) where video_dim = 160×90×3 = 43,200
+            # video shape: (B, n_features) where n_features = 38×160×90×3 = 1,641,600 (temporal concat)
+            # For now, just use the matching dimensions to avoid crash
+            # TODO: Update decoder for temporal concatenation (separate from Issue #29)
+            if video.dim() == 2 and video.size(1) != video_recon.size(1):
+                # Temporal concatenation mode: truncate target to match decoder output
+                video_flat = video[:, :video_recon.size(1)]
+            else:
+                # Single frame mode: (B, 3, H, W) → (B, 3*H*W)
+                video_flat = video.view(batch_size, -1)
 
             # Reconstruction loss
             video_loss = F.mse_loss(video_recon, video_flat)
@@ -187,11 +196,19 @@ class MultimodalAutoencoder(nn.Module):
             # Audio loss: Different handling for EnCodec vs mel spectrograms
             if self.use_encodec:
                 # EnCodec: Predict discrete codes
-                # audio: (batch, n_codebooks, frames_per_tr) integer codes
-                # audio_recon: (batch, n_codebooks, frames_per_tr) continuous predictions
-                # Convert target to float for MSE loss
-                audio_float = audio.float()
-                audio_loss = F.mse_loss(audio_recon, audio_float)
+                # TEMPORARY: Handle dimension mismatch for temporal concatenation
+                # audio_recon: (batch, n_codebooks, frames_per_tr) from decoder (3D)
+                # audio: (batch, n_codebooks * frames_per_tr) from input (2D flattened)
+                # TODO: Update decoder for temporal concatenation (separate from Issue #29)
+                if audio.dim() == 2 and audio_recon.dim() == 3:
+                    # Flatten decoder output to match input
+                    audio_recon_flat = audio_recon.view(batch_size, -1)
+                    audio_float = audio.float()
+                    audio_loss = F.mse_loss(audio_recon_flat, audio_float)
+                else:
+                    # Normal 3D mode
+                    audio_float = audio.float()
+                    audio_loss = F.mse_loss(audio_recon, audio_float)
             else:
                 # Mel spectrograms: Continuous features
                 # audio: (batch, n_mels, frames_per_tr) continuous
