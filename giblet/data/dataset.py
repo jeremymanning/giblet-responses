@@ -182,6 +182,17 @@ class MultimodalDataset(Dataset):
         self.n_trs = None
         self.n_samples = None
 
+        # MEMORY OPTIMIZATION (Issue #30): Determine target dtype once during init
+        # Check bfloat16 support here to avoid CUDA re-initialization in DataLoader workers
+        try:
+            if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+                self.target_dtype = torch.bfloat16
+            else:
+                self.target_dtype = torch.float32
+        except:
+            # If CUDA check fails (e.g., in worker process), default to float32
+            self.target_dtype = torch.float32
+
         # Load or preprocess data
         if preprocess:
             self._load_or_preprocess_data()
@@ -534,11 +545,9 @@ class MultimodalDataset(Dataset):
         if idx < 0 or idx >= self.n_samples:
             raise IndexError(f"Index {idx} out of range [0, {self.n_samples})")
 
-        # Determine target dtype: bfloat16 if supported, else float32
-        if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
-            target_dtype = torch.bfloat16
-        else:
-            target_dtype = torch.float32
+        # Use target dtype determined during initialization (Issue #30 fix)
+        # This avoids CUDA re-initialization in DataLoader worker processes
+        target_dtype = self.target_dtype
 
         if self.mode == 'per_subject':
             # Compute subject and TR indices
