@@ -148,3 +148,7 @@ validation_outputs/
 logs/
 encodec_test_outputs/
 encodec_parameter_sweep/
+
+# Pre-commit and CI/CD
+.pre-commit-config.yaml.backup
+.ruff_cache/
