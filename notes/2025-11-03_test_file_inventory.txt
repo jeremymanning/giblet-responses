@@ -1,0 +1,313 @@
+COMPLETE TEST FILE INVENTORY
+=============================
+Date: November 3, 2025
+Generated from: find, wc, and file inspection
+
+ROOT LEVEL TESTS (tests/)
+========================
+Location: /Users/jmanning/giblet-responses/tests/
+
+1. __init__.py (0 lines) - Module initialization
+2. test_embeddings.py (9,040 lines) - Real text embedding validation
+3. test_fmri_processor.py (14,356 lines) - fMRI processing tests with fixtures
+4. test_real_text_embeddings.py (2,174 lines) - BGE model embedding validation
+5. test_sherlock_quick.py (3,110 lines) - Quick Sherlock pipeline integration test
+6. test_sync.py (18,124 lines) - Synchronization logic tests with fixtures
+7. test_text_embedding.py (9,023 lines) - Text embedding functionality
+8. test_text_embedding_mock.py (10,471 lines) - Mock embedding tests
+9. test_training.py (18,977 lines) - Training pipeline tests
+10. .pytest_cache/ (directory) - Pytest cache directory
+11. __pycache__/ (directory) - Python bytecode cache
+
+Subtotal test files: 8
+Subtotal lines: 2,474 (excluding __pycache__)
+
+DATA PROCESSING TESTS (tests/data/)
+===================================
+Location: /Users/jmanning/giblet-responses/tests/data/
+
+Test Files:
+1. __init__.py (1 line) - "# Data processing tests"
+2. test_audio_dimension_fix.py (8,396 lines) - Audio dimension issue handling
+3. test_audio_encodec.py (13,175 lines) - EnCodec audio encoding tests
+4. test_audio_encodec_extended.py (8,027 lines) - Extended EnCodec functionality
+5. test_audio_temporal_concatenation.py (17,728 lines) - Temporal audio alignment tests
+6. test_dataset.py (10,521 lines) - Dataset loading and processing tests
+7. test_encodec_sherlock_integration.py (11,814 lines) - Sherlock + EnCodec integration
+8. test_text.py (32,601 lines) - Text annotation and processing tests
+9. test_video_temporal.py (11,223 lines) - Video temporal handling tests
+
+Diagnostic/Validation:
+10. validate_text_timing.py (11,507 lines) - Text timing validation script
+
+Subtotal test files: 8 (standard naming)
+Subtotal diagnostic files: 1 (non-standard naming)
+Subtotal lines: 3,245
+
+MODEL ARCHITECTURE TESTS (tests/models/)
+========================================
+Location: /Users/jmanning/giblet-responses/tests/models/
+
+Test Files:
+1. __init__.py - Module initialization
+2. test_audio_decoder_encodec.py - Audio decoder with EnCodec tests
+3. test_audio_encoder_encodec.py - Audio encoder with EnCodec tests
+   - Uses @pytest.mark.skipif(not torch.cuda.is_available(), ...)
+4. test_autoencoder.py - Full autoencoder tests (forward/backward/checkpointing)
+5. test_decoder.py - Decoder module tests with fixtures
+6. test_encoder.py - Encoder module tests
+   - Uses @pytest.mark.skipif(not torch.cuda.is_available(), ...)
+7. test_encoder_demo.py - Encoder demonstration tests
+
+Diagnostic/Verification:
+8. check_layer_sizes.py - Layer dimension verification
+9. validate_encodec_implementation.py - EnCodec implementation validation
+10. verify_13_layer_architecture.py - 13-layer architecture verification
+11. verify_audio_fix.py - Audio dimension fix verification
+12. verify_checkpoint.py - Checkpoint loading/saving verification
+
+Subtotal test files: 6 (standard naming)
+Subtotal diagnostic files: 5 (non-standard naming)
+Subtotal lines: 2,659
+
+INTEGRATION TESTS (tests/integration/)
+======================================
+Location: /Users/jmanning/giblet-responses/tests/integration/
+
+Test Files:
+1. __init__.py - Module initialization
+2. test_encodec_e2e_pipeline.py - Full end-to-end pipeline with EnCodec
+3. test_hrf.py - Hemodynamic response function tests
+
+Diagnostic/Validation:
+4. validate_all_modalities.py - Multi-modal processing validation
+
+Additional:
+5. test_outputs/ (directory) - Output directory for test results
+
+Subtotal test files: 2 (standard naming)
+Subtotal diagnostic files: 1 (non-standard naming)
+Subtotal lines: 1,118
+
+DIAGNOSTIC AND DEBUGGING TESTS (tests/diagnostics/)
+===================================================
+Location: /Users/jmanning/giblet-responses/tests/diagnostics/
+
+Test Files:
+1. test_nccl_configs.py - NCCL distributed training configuration tests
+   - File mode: -rwxr-xr-x (executable)
+2. test_nccl_health.py - NCCL backend health check tests
+   - File mode: -rwxr-xr-x (executable)
+   - Header: #!/usr/bin/env python3
+3. test_small_model_ddp.py - Distributed Data Parallel (DDP) testing
+   - File mode: -rwxr-xr-x (executable)
+
+Diagnostic/Debug Scripts:
+4. debug_encodec_sherlock.py - EnCodec debugging script
+5. reproduce_encodec_bug.py - Bug reproduction script
+   - File mode: -rwxr-xr-x (executable)
+6. verify_fix_sherlock.py - Bug fix verification script
+7. visualize_dimensions.py - Tensor dimension visualization script
+
+Subtotal test files: 3 (standard naming)
+Subtotal diagnostic files: 4 (non-standard naming)
+Subtotal lines: 681
+
+UTILITY TESTS (tests/utils/)
+============================
+Location: /Users/jmanning/giblet-responses/tests/utils/
+
+1. __init__.py - Module initialization
+2. test_visualization.py - Visualization utility tests
+   - Contains @pytest.fixture decorators
+
+Subtotal test files: 1
+Subtotal lines: ~300 (estimated)
+
+TRAINING DIRECTORY (tests/training/)
+====================================
+Location: /Users/jmanning/giblet-responses/tests/training/
+
+1. __init__.py - Module initialization only
+2. [EMPTY - no test files]
+
+Status: This directory exists but contains no tests
+Note: Training tests are in tests/test_training.py instead
+
+SUMMARY BY FILE TYPE
+====================
+
+Test Files (test_*.py pattern): 28 files
+- Root level: 8 files
+- tests/data/: 8 files
+- tests/models/: 6 files
+- tests/integration/: 2 files
+- tests/diagnostics/: 3 files
+- tests/utils/: 1 file
+- tests/training/: 0 files
+
+Diagnostic/Utility/Verification Scripts: 11 files
+- validate_*.py: 3 files
+  * tests/data/validate_text_timing.py
+  * tests/integration/validate_all_modalities.py
+  * tests/models/validate_encodec_implementation.py
+  
+- verify_*.py: 4 files
+  * tests/models/verify_13_layer_architecture.py
+  * tests/models/verify_audio_fix.py
+  * tests/models/verify_checkpoint.py
+  * tests/diagnostics/verify_fix_sherlock.py
+  
+- debug_*.py: 2 files
+  * tests/diagnostics/debug_encodec_sherlock.py
+  
+- check_*.py: 1 file
+  * tests/models/check_layer_sizes.py
+  
+- reproduce_*.py: 1 file
+  * tests/diagnostics/reproduce_encodec_bug.py
+
+Module __init__.py files: 6 files
+- tests/__init__.py
+- tests/data/__init__.py
+- tests/models/__init__.py
+- tests/integration/__init__.py
+- tests/utils/__init__.py
+- tests/training/__init__.py
+
+TOTAL: 45 Python files in tests/ directory
+
+LINE COUNT SUMMARY
+==================
+
+Root level tests/: 2,474 lines
+tests/data/: 3,245 lines
+tests/models/: 2,659 lines
+tests/integration/: 1,118 lines
+tests/diagnostics/: 681 lines
+tests/utils/: ~300 lines (estimated from larger files)
+tests/training/: 0 lines
+
+TOTAL TEST CODE: ~10,177 lines
+
+PYTEST CONFIGURATION FILES
+===========================
+
+In project root (/Users/jmanning/giblet-responses/):
+- ❌ pytest.ini (NOT FOUND)
+- ❌ setup.cfg (NOT FOUND with [tool:pytest] section)
+- ❌ pyproject.toml (NOT FOUND with [tool.pytest.ini_options])
+- ❌ tox.ini (NOT FOUND)
+
+In tests/ directory:
+- ❌ conftest.py (NOT FOUND)
+- ✓ .pytest_cache/ (EXISTS - created by pytest)
+
+In project root (other relevant):
+- ✓ requirements.txt (contains pytest>=8.4.2 and pytest-cov>=7.0.0)
+
+PYTEST DECORATORS AND MARKERS
+=============================
+
+Files using @pytest.fixture:
+- tests/test_fmri_processor.py (multiple fixtures)
+- tests/test_sync.py
+- tests/utils/test_visualization.py
+- tests/models/test_decoder.py
+- And likely others (17+ files identified)
+
+Files using @pytest.mark:
+- tests/models/test_audio_encoder_encodec.py
+  @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+  
+- tests/models/test_encoder.py
+  @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+
+EXECUTABLE FILES
+================
+
+Files with execute permissions (-rwxr-xr-x):
+1. tests/diagnostics/test_nccl_configs.py
+2. tests/diagnostics/test_nccl_health.py
+3. tests/diagnostics/test_small_model_ddp.py
+4. tests/diagnostics/reproduce_encodec_bug.py
+
+Status: Indicates these may be meant to run directly as scripts
+
+SPECIAL DIRECTORIES
+===================
+
+tests/integration/test_outputs/
+- Purpose: Store output from integration tests
+- Type: Results/artifact directory
+- Contents: Test output files (not tracked in inventory)
+
+tests/__pycache__/ and tests/**/__pycache__/
+- Purpose: Python bytecode cache
+- Type: Generated by Python
+- Status: Should be excluded from version control
+
+ORGANIZATION OBSERVATIONS
+==========================
+
+1. GOOD STRUCTURE:
+   - Tests organized by concern (data, models, integration, diagnostics)
+   - Clear module structure with __init__.py files
+   - Reasonable file size distribution
+   - Uses pytest conventions mostly
+
+2. ISSUES:
+   - No centralized pytest configuration
+   - Inconsistent naming patterns (validate_, verify_, check_, debug_, reproduce_)
+   - Some diagnostic files are executable (meant for direct execution)
+   - Mixed test and non-test files in diagnostics/
+
+3. OPPORTUNITIES:
+   - Consolidate test configuration into conftest.py and pytest.ini
+   - Standardize non-test file naming or move to separate location
+   - Add test documentation (README)
+   - Implement pytest markers for test categorization
+   - Clean up tests/training/ directory
+
+RECENT FILE MODIFICATIONS
+=========================
+
+Most recent files (November 3, 2025):
+- tests/test_embeddings.py - Modified Nov 3
+- tests/test_sherlock_quick.py - Modified Nov 3
+- tests/diagnostics/ - Modified Nov 3 (DDP/NCCL focus)
+- tests/models/ - Modified Nov 2-3 (architecture tests)
+- tests/data/ - Modified Nov 1-2 (audio/video temporal tests)
+
+Trend: Active development with focus on Issue #30 (DDP/NCCL) and Issue #29 (EnCodec)
+
+EXTERNAL DEPENDENCIES
+=====================
+
+Based on imports in test files:
+
+Core:
+- torch - PyTorch models
+- torch.nn - Neural network modules
+- torch.cuda - CUDA availability checks
+- numpy - Numerical computing
+- pandas - Data processing
+- pathlib - Path handling
+
+Neuroimaging:
+- nibabel - Read/write fMRI data (.nii.gz files)
+- nilearn - fMRI analysis
+
+Models:
+- transformers - BGE text embeddings
+- encodec - Meta audio encoding
+
+Testing:
+- pytest - Test framework
+- tempfile - Temporary test files
+- sys - Module path manipulation
+
+Utilities:
+- matplotlib - Visualization
+- scipy - Scientific computing
+

@@ -317,6 +317,15 @@ task_train() {
             export CUDA_VISIBLE_DEVICES=$GPU_IDS
             print_info "CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
 
+            # Pre-generate cache to avoid NCCL timeout during distributed initialization
+            print_info "Pre-generating dataset cache (if needed)..."
+            if python scripts/pregenerate_cache.py --config $config_file 2>&1 | grep -q "Cache Generation Complete"; then
+                print_success "Cache ready for distributed training"
+            else
+                print_info "Cache already exists or generation skipped"
+            fi
+            echo ""
+
             # Use torchrun for distributed training
             TRAIN_CMD="torchrun --nproc_per_node=$num_gpus scripts/train.py --config $config_file --distributed"
         else

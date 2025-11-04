@@ -1,0 +1,11 @@
+ID,Category,Issue,Current_Behavior,Desired_Behavior,Status,Priority,Related_Files,Estimated_Effort,Notes
+1,Configuration,Missing conftest.py,No centralized fixtures or configuration,Create tests/conftest.py with shared fixtures and markers,todo,critical,tests/,2-3 hours,Foundation for test infrastructure
+2,Configuration,Missing pytest.ini,No pytest configuration file,Create pytest.ini with discovery patterns and markers,todo,critical,root/,1-2 hours,Enables standardized test execution
+3,Configuration,Missing test documentation,No README explaining test structure,Create tests/README.md with organization and execution guide,todo,medium,tests/,1-2 hours,Helps team understand test suite
+4,Naming,Non-standard test filenames,11 files use validate_*/verify_*/etc,Standardize names or document purpose,todo,medium,tests/,1 hour,Clarity on test vs utility files
+5,Organization,Empty tests/training/ directory,Directory exists but only has __init__.py,Either populate with training tests or remove,todo,low,tests/training/,30 mins,Clean up directory structure
+6,Markers,No test type markers,Tests not categorized by type,Implement @pytest.mark decorators (unit/integration/distributed/cuda/data),in-progress,medium,tests/,2-3 hours,Enables selective test execution
+7,Dependencies,External resource dependencies unclear,Tests require EnCodec/BGE/fMRI data but not documented,Document external dependencies and CI setup,todo,high,tests/,2 hours,Critical for CI/CD success
+8,Diagnostics,Script vs test confusion,Some files are scripts meant for manual execution,Separate diagnostic scripts from tests or document,todo,medium,tests/diagnostics/,1-2 hours,Prevents test collection errors
+9,Integration,Validation scripts not in test suite,validate_*.py files exist but not integrated,Rename and move validation to test files with test_ prefix,todo,medium,tests/,1-2 hours,Better test coverage visibility
+10,Markers,CUDA availability handling,Tests skip if CUDA unavailable but no marker,Formalize with @pytest.mark.cuda or @pytest.mark.skipif,todo,low,tests/models/,1 hour,Standardize conditional execution
