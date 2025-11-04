@@ -23,7 +23,10 @@ from giblet.utils.visualization import (
 @pytest.fixture
 def real_model():
     """Create a REAL MultimodalAutoencoder for testing."""
-    model = MultimodalAutoencoder()
+    model = MultimodalAutoencoder(
+        video_frames_per_tr=1,  # Single frame for fast testing
+        audio_frames_per_tr=1   # Single time step for fast testing
+    )
     return model
 
 

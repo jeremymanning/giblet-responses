@@ -18,7 +18,7 @@ from giblet.data.video import VideoProcessor
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 import numpy as np
 
-vp = VideoProcessor(target_height=90, target_width=160, tr=1.5)
+vp = VideoProcessor(target_height=90, target_width=160, tr=1.5, frame_skip=1)  # Disable frame skipping for validation
 info = vp.get_video_info('data/stimuli_Sherlock.m4v')
 
 print(f"\nVideo info:")

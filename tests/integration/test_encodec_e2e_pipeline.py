@@ -289,10 +289,13 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
     print("[3/9] Creating batch data...")
 
     # Convert to torch tensors
-    # Shape: (n_trs, n_codebooks, frames_per_tr) → (batch, n_codebooks, frames_per_tr)
-    batch_codes = torch.from_numpy(features).float().to(CONFIG['device'])
+    # Shape: (n_trs, n_codebooks, frames_per_tr) → (batch, n_codebooks * frames_per_tr)
+    # FLATTEN for AudioEncoder (Issue #29: temporal concatenation)
+    batch_codes_3d = torch.from_numpy(features).float().to(CONFIG['device'])
+    batch_codes = batch_codes_3d.reshape(batch_codes_3d.shape[0], -1)  # Flatten to 2D
 
-    print(f"  ✓ Batch shape: {batch_codes.shape}")
+    print(f"  ✓ Batch shape (3D): {batch_codes_3d.shape}")
+    print(f"  ✓ Batch shape (2D flattened): {batch_codes.shape}")
     print(f"  ✓ Batch dtype: {batch_codes.dtype}")
     print(f"  ✓ Device: {batch_codes.device}")
     print()
@@ -303,19 +306,17 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
 
     print("[4/9] Encoding with AudioEncoder...")
 
-    # Initialize encoder
+    # Initialize encoder (Issue #29: Linear-based with temporal concatenation)
     encoder = AudioEncoder(
         input_codebooks=CONFIG['n_codebooks'],
-        frames_per_tr=CONFIG['frames_per_tr'],
+        audio_frames_per_tr=CONFIG['frames_per_tr'],  # Updated parameter name
         output_features=CONFIG['audio_encoder_output'],
-        use_encodec=True,
-        vocab_size=1024,
-        embed_dim=64
+        use_encodec=True
     ).to(CONFIG['device'])
 
     encoder.eval()
 
-    # Encode
+    # Encode (input is now 2D flattened)
     with torch.no_grad():
         encoded = encoder(batch_codes)
 
@@ -374,11 +375,17 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
 
     decoder.eval()
 
-    # Decode (audio only)
+    # Decode (audio only) - returns 2D flattened codes
     with torch.no_grad():
-        decoded_codes = decoder.decode_audio_only(bottleneck_out)
+        decoded_codes_flat = decoder.decode_audio_only(bottleneck_out)
 
-    print(f"  ✓ Decoded codes shape: {decoded_codes.shape}")
+    # Reshape to 3D for features_to_audio compatibility
+    decoded_codes = decoded_codes_flat.reshape(
+        CONFIG['n_trs'], CONFIG['n_codebooks'], CONFIG['frames_per_tr']
+    )
+
+    print(f"  ✓ Decoded codes shape (2D): {decoded_codes_flat.shape}")
+    print(f"  ✓ Decoded codes shape (3D): {decoded_codes.shape}")
     print(f"  ✓ Expected: ({CONFIG['n_trs']}, {CONFIG['n_codebooks']}, {CONFIG['frames_per_tr']})")
     print(f"  ✓ Value range: [{decoded_codes.min().item():.3f}, {decoded_codes.max().item():.3f}]")
 

@@ -42,6 +42,30 @@
 
 **Status:** Data tests complete, moving to tests/integration/
 
+### tests/integration/ (all completed):
+- test_encodec_e2e_pipeline.py: ✅ FIXED (3D→2D input conversion for AudioEncoder)
+  - Flattened `(batch, n_codebooks, frames_per_tr)` → `(batch, n_codebooks * frames_per_tr)` before AudioEncoder
+  - Updated AudioEncoder parameters: `frames_per_tr` → `audio_frames_per_tr`
+  - Added reshaping after decoder to convert 2D output back to 3D for compatibility
+- test_hrf.py: No fixes needed (no encoder usage)
+- validate_all_modalities.py: Updated VideoProcessor with `frame_skip=1` for validation consistency
+
+### tests/diagnostics/ (all completed):
+- test_nccl_configs.py: No fixes needed (infrastructure test for NCCL)
+- test_nccl_health.py: No fixes needed (infrastructure test for NCCL)
+- test_small_model_ddp.py: No fixes needed (uses TinyModel, not our encoders)
+
+### tests/utils/ (all completed):
+- test_visualization.py: ✅ FIXED (added temporal parameters)
+  - Added `video_frames_per_tr=1, audio_frames_per_tr=1` to MultimodalAutoencoder fixture
+
+### tests/ root level (verified - no fixes needed):
+- Verified via grep: None of the 8 root-level test files instantiate encoders/autoencoders
+- Files checked: test_embeddings.py, test_fmri_processor.py, test_real_text_embeddings.py,
+  test_sherlock_quick.py, test_sync.py, test_text_embedding.py, test_text_embedding_mock.py, test_training.py
+
+**Status:** ✅ ALL TEST DIRECTORIES COMPLETE
+
 ---
 
 ## Summary of All Fixes This Session (Part 1 + Part 2)
@@ -106,12 +130,12 @@ processor = VideoProcessor(tr=1.5)  # frame_skip=2 by default (memory optimizati
 ## Next Steps
 
 1. ✅ Fix tests/models/test_encoder_demo.py (completed)
-2. 🔄 Fix tests/data/*.py files (in progress - running tests)
-3. ❌ Fix tests/integration/*.py files (2 files)
-4. ❌ Fix tests/diagnostics/*.py files (3 files)
-5. ❌ Fix tests/utils/test_visualization.py
-6. ❌ Fix remaining tests/ root level files (9 files)
-7. ❌ Run full test suite to verify all fixes
+2. ✅ Fix tests/data/*.py files (completed)
+3. ✅ Fix tests/integration/*.py files (completed)
+4. ✅ Fix tests/diagnostics/*.py files (completed)
+5. ✅ Fix tests/utils/test_visualization.py (completed)
+6. ✅ Check remaining tests/ root level files (completed - no fixes needed)
+7. 🔄 Run full test suite to verify all fixes (in progress)
 8. ❌ Update Issue #31 with Phase 5 progress
 9. ❌ Push Phase 5 fixes to origin
 
@@ -120,11 +144,14 @@ processor = VideoProcessor(tr=1.5)  # frame_skip=2 by default (memory optimizati
 **Files Modified This Session:**
 - tests/models/test_encoder_demo.py (fixed demo script)
 - tests/data/test_video_temporal.py (fixed frame_skip issue - 11/11 passing)
+- tests/integration/test_encodec_e2e_pipeline.py (fixed 3D→2D AudioEncoder input)
+- tests/integration/validate_all_modalities.py (added frame_skip=1)
+- tests/utils/test_visualization.py (added temporal parameters)
 - notes/2025-11-04_session_issue31_phase5_part2.md (this file)
 
 **Commit Status:**
 - Previous commits: Multiple fixes to models tests
-- Pending: Commit video_temporal fix and continue with remaining tests
+- Ready to commit: All test fixes complete, ready for verification
 
 ---
 
