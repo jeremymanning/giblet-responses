@@ -33,16 +33,18 @@ def main():
     print(f"  - Audio: 2048 mel frequency bins")
     print(f"  - Text: 1024-dim embeddings (BAAI/bge-large-en-v1.5)")
     print(f"  - Brain: 85,810 voxels")
-    print(f"  - Bottleneck: 8,000 dimensions")
+    print(f"  - Bottleneck: 2,048 dimensions (Layer 7: smallest layer)")
     print()
 
-    encoder = create_encoder(
+    encoder = MultimodalEncoder(
         video_height=90,
         video_width=160,
+        video_frames_per_tr=1,  # Single frame for demo
         audio_mels=2048,
+        audio_frames_per_tr=1,  # Single time step for demo
         text_dim=1024,
         n_voxels=85810,
-        bottleneck_dim=8000
+        bottleneck_dim=2048  # Layer 7: BOTTLENECK (smallest layer)
     )
 
     # Get parameter count
@@ -96,7 +98,7 @@ def main():
     with torch.no_grad():
         bottleneck, voxels = encoder(video, audio, text, return_voxels=False)
 
-    print(f"  - Bottleneck shape: {tuple(bottleneck.shape)}")
+    print(f"  - Bottleneck shape: {tuple(bottleneck.shape)} (should be (1, 2048))")
     print(f"  - Voxels returned: {voxels is not None}")
     print()
 
@@ -105,7 +107,7 @@ def main():
     with torch.no_grad():
         bottleneck, voxels = encoder(video, audio, text, return_voxels=True)
 
-    print(f"  - Bottleneck shape: {tuple(bottleneck.shape)}")
+    print(f"  - Bottleneck shape: {tuple(bottleneck.shape)} (Layer 7: 2048-dim)")
     print(f"  - Voxels shape: {tuple(voxels.shape)}")
     print()
 
@@ -122,7 +124,7 @@ def main():
         )
 
     print(f"  - Input batch size: {batch_size}")
-    print(f"  - Bottleneck shape: {tuple(bottleneck_batch.shape)}")
+    print(f"  - Bottleneck shape: {tuple(bottleneck_batch.shape)} (Layer 7: 2048-dim)")
     print(f"  - Voxels shape: {tuple(voxels_batch.shape)}")
     print()
 
@@ -144,11 +146,13 @@ def main():
         1024 +  # Video features
         256 +  # Audio features
         256 +  # Text features
-        1536 +  # Pooled features
-        4096 +  # Intermediate 1
-        8000 +  # Bottleneck
-        16384 +  # Intermediate 2
-        85810  # Voxels
+        1536 +  # Pooled features (Layer 3)
+        1536 +  # Feature conv (Layer 4)
+        4096 +  # Layer 5
+        8000 +  # Layer 6
+        2048 +  # Layer 7: BOTTLENECK (smallest layer)
+        16384 +  # Layer 8 (when decoding to voxels)
+        85810  # Voxels (Layer 9)
     ) * 4  # 4 bytes per float32
 
     # Gradients (same size as parameters)
@@ -199,8 +203,8 @@ def main():
     print("    - Text: 1024 embeddings")
     print()
     print("  Layer 2A/B/C: Modality-specific encoders")
-    print("    - Video: Conv2D layers → 1024 features")
-    print("    - Audio: Conv1D layers → 256 features")
+    print("    - Video: Linear layers → 1024 features")
+    print("    - Audio: Linear layers → 256 features")
     print("    - Text: Linear layers → 256 features")
     print()
     print("  Layer 3: Pooled multimodal features")
@@ -209,11 +213,20 @@ def main():
     print("  Layer 4: Feature space convolution + ReLU")
     print("    - Linear transformation: 1536 → 1536")
     print()
-    print("  Layer 5: Compression to bottleneck")
-    print("    - 1536 → 4096 → 8000 (middle layer)")
+    print("  Layer 5: Expansion")
+    print("    - 1536 → 4096")
     print()
-    print("  Layer 6: Expansion to voxels (when needed)")
-    print("    - 8000 → 16384 → 85810 brain voxels")
+    print("  Layer 6: Further expansion")
+    print("    - 4096 → 8000")
+    print()
+    print("  Layer 7: BOTTLENECK (smallest compressed representation)")
+    print("    - 8000 → 2048 (middle layer)")
+    print()
+    print("  Layer 8: Begin decoding to voxels")
+    print("    - 2048 → 16384")
+    print()
+    print("  Layer 9: Final voxel prediction")
+    print("    - 16384 → 85810 brain voxels")
     print()
 
     print("=" * 80)

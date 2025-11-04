@@ -33,20 +33,16 @@ class TestAudioEncoderEnCodec:
             frames_per_tr=112,
             output_features=256,
             use_encodec=True,
-            vocab_size=1024,
-            embed_dim=64
+            vocab_size=1024,  # Accepted for backward compat but not used
+            embed_dim=64  # Accepted for backward compat but not used
         )
         assert encoder.use_encodec is True
         assert encoder.input_codebooks == 8
         assert encoder.frames_per_tr == 112
-        assert encoder.vocab_size == 1024
-        assert encoder.embed_dim == 64
         assert encoder.output_features == 256
 
-        # Check that embedding layer exists
-        assert hasattr(encoder, 'code_embedding')
-        assert encoder.code_embedding.num_embeddings == 1024
-        assert encoder.code_embedding.embedding_dim == 64
+        # Note: vocab_size, embed_dim, code_embedding removed in Issue #29
+        # AudioEncoder now uses Linear layers, not embeddings
 
     def test_encodec_forward_pass(self):
         """Test EnCodec encoder forward pass with quantized codes."""
@@ -58,9 +54,9 @@ class TestAudioEncoderEnCodec:
         )
         encoder.eval()
 
-        # Create synthetic EnCodec codes (batch, n_codebooks, frames_per_tr)
+        # Create synthetic EnCodec codes - 2D flattened (batch, codebooks * frames)
         batch_size = 4
-        codes = torch.randint(0, 1024, (batch_size, 8, 112))
+        codes = torch.randint(0, 1024, (batch_size, 8 * 112))  # Flattened
 
         # Forward pass
         with torch.no_grad():
@@ -78,13 +74,13 @@ class TestAudioEncoderEnCodec:
             frames_per_tr=112,
             output_features=256,
             use_encodec=True,
-            embed_dim=64
+            embed_dim=64  # Backward compat param (not used)
         )
         encoder.eval()  # Set to eval mode to avoid BatchNorm issues with batch_size=1
 
         # Test with different batch sizes
         for batch_size in [1, 4, 16, 32]:
-            codes = torch.randint(0, 1024, (batch_size, 8, 112))
+            codes = torch.randint(0, 1024, (batch_size, 8 * 112))  # 2D flattened
             with torch.no_grad():
                 output = encoder(codes)
             assert output.shape == (batch_size, 256), \
@@ -97,14 +93,14 @@ class TestAudioEncoderEnCodec:
             frames_per_tr=112,
             output_features=256,
             use_encodec=True,
-            vocab_size=1024
+            vocab_size=1024  # Backward compat param (not used)
         )
         encoder.eval()
 
-        # Test with codes at vocabulary boundaries
-        codes_min = torch.zeros((2, 8, 112), dtype=torch.long)  # All zeros
-        codes_max = torch.full((2, 8, 112), 1023, dtype=torch.long)  # All 1023
-        codes_mixed = torch.randint(0, 1024, (2, 8, 112))
+        # Test with codes at vocabulary boundaries - 2D flattened
+        codes_min = torch.zeros((2, 8 * 112), dtype=torch.long)  # All zeros
+        codes_max = torch.full((2, 8 * 112), 1023, dtype=torch.long)  # All 1023
+        codes_mixed = torch.randint(0, 1024, (2, 8 * 112))  # Flattened
 
         with torch.no_grad():
             output_min = encoder(codes_min)
@@ -130,8 +126,8 @@ class TestAudioEncoderEnCodec:
         )
         encoder.train()
 
-        # Create codes (no gradient on input since embeddings handle discrete codes)
-        codes = torch.randint(0, 1024, (4, 8, 112))
+        # Create codes - 2D flattened
+        codes = torch.randint(0, 1024, (4, 8 * 112))
 
         # Forward pass
         output = encoder(codes)
@@ -146,7 +142,7 @@ class TestAudioEncoderEnCodec:
             assert not torch.isnan(param.grad).any(), f"NaN gradient for: {name}"
 
     def test_encodec_float_input_conversion(self):
-        """Test that float codes are converted to integers."""
+        """Test that float codes are converted to float (int-like values)."""
         encoder = AudioEncoder(
             input_codebooks=8,
             frames_per_tr=112,
@@ -155,8 +151,8 @@ class TestAudioEncoderEnCodec:
         )
         encoder.eval()
 
-        # Create codes as floats (will be converted to long)
-        codes_float = torch.rand(2, 8, 112) * 1024  # Random floats [0, 1024)
+        # Create codes as floats - 2D flattened
+        codes_float = torch.rand(2, 8 * 112) * 1024  # Random floats [0, 1024)
 
         with torch.no_grad():
             output = encoder(codes_float)
@@ -171,22 +167,19 @@ class TestAudioEncoderEnCodec:
             frames_per_tr=112,
             output_features=256,
             use_encodec=True,
-            vocab_size=1024,
-            embed_dim=64
+            vocab_size=1024,  # Backward compat param (not used)
+            embed_dim=64  # Backward compat param (not used)
         )
 
         n_params = sum(p.numel() for p in encoder.parameters())
         print(f"\nEnCodec AudioEncoder parameters: {n_params:,}")
 
-        # Breakdown
-        embed_params = encoder.code_embedding.weight.numel()
-        print(f"  Embedding layer: {embed_params:,} (vocab={1024} * embed={64})")
+        # Note: No embedding layer in Issue #29 refactor
+        # AudioEncoder uses Linear layers: fc1(896→512) + fc2(512→256)
+        # Expected params ≈ 896*512 + 512*256 = 459K + 131K ≈ 590K
 
         assert n_params > 0
         assert n_params < 10_000_000, "Should be under 10M parameters"
-
-        # Embedding should be a significant portion
-        assert embed_params == 1024 * 64, "Embedding size should be vocab_size * embed_dim"
 
 
 @pytest.mark.unit
@@ -203,9 +196,9 @@ class TestAudioEncoderBackwardsCompatibility:
         )
         encoder.eval()
 
-        # Create mel spectrogram input
+        # Create mel spectrogram input - 2D flattened
         batch_size = 4
-        mels = torch.randn(batch_size, 2048, 65)
+        mels = torch.randn(batch_size, 2048 * 65)  # Flattened
 
         # Forward pass
         with torch.no_grad():
@@ -218,16 +211,17 @@ class TestAudioEncoderBackwardsCompatibility:
         """Test backwards compatibility with 2D mel input."""
         encoder = AudioEncoder(
             input_mels=2048,
+            frames_per_tr=1,  # Single time step for unit testing
             output_features=256,
             use_encodec=False
         )
         encoder.eval()
 
-        # Create 2D input (legacy format)
+        # Create 2D input - flattened (mels × frames)
         batch_size = 4
-        mels_2d = torch.randn(batch_size, 2048)
+        mels_2d = torch.randn(batch_size, 2048)  # 2048 × 1 = 2048
 
-        # Should print warning and add temporal dimension
+        # Forward pass
         with torch.no_grad():
             output = encoder(mels_2d)
 
@@ -250,11 +244,12 @@ class TestAudioEncoderBackwardsCompatibility:
             use_encodec=True
         )
 
-        # EnCodec should have embedding layer, mel should not
-        assert hasattr(encoder_encodec, 'code_embedding')
-        assert not hasattr(encoder_mel, 'code_embedding')
+        # Note: No embedding layer in Issue #29 refactor (both use Linear)
+        # Architectures differ in input_dim:
+        # - Mel: 2048 × 65 = 133,120
+        # - EnCodec: 8 × 112 = 896
 
-        # Parameter counts should differ
+        # Parameter counts should differ due to different input dimensions
         params_mel = sum(p.numel() for p in encoder_mel.parameters())
         params_encodec = sum(p.numel() for p in encoder_encodec.parameters())
 
@@ -262,13 +257,9 @@ class TestAudioEncoderBackwardsCompatibility:
         print(f"EnCodec encoder params: {params_encodec:,}")
 
         # Architectures should differ in parameter count
-        # Mel encoder has more params due to larger input dimension (2048 vs 8*64=512)
+        # Mel encoder has more params due to larger input dimension (133K vs 896)
         assert params_mel != params_encodec, "Architectures should have different parameter counts"
-
-        # EnCodec should have embedding layer that mel doesn't have
-        embed_params = encoder_encodec.code_embedding.weight.numel()
-        print(f"EnCodec embedding params: {embed_params:,}")
-        assert embed_params == 1024 * 64  # vocab_size * embed_dim
+        assert params_mel > params_encodec, "Mel encoder should have more params (larger input)"
 
 
 @pytest.mark.unit
@@ -280,6 +271,7 @@ class TestMultimodalEncoderEnCodec:
         encoder = MultimodalEncoder(
             video_height=90,
             video_width=160,
+            video_frames_per_tr=1,  # Single frame for unit testing
             audio_codebooks=8,
             audio_frames_per_tr=112,
             text_dim=1024,
@@ -289,8 +281,8 @@ class TestMultimodalEncoderEnCodec:
 
         # Create dummy inputs
         batch_size = 4
-        video = torch.randn(batch_size, 3, 90, 160)
-        audio_codes = torch.randint(0, 1024, (batch_size, 8, 112))  # EnCodec codes
+        video = torch.randn(batch_size, 3, 90, 160)  # Single frame
+        audio_codes = torch.randint(0, 1024, (batch_size, 8 * 112))  # Flattened
         text = torch.randn(batch_size, 1024)
 
         # Forward pass
@@ -306,6 +298,7 @@ class TestMultimodalEncoderEnCodec:
     def test_multimodal_encodec_gradient_flow(self):
         """Test gradient flow through MultimodalEncoder with EnCodec."""
         encoder = MultimodalEncoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
             use_encodec=True,
             audio_codebooks=8,
             audio_frames_per_tr=112
@@ -314,7 +307,7 @@ class TestMultimodalEncoderEnCodec:
 
         # Create inputs
         video = torch.randn(2, 3, 90, 160, requires_grad=True)
-        audio_codes = torch.randint(0, 1024, (2, 8, 112))  # No grad needed for discrete codes
+        audio_codes = torch.randint(0, 1024, (2, 8 * 112))  # Flattened
         text = torch.randn(2, 1024, requires_grad=True)
 
         # Forward pass
@@ -335,12 +328,14 @@ class TestMultimodalEncoderEnCodec:
     def test_multimodal_mel_vs_encodec(self):
         """Test that MultimodalEncoder can switch between mel and EnCodec modes."""
         encoder_mel = MultimodalEncoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
             audio_mels=2048,
             audio_frames_per_tr=65,
             use_encodec=False
         )
 
         encoder_encodec = MultimodalEncoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
             audio_codebooks=8,
             audio_frames_per_tr=112,
             use_encodec=True
@@ -354,13 +349,13 @@ class TestMultimodalEncoderEnCodec:
         video = torch.randn(2, 3, 90, 160)
         text = torch.randn(2, 1024)
 
-        # Mel mode
-        audio_mel = torch.randn(2, 2048, 65)
+        # Mel mode - flattened
+        audio_mel = torch.randn(2, 2048 * 65)
         bottleneck_mel, _ = encoder_mel(video, audio_mel, text, return_voxels=False)
         assert bottleneck_mel.shape == (2, 2048)
 
-        # EnCodec mode
-        audio_codes = torch.randint(0, 1024, (2, 8, 112))
+        # EnCodec mode - flattened
+        audio_codes = torch.randint(0, 1024, (2, 8 * 112))
         bottleneck_encodec, _ = encoder_encodec(video, audio_codes, text, return_voxels=False)
         assert bottleneck_encodec.shape == (2, 2048)
 
@@ -381,7 +376,7 @@ class TestEnCodecRealWorldScenarios:
 
         # Typical mini-batch size
         batch_size = 32
-        codes = torch.randint(0, 1024, (batch_size, 8, 112))
+        codes = torch.randint(0, 1024, (batch_size, 8 * 112))  # Flattened
 
         with torch.no_grad():
             output = encoder(codes)
@@ -399,8 +394,8 @@ class TestEnCodecRealWorldScenarios:
         )
         encoder.eval()
 
-        # Single sample
-        codes = torch.randint(0, 1024, (1, 8, 112))
+        # Single sample - 2D flattened
+        codes = torch.randint(0, 1024, (1, 8 * 112))
 
         with torch.no_grad():
             output = encoder(codes)
@@ -418,7 +413,7 @@ class TestEnCodecRealWorldScenarios:
             )
             encoder.eval()
 
-            codes = torch.randint(0, 1024, (4, 8, frames))
+            codes = torch.randint(0, 1024, (4, 8 * frames))  # Flattened
 
             with torch.no_grad():
                 output = encoder(codes)
@@ -438,7 +433,7 @@ class TestEnCodecRealWorldScenarios:
             )
             encoder.eval()
 
-            codes = torch.randint(0, 1024, (4, n_codebooks, 112))
+            codes = torch.randint(0, 1024, (4, n_codebooks * 112))  # Flattened
 
             with torch.no_grad():
                 output = encoder(codes)
@@ -482,9 +477,8 @@ class TestEnCodecEdgeCases:
         )
         encoder.eval()
 
-        # Codes exceeding vocab size (will be handled by embedding layer)
-        # PyTorch's embedding layer will error on out-of-bounds, so we test valid range
-        codes = torch.randint(0, 1024, (2, 8, 112))
+        # Codes within valid range - 2D flattened
+        codes = torch.randint(0, 1024, (2, 8 * 112))
 
         with torch.no_grad():
             output = encoder(codes)
@@ -501,7 +495,7 @@ class TestEnCodecEdgeCases:
         )
         encoder.eval()
 
-        codes = torch.zeros(4, 8, 112, dtype=torch.long)
+        codes = torch.zeros(4, 8 * 112, dtype=torch.long)  # Flattened
 
         with torch.no_grad():
             output = encoder(codes)
@@ -520,8 +514,8 @@ class TestEnCodecEdgeCases:
         )
         encoder.eval()
 
-        # All codes set to same value
-        codes = torch.full((4, 8, 112), 512, dtype=torch.long)
+        # All codes set to same value - 2D flattened
+        codes = torch.full((4, 8 * 112), 512, dtype=torch.long)
 
         with torch.no_grad():
             output = encoder(codes)
