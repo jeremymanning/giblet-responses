@@ -359,7 +359,8 @@ class MultimodalAutoencoder(nn.Module):
                 'reconstruction_weight': self.reconstruction_weight,
                 'fmri_weight': self.fmri_weight,
                 'use_encodec': self.use_encodec,
-                'audio_frames_per_tr': self.audio_frames_per_tr
+                'audio_frames_per_tr': self.audio_frames_per_tr,
+                'video_frames_per_tr': self.video_frames_per_tr
             }
         }
 
@@ -412,7 +413,8 @@ class MultimodalAutoencoder(nn.Module):
             reconstruction_weight=arch['reconstruction_weight'],
             fmri_weight=arch['fmri_weight'],
             use_encodec=arch.get('use_encodec', False),  # Default to False for old checkpoints
-            audio_frames_per_tr=arch.get('audio_frames_per_tr', 65)  # Default to mel value
+            audio_frames_per_tr=arch.get('audio_frames_per_tr', 65),  # Default to mel value
+            video_frames_per_tr=arch.get('video_frames_per_tr', 19)  # Default to mel value
         )
 
         # Load weights
@@ -430,7 +432,7 @@ def create_autoencoder(
     audio_mels: int = 2048,
     text_dim: int = 1024,
     n_voxels: int = 85810,
-    bottleneck_dim: int = 8000,
+    bottleneck_dim: int = 2048,  # Fixed: was 8000, should be 2048 to match encoder Layer 7
     reconstruction_weight: float = 1.0,
     fmri_weight: float = 1.0,
     use_encodec: bool = False,
