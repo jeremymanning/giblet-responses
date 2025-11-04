@@ -30,24 +30,21 @@ class TestVideoEncoder:
     def test_video_encoder_init(self):
         """Test video encoder initialization."""
         encoder = VideoEncoder(
-            input_height=90,
-            input_width=160,
+            input_dim=43200,  # Single frame: 90 × 160 × 3
             output_features=1024
         )
-        assert encoder.input_height == 90
-        assert encoder.input_width == 160
+        assert encoder.input_dim == 43200
         assert encoder.output_features == 1024
 
     def test_video_encoder_forward(self):
         """Test video encoder forward pass."""
         encoder = VideoEncoder(
-            input_height=90,
-            input_width=160,
+            input_dim=43200,  # Single frame: 90 × 160 × 3
             output_features=1024
         )
         encoder.eval()
 
-        # Create dummy input
+        # Create dummy input (4D format - encoder auto-flattens)
         batch_size = 4
         x = torch.randn(batch_size, 3, 90, 160)
 
@@ -64,7 +61,7 @@ class TestVideoEncoder:
         n_params = sum(p.numel() for p in encoder.parameters())
         print(f"Video encoder parameters: {n_params:,}")
         assert n_params > 0
-        assert n_params < 50_000_000  # Should be under 50M
+        assert n_params < 7_000_000_000  # Updated for temporal concat (default: 38 frames)
 
 
 @pytest.mark.unit
@@ -84,11 +81,12 @@ class TestAudioEncoder:
         """Test audio encoder forward pass."""
         encoder = AudioEncoder(
             input_mels=128,
+            frames_per_tr=1,  # Single time step for unit testing
             output_features=256
         )
         encoder.eval()
 
-        # Create dummy input
+        # Create dummy input (flattened: input_mels × frames_per_tr = 128 × 1)
         batch_size = 4
         x = torch.randn(batch_size, 128)
 
@@ -105,7 +103,7 @@ class TestAudioEncoder:
         n_params = sum(p.numel() for p in encoder.parameters())
         print(f"Audio encoder parameters: {n_params:,}")
         assert n_params > 0
-        assert n_params < 10_000_000  # Should be under 10M
+        assert n_params < 70_000_000  # Updated for temporal concat (default: 65 frames)
 
 
 @pytest.mark.unit
@@ -165,7 +163,10 @@ class TestMultimodalEncoder:
 
     def test_encoder_forward_single(self):
         """Test encoder forward pass with single sample."""
-        encoder = MultimodalEncoder()
+        encoder = MultimodalEncoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         encoder.eval()
 
         # Create dummy inputs
@@ -185,7 +186,10 @@ class TestMultimodalEncoder:
 
     def test_encoder_forward_batch(self):
         """Test encoder forward pass with batch."""
-        encoder = MultimodalEncoder()
+        encoder = MultimodalEncoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         encoder.eval()
 
         # Create dummy inputs
@@ -206,7 +210,10 @@ class TestMultimodalEncoder:
 
     def test_encoder_forward_without_voxels(self):
         """Test encoder forward pass without returning voxels."""
-        encoder = MultimodalEncoder()
+        encoder = MultimodalEncoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         encoder.eval()
 
         # Create dummy inputs
@@ -250,15 +257,17 @@ class TestMultimodalEncoder:
 
         # Check reasonable total
         assert param_dict['total'] > 0
-        # Relaxed constraint - large models are expected for this architecture
-        assert param_dict['total'] < 2_000_000_000  # Should be under 2B
+        # Relaxed constraint - large models are expected for temporal concat architecture
+        assert param_dict['total'] < 5_000_000_000  # Updated for temporal concat (19 video frames, 65 audio frames)
 
     def test_encoder_custom_dimensions(self):
         """Test encoder with custom dimensions."""
         encoder = MultimodalEncoder(
             video_height=45,
             video_width=80,
+            video_frames_per_tr=1,  # Single frame for testing
             audio_mels=64,
+            audio_frames_per_tr=1,  # Single time step for testing
             text_dim=512,
             n_voxels=10000,
             bottleneck_dim=2000
@@ -329,7 +338,9 @@ class TestEncoderIntegration:
         encoder = MultimodalEncoder(
             video_height=90,
             video_width=160,
+            video_frames_per_tr=1,  # Single frame for integration testing
             audio_mels=2048,
+            audio_frames_per_tr=1,  # Single time step for integration testing
             text_dim=1024,
             n_voxels=85810,
             bottleneck_dim=2048  # Layer 7: BOTTLENECK (smallest layer)
@@ -355,7 +366,10 @@ class TestEncoderIntegration:
 
     def test_batch_processing(self):
         """Test batch processing with multiple TRs."""
-        encoder = MultimodalEncoder()
+        encoder = MultimodalEncoder(
+            video_frames_per_tr=1,  # Single frame for integration testing
+            audio_frames_per_tr=1   # Single time step for integration testing
+        )
         encoder.eval()
 
         # Simulate 32 TRs (mini-batch)
@@ -373,7 +387,10 @@ class TestEncoderIntegration:
 
     def test_gradient_flow(self):
         """Test that gradients flow through encoder."""
-        encoder = MultimodalEncoder()
+        encoder = MultimodalEncoder(
+            video_frames_per_tr=1,  # Single frame for integration testing
+            audio_frames_per_tr=1   # Single time step for integration testing
+        )
         encoder.train()
 
         # Create dummy inputs (requires_grad=True)
