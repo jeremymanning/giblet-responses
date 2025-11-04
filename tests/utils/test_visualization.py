@@ -264,8 +264,8 @@ class TestLayerInfo:
         layer_types = [layer['type'] for layer in layers]
 
         # Should have different layer types
+        # Note: VideoEncoder uses Linear layers (not Conv2d) after Issue #29 refactoring
         assert 'Linear' in layer_types, "Should have Linear layers"
-        assert 'Conv2d' in layer_types, "Should have Conv2d layers"
         assert 'Conv1d' in layer_types, "Should have Conv1d layers"
         assert 'BatchNorm1d' in layer_types or 'BatchNorm2d' in layer_types, \
             "Should have BatchNorm layers"
