@@ -14,9 +14,10 @@ Verified settings for EnCodec mode (Issue #24):
 - Codes are discrete integers [0, 1023]
 """
 
+import numpy as np
 import pytest
 import torch
-import numpy as np
+
 from giblet.models.encoder import AudioEncoder, MultimodalEncoder
 
 

@@ -4,8 +4,9 @@ Quick test of EnCodec fix with real Sherlock data.
 Tests progressively larger numbers of TRs to verify the fix works.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from giblet.data.audio import AudioProcessor
 

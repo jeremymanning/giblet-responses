@@ -9,14 +9,15 @@ Tests the encoder architecture including:
 - GPU compatibility
 """
 
+import numpy as np
 import pytest
 import torch
-import numpy as np
+
 from giblet.models.encoder import (
-    VideoEncoder,
     AudioEncoder,
-    TextEncoder,
     MultimodalEncoder,
+    TextEncoder,
+    VideoEncoder,
     create_encoder,
 )
 

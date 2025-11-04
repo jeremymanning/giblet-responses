@@ -5,23 +5,24 @@ Tests the Trainer class, loss functions, and training loop with real data.
 Verifies single-GPU training functionality (multi-GPU requires actual hardware).
 """
 
+import shutil
+import tempfile
+from pathlib import Path
+
+import numpy as np
 import pytest
 import torch
-import numpy as np
-from pathlib import Path
-import tempfile
-import shutil
 
+from giblet.data.dataset import MultimodalDataset
 from giblet.models.autoencoder import create_autoencoder
-from giblet.training.trainer import Trainer, TrainingConfig
 from giblet.training.losses import (
-    ReconstructionLoss,
-    FMRIMatchingLoss,
     CombinedAutoEncoderLoss,
+    FMRIMatchingLoss,
+    ReconstructionLoss,
     compute_correlation_metric,
     compute_r2_score,
 )
-from giblet.data.dataset import MultimodalDataset
+from giblet.training.trainer import Trainer, TrainingConfig
 
 
 class DummyDataset(torch.utils.data.Dataset):

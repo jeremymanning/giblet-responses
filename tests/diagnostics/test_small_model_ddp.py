@@ -29,8 +29,8 @@ import sys
 
 import pytest
 import torch
-import torch.nn as nn
 import torch.distributed as dist
+import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 

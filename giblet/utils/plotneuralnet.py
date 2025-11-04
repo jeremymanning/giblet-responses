@@ -19,11 +19,10 @@ Requires:
 """
 
 import os
-import sys
 import subprocess
+import sys
 from pathlib import Path
-from typing import Optional, Dict, Any
-
+from typing import Any, Dict, Optional
 
 # PlotNeuralNet library path
 PLOTNEURALNET_PATH = "/tmp/PlotNeuralNet"

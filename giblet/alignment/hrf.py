@@ -10,8 +10,8 @@ References:
 """
 
 import numpy as np
-from scipy import signal
 from nilearn.glm.first_level import glover_hrf
+from scipy import signal
 
 
 def get_canonical_hrf(tr=1.5, duration=32.0):

@@ -5,18 +5,19 @@ All tests use REAL MultimodalAutoencoder model (2B parameters).
 NO MOCKS - tests verify actual functionality with real models.
 """
 
+from pathlib import Path
+
 import pytest
 import torch
-from pathlib import Path
 
 # Import project modules using absolute imports
 from giblet.models.autoencoder import MultimodalAutoencoder
 from giblet.utils.visualization import (
-    create_network_diagram,
-    create_model_summary,
-    _get_layer_info,
     _calculate_layer_size,
     _get_layer_color,
+    _get_layer_info,
+    create_model_summary,
+    create_network_diagram,
 )
 
 

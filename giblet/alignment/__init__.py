@@ -8,9 +8,9 @@ Provides tools for:
 """
 
 from .hrf import (
-    get_canonical_hrf,
     apply_hrf,
     convolve_with_padding,
+    get_canonical_hrf,
     get_hrf_peak_latency,
 )
 from .sync import align_all_modalities, get_alignment_info

@@ -8,10 +8,11 @@ This module provides various loss functions used for training:
 4. Combined loss functions with weighting
 """
 
+from typing import Dict, Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Optional, Tuple
 
 
 class ReconstructionLoss(nn.Module):

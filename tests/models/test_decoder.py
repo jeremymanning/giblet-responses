@@ -4,9 +4,10 @@ Tests for multimodal decoder module.
 Tests forward pass, output shapes, and component functionality.
 """
 
+import numpy as np
 import pytest
 import torch
-import numpy as np
+
 from giblet.models.decoder import MultimodalDecoder
 
 

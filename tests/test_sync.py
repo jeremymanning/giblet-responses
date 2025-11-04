@@ -10,10 +10,11 @@ Tests verify:
 
 import numpy as np
 import pytest
+
 from giblet.alignment.sync import (
+    _resample_features,
     align_all_modalities,
     get_alignment_info,
-    _resample_features,
 )
 
 

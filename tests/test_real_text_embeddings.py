@@ -2,9 +2,9 @@
 Test real text embedding with BGE model.
 """
 
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
 from sklearn.metrics.pairwise import cosine_similarity
 
 from giblet.data.text import TextProcessor

@@ -30,15 +30,14 @@ Example
 >>> history = trainer.train()
 """
 
-from .trainer import Trainer, TrainingConfig, setup_distributed, cleanup_distributed
-
 from .losses import (
-    ReconstructionLoss,
-    FMRIMatchingLoss,
     CombinedAutoEncoderLoss,
+    FMRIMatchingLoss,
+    ReconstructionLoss,
     compute_correlation_metric,
     compute_r2_score,
 )
+from .trainer import Trainer, TrainingConfig, cleanup_distributed, setup_distributed
 
 __all__ = [
     "Trainer",

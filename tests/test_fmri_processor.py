@@ -4,15 +4,15 @@ Comprehensive tests for fMRI processing module.
 Tests use real fMRI data from all 17 Sherlock subjects.
 """
 
-import pytest
-import numpy as np
-import nibabel as nib
-from pathlib import Path
-import tempfile
 import shutil
+import tempfile
+from pathlib import Path
+
+import nibabel as nib
+import numpy as np
+import pytest
 
 from giblet.data.fmri import FMRIProcessor
-
 
 # Test configuration
 EXPECTED_N_VOXELS = 83300  # Expected number of brain voxels

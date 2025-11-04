@@ -10,12 +10,14 @@ Tests the full autoencoder including:
 - Integration with encoder and decoder
 """
 
+import os
+import tempfile
+
+import numpy as np
 import pytest
 import torch
 import torch.nn as nn
-import numpy as np
-import tempfile
-import os
+
 from giblet.models.autoencoder import (
     MultimodalAutoencoder,
     create_autoencoder,

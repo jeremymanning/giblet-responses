@@ -18,8 +18,8 @@ Expected output:
 """
 
 import os
-import sys
 import subprocess
+import sys
 
 import pytest
 import torch

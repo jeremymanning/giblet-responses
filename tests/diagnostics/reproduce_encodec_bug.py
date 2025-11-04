@@ -5,10 +5,12 @@ import sys
 
 sys.path.insert(0, ".")
 
-from giblet.data.audio import AudioProcessor
 import traceback
-import torch
+
 import numpy as np
+import torch
+
+from giblet.data.audio import AudioProcessor
 
 print("=" * 80)
 print("EnCodec Bug Reproduction with Real Sherlock Audio")

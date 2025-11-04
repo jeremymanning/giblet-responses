@@ -8,14 +8,15 @@ Creates 3D layered diagrams showing network architecture with:
 - Export to PDF and PNG formats
 """
 
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 from matplotlib.backends.backend_pdf import PdfPages
-from pathlib import Path
-from typing import Optional, Dict, List, Tuple
-import numpy as np
 
 
 def _get_layer_info(model: nn.Module) -> List[Dict]:

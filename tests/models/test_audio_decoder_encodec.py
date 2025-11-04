@@ -5,9 +5,10 @@ Tests the new EnCodec discrete code prediction path and backwards
 compatibility with mel spectrograms.
 """
 
+import numpy as np
 import pytest
 import torch
-import numpy as np
+
 from giblet.models.decoder import MultimodalDecoder
 
 

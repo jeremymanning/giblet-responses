@@ -15,8 +15,10 @@ References:
     - Truncate to minimum duration across modalities
 """
 
+from typing import Dict, Optional, Union
+
 import numpy as np
-from typing import Optional, Dict, Union
+
 from .hrf import apply_hrf, convolve_with_padding
 
 

@@ -17,26 +17,26 @@ Multi-node multi-GPU:
         scripts/train.py --config examples/train_config.yaml --distributed
 """
 
-import sys
-import os
 import argparse
-import yaml
+import os
+import sys
 from pathlib import Path
 
 import torch
 import torch.distributed as dist
+import yaml
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from giblet.models.autoencoder import create_autoencoder
 from giblet.data.dataset import MultimodalDataset
+from giblet.models.autoencoder import create_autoencoder
 from giblet.training.trainer import (
     Trainer,
     TrainingConfig,
-    setup_distributed,
     cleanup_distributed,
+    setup_distributed,
 )
 
 

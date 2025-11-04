@@ -8,15 +8,16 @@ Tests verify:
 4. Multi-feature support
 """
 
-import numpy as np
-import pytest
-import matplotlib.pyplot as plt
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+import numpy as np
+import pytest
+
 from giblet.alignment.hrf import (
-    get_canonical_hrf,
     apply_hrf,
     convolve_with_padding,
+    get_canonical_hrf,
     get_hrf_peak_latency,
 )
 

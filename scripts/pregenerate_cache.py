@@ -11,9 +11,10 @@ Usage:
 """
 
 import argparse
-import yaml
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import yaml
 
 # Add project root to path
 project_root = Path(__file__).parent.parent

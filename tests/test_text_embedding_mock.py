@@ -8,11 +8,12 @@ This script:
 4. Saves results for manual review
 """
 
-import pytest
-import numpy as np
-import pandas as pd
 from pathlib import Path
 from time import time
+
+import numpy as np
+import pandas as pd
+import pytest
 
 
 @pytest.mark.unit

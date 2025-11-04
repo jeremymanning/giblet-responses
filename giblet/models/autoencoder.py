@@ -12,14 +12,15 @@ Supports dual loss function:
 Supports multi-GPU training via DistributedDataParallel.
 """
 
+from pathlib import Path
+from typing import Dict, Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Tuple, Optional
-from pathlib import Path
 
-from .encoder import MultimodalEncoder
 from .decoder import MultimodalDecoder
+from .encoder import MultimodalEncoder
 
 
 class MultimodalAutoencoder(nn.Module):

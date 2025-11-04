@@ -3,11 +3,12 @@ Test script to validate text embedding functionality with real BGE model.
 Validates that the model loads without segfaults and performs nearest-neighbor recovery.
 """
 
-import pytest
+from datetime import datetime
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
-from datetime import datetime
+import pytest
 
 from giblet.data.text import TextProcessor
 

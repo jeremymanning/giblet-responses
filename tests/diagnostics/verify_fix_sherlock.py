@@ -12,10 +12,12 @@ import sys
 
 sys.path.insert(0, ".")
 
-from giblet.data.audio import AudioProcessor
-import numpy as np
 import traceback
 from pathlib import Path
+
+import numpy as np
+
+from giblet.data.audio import AudioProcessor
 
 
 def verify_single_test(processor, max_trs, audio_path):

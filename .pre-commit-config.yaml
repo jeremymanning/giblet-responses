@@ -62,7 +62,3 @@ repos:
       - id: bandit
         args: ["-c", "pyproject.toml", "-ll", "--skip=B101,B601"]
         additional_dependencies: ["bandit[toml]"]
-
-[tool.bandit]
-exclude_dirs = ["/tests/", "/venv_py311/", "/data/", "/logs/"]
-skips = ["B101", "B601"]

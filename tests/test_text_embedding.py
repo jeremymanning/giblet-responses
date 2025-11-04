@@ -9,11 +9,12 @@ This script:
 5. Saves results for manual review
 """
 
-import pytest
-import numpy as np
-import pandas as pd
 from pathlib import Path
 from time import time
+
+import numpy as np
+import pandas as pd
+import pytest
 
 from giblet.data.text import TextProcessor
 

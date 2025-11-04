@@ -9,6 +9,7 @@ Run with: python tests/models/test_encoder_demo.py
 """
 
 import torch
+
 from giblet.models.encoder import MultimodalEncoder, create_encoder
 
 

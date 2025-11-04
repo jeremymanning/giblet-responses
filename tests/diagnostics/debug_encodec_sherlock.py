@@ -6,9 +6,10 @@ with actual Sherlock video data and provides detailed diagnostics.
 """
 
 import sys
+from pathlib import Path
+
 import numpy as np
 import torch
-from pathlib import Path
 
 # Add giblet to path
 sys.path.insert(0, str(Path(__file__).parent))

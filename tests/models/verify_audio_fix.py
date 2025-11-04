@@ -6,9 +6,10 @@ This script verifies the fix WITHOUT loading EnCodec model,
 demonstrating the core logic changes.
 """
 
+from pathlib import Path
+
 import numpy as np
 import torch
-from pathlib import Path
 
 print("=" * 80)
 print("Audio Temporal Concatenation Fix Verification")

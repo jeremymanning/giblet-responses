@@ -17,11 +17,12 @@ Architecture follows issue #2 specification:
 This module implements Layers 1-6 of the architecture.
 """
 
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
-from typing import Tuple, Optional
 
 
 class VideoEncoder(nn.Module):

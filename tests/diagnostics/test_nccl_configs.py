@@ -17,14 +17,13 @@ Note: Run this BEFORE using torchrun, as it will spawn torchrun processes.
 """
 
 import os
-import sys
 import subprocess
+import sys
 import time
 from pathlib import Path
 
 import pytest
 import torch
-
 
 # NCCL configurations to test (in priority order)
 NCCL_CONFIGS = [

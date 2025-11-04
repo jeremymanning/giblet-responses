@@ -3,10 +3,11 @@
 Verify checkpoint quality: check for NaNs, zeros, correct dimensions, etc.
 """
 
-import torch
-import numpy as np
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import numpy as np
+import torch
 
 
 def verify_checkpoint(checkpoint_path: str):

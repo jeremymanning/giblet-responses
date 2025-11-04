@@ -16,9 +16,10 @@ print("\n" + "=" * 70)
 print("1. VIDEO VALIDATION")
 print("=" * 70)
 
-from giblet.data.video import VideoProcessor
-from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 import numpy as np
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
+
+from giblet.data.video import VideoProcessor
 
 vp = VideoProcessor(
     target_height=90, target_width=160, tr=1.5, frame_skip=1

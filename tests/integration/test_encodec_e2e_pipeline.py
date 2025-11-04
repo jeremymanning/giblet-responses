@@ -27,26 +27,27 @@ SUCCESS CRITERIA:
 - WAV files ready for user verification
 """
 
-import pytest
-import torch
-import torch.nn as nn
-import numpy as np
-import librosa
-import soundfile as sf
-from pathlib import Path
-from typing import Tuple, Dict
 import time
 import tracemalloc
-from tqdm import tqdm
+from pathlib import Path
+from typing import Dict, Tuple
+
+import librosa
+import numpy as np
+import pytest
+import soundfile as sf
+import torch
+import torch.nn as nn
 
 # Quality metrics
 from pesq import pesq
 from pystoi import stoi
+from tqdm import tqdm
 
 # Import project modules using absolute imports
 from giblet.data.audio import AudioProcessor
-from giblet.models.encoder import AudioEncoder
 from giblet.models.decoder import MultimodalDecoder
+from giblet.models.encoder import AudioEncoder
 
 # ============================================================================
 # CONFIGURATION

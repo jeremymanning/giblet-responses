@@ -36,12 +36,12 @@ Example
 """
 
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.optim as optim
-import torch.distributed as dist
-from torch.utils.data import DataLoader, DistributedSampler
 from torch.cuda.amp import GradScaler, autocast
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data import DataLoader, DistributedSampler
 
 # MEMORY OPTIMIZATION (Issue #30): Use 8-bit Adam to reduce optimizer memory
 try:
@@ -51,14 +51,15 @@ try:
 except ImportError:
     HAS_BITSANDBYTES = False
 
+import json
 import os
 import time
-import json
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
-from dataclasses import dataclass, asdict
-from tqdm import tqdm
+from typing import Any, Dict, Optional, Tuple
+
 import numpy as np
+from tqdm import tqdm
 
 from ..models.autoencoder import MultimodalAutoencoder
 
