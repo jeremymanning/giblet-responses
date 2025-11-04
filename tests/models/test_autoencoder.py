@@ -37,7 +37,7 @@ class TestMultimodalAutoencoder:
         assert model.audio_mels == 2048
         assert model.text_dim == 1024
         assert model.n_voxels == 85810
-        assert model.bottleneck_dim == 8000
+        assert model.bottleneck_dim == 2048  # Layer 7: BOTTLENECK (smallest layer)
         assert model.reconstruction_weight == 1.0
         assert model.fmri_weight == 1.0
 
@@ -47,7 +47,10 @@ class TestMultimodalAutoencoder:
 
     def test_forward_pass_eval(self):
         """Test forward pass in eval mode (no losses)."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         model.eval()
 
         batch_size = 4
@@ -66,7 +69,7 @@ class TestMultimodalAutoencoder:
         assert 'text_recon' in outputs
 
         # Check shapes
-        assert outputs['bottleneck'].shape == (batch_size, 8000)
+        assert outputs['bottleneck'].shape == (batch_size, 2048)  # Layer 7: BOTTLENECK (smallest layer)
         assert outputs['predicted_fmri'].shape == (batch_size, 85810)
         assert outputs['video_recon'].shape == (batch_size, 43200)  # 160*90*3
         assert outputs['audio_recon'].shape == (batch_size, 2048)
@@ -205,14 +208,14 @@ class TestMultimodalAutoencoder:
             bottleneck, voxels = model.encode_only(
                 video, audio, text, return_voxels=False
             )
-            assert bottleneck.shape == (batch_size, 8000)
+            assert bottleneck.shape == (batch_size, 2048)
             assert voxels is None
 
             # With voxels
             bottleneck, voxels = model.encode_only(
                 video, audio, text, return_voxels=True
             )
-            assert bottleneck.shape == (batch_size, 8000)
+            assert bottleneck.shape == (batch_size, 2048)
             assert voxels.shape == (batch_size, 85810)
 
     def test_decode_only(self):
@@ -221,7 +224,7 @@ class TestMultimodalAutoencoder:
         model.eval()
 
         batch_size = 4
-        bottleneck = torch.randn(batch_size, 8000)
+        bottleneck = torch.randn(batch_size, 2048)
 
         with torch.no_grad():
             video_recon, audio_recon, text_recon = model.decode_only(bottleneck)
@@ -315,7 +318,7 @@ class TestMultimodalAutoencoder:
             arch = checkpoint['architecture']
             assert arch['video_height'] == 90
             assert arch['video_width'] == 160
-            assert arch['bottleneck_dim'] == 8000
+            assert arch['bottleneck_dim'] == 2048
 
             # Check loaded model works
             loaded_model.eval()
@@ -327,7 +330,7 @@ class TestMultimodalAutoencoder:
             with torch.no_grad():
                 outputs = loaded_model(video, audio, text)
 
-            assert outputs['bottleneck'].shape == (batch_size, 8000)
+            assert outputs['bottleneck'].shape == (batch_size, 2048)
 
     def test_checkpoint_with_optimizer(self):
         """Test checkpoint with optimizer state."""
@@ -409,7 +412,7 @@ class TestCreateAutoencoder:
         model = create_autoencoder()
         assert isinstance(model, MultimodalAutoencoder)
         assert model.n_voxels == 85810
-        assert model.bottleneck_dim == 8000
+        assert model.bottleneck_dim == 2048
 
     def test_create_autoencoder_custom(self):
         """Test factory with custom parameters."""

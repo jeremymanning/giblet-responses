@@ -37,9 +37,20 @@
    - All tests pass successfully
    - Total test time: 107.98s
 
+### ✅ Completed (Continued)
+
+7. **Partial fix for tests/models/test_autoencoder.py:**
+   - Fixed bottleneck_dim assertions (8000 → 2048) using replace_all
+   - Fixed test_forward_pass_eval with video_frames_per_tr=1, audio_frames_per_tr=1
+   - **Remaining:** Need to add temporal parameters to 17 more test methods
+
 ### 🔄 Current Work
 
-**Task:** Continue fixing remaining test files
+**Task:** Complete tests/models/test_autoencoder.py, then continue with other test files
+
+**Autoencoder fixes remaining:**
+- 17 more test methods need `video_frames_per_tr=1, audio_frames_per_tr=1` parameters
+- All at lines: 34, 85, 122, 152, 175, 198, 223, 238, 292, 337, 365, 383, 438, 451, 477, 516, 547, 577
 
 **Key insights from encoder test fixes:**
 - VideoEncoder takes `input_dim` (flattened), not `input_height/width`
