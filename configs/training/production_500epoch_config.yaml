@@ -1,0 +1,78 @@
+# Production training config: 500 epochs
+# Purpose: Full production training with all subjects
+# Resume from: test_3more_checkpoints/checkpoint_epoch_3.pt (4 epochs complete)
+
+# Optimizer parameters
+learning_rate: 1.0e-4
+batch_size: 2  # Per GPU (minimum for BatchNorm), so 16 total across 8 GPUs
+num_epochs: 500  # Full production run
+weight_decay: 1.0e-5
+
+# Loss function weights
+reconstruction_weight: 1.0
+fmri_weight: 1.0
+video_weight: 1.0
+audio_weight: 1.0
+text_weight: 1.0
+fmri_loss_type: 'mse'
+
+# Learning rate scheduling
+scheduler_type: 'cosine'
+warmup_epochs: 10  # Warmup for production
+min_lr: 1.0e-6
+
+# Training settings
+gradient_clip_val: 1.0
+use_mixed_precision: true
+num_workers: 2
+pin_memory: true
+
+# Checkpointing and logging
+checkpoint_dir: 'production_500epoch_checkpoints'
+log_dir: 'production_500epoch_logs'
+save_every: 10  # Save every 10 epochs for production
+validate_every: 1
+
+# Early stopping
+early_stopping_patience: 50  # More patience for production
+early_stopping_delta: 1.0e-4
+
+# Resume training from 4-epoch checkpoint
+resume_from: 'test_3more_checkpoints/checkpoint_epoch_3.pt'
+
+# Data settings - ALL SUBJECTS for production
+data:
+  data_dir: 'data/'
+  subjects: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]  # All 17 subjects
+  apply_hrf: true
+  mode: 'per_subject'
+  train_split: 'train'
+  val_split: 'val'
+  frame_skip: 4  # Memory optimization (Issue #30)
+  fps: 25.0
+  tr: 1.5
+
+# Model architecture
+model:
+  video_height: 90
+  video_width: 160
+  audio_mels: 2048
+  text_dim: 3072
+  n_voxels: 77347
+  bottleneck_dim: 2048
+  video_features: 1024
+  audio_features: 256
+  text_features: 256
+  decoder_hidden_dim: 2048
+  decoder_dropout: 0.3
+  use_encodec: true
+  audio_frames_per_tr: 112
+  gradient_checkpointing: true
+
+# Multi-GPU training settings
+distributed:
+  enabled: true
+  backend: 'nccl'
+  world_size: 8
+  master_addr: 'localhost'
+  master_port: '12355'
