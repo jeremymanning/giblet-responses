@@ -15,7 +15,6 @@ from giblet.data.fmri import FMRIProcessor
 
 
 # Test configuration
-DATA_DIR = Path("/Users/jmanning/giblet-responses/data/sherlock_nii")
 EXPECTED_N_VOXELS = 83300  # Expected number of brain voxels
 EXPECTED_SHAPE = (61, 73, 61)  # Expected spatial dimensions
 TR = 1.5  # Repetition time in seconds
@@ -23,6 +22,8 @@ N_SUBJECTS = 17
 MAX_TRS = 920  # Truncate to stimulus duration
 
 
+@pytest.mark.data
+@pytest.mark.integration
 class TestFMRIProcessor:
     """Test FMRIProcessor with real Sherlock data."""
 
@@ -32,9 +33,13 @@ class TestFMRIProcessor:
         return FMRIProcessor(tr=TR, max_trs=MAX_TRS, mask_threshold=0.5)
 
     @pytest.fixture
-    def nii_files(self):
+    def nii_files(self, data_dir):
         """Get list of all NIfTI files."""
-        files = sorted(DATA_DIR.glob("sherlock_movie_s*.nii.gz"),
+        nii_dir = data_dir / "sherlock_nii"
+        if not nii_dir.exists():
+            pytest.skip(f"Sherlock NIfTI data not found at {nii_dir}")
+
+        files = sorted(nii_dir.glob("sherlock_movie_s*.nii.gz"),
                       key=lambda f: int(f.name.split('_')[-1].split('.')[0][1:]))
         assert len(files) == N_SUBJECTS, f"Expected {N_SUBJECTS} files, found {len(files)}"
         return files
@@ -289,12 +294,16 @@ class TestFMRIProcessor:
 
         print("Averaging test passed!")
 
-    def test_load_all_subjects(self, processor):
+    def test_load_all_subjects(self, processor, data_dir):
         """Test load_all_subjects convenience method."""
         print(f"\n=== Testing Load All Subjects ===")
 
+        nii_dir = data_dir / "sherlock_nii"
+        if not nii_dir.exists():
+            pytest.skip(f"Sherlock NIfTI data not found at {nii_dir}")
+
         features_list, coordinates_list, metadata_list, subject_ids = \
-            processor.load_all_subjects(DATA_DIR)
+            processor.load_all_subjects(nii_dir)
 
         # Check counts
         assert len(features_list) == N_SUBJECTS, f"Expected {N_SUBJECTS} subjects"

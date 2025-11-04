@@ -10,25 +10,20 @@ This test verifies that the dataset:
 6. Handles single-subject and cross-subject modes
 """
 
+import pytest
 import torch
 from torch.utils.data import DataLoader
 import numpy as np
-from pathlib import Path
-import sys
-
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from giblet.data.dataset import SherlockDataset
 
 
-def test_full_dataset():
+@pytest.mark.data
+def test_full_dataset(data_dir):
     """Test loading full dataset with all 17 subjects."""
     print("="*80)
     print("TEST 1: Full dataset (all 17 subjects)")
     print("="*80)
-
-    data_dir = Path(__file__).parent.parent.parent / 'data'
 
     # Load dataset
     dataset = SherlockDataset(
@@ -76,13 +71,12 @@ def test_full_dataset():
     return dataset
 
 
-def test_dataloader():
+@pytest.mark.data
+def test_dataloader(data_dir):
     """Test PyTorch DataLoader integration."""
     print("="*80)
     print("TEST 2: DataLoader integration")
     print("="*80)
-
-    data_dir = Path(__file__).parent.parent.parent / 'data'
 
     dataset = SherlockDataset(
         data_dir=data_dir,
@@ -132,13 +126,12 @@ def test_dataloader():
     print("\n✅ DataLoader test PASSED\n")
 
 
-def test_train_val_split():
+@pytest.mark.data
+def test_train_val_split(data_dir):
     """Test train/validation split."""
     print("="*80)
     print("TEST 3: Train/validation split")
     print("="*80)
-
-    data_dir = Path(__file__).parent.parent.parent / 'data'
 
     # Create train dataset
     train_dataset = SherlockDataset(
@@ -181,13 +174,12 @@ def test_train_val_split():
     print("\n✅ Train/val split test PASSED\n")
 
 
-def test_single_subject():
+@pytest.mark.data
+def test_single_subject(data_dir):
     """Test loading single subject."""
     print("="*80)
     print("TEST 4: Single subject mode")
     print("="*80)
-
-    data_dir = Path(__file__).parent.parent.parent / 'data'
 
     # Load single subject
     dataset = SherlockDataset(
@@ -222,13 +214,12 @@ def test_single_subject():
     print("\n✅ Single subject test PASSED\n")
 
 
-def test_cross_subject():
+@pytest.mark.data
+def test_cross_subject(data_dir):
     """Test cross-subject averaging mode."""
     print("="*80)
     print("TEST 5: Cross-subject mode")
     print("="*80)
-
-    data_dir = Path(__file__).parent.parent.parent / 'data'
 
     # Load with cross-subject averaging
     dataset = SherlockDataset(
@@ -252,13 +243,12 @@ def test_cross_subject():
     print("\n✅ Cross-subject test PASSED\n")
 
 
-def test_feature_stats():
+@pytest.mark.data
+def test_feature_stats(data_dir):
     """Test feature statistics computation."""
     print("="*80)
     print("TEST 6: Feature statistics")
     print("="*80)
-
-    data_dir = Path(__file__).parent.parent.parent / 'data'
 
     dataset = SherlockDataset(
         data_dir=data_dir,
@@ -281,13 +271,12 @@ def test_feature_stats():
     print("\n✅ Feature statistics test PASSED\n")
 
 
-def test_no_hrf():
+@pytest.mark.data
+def test_no_hrf(data_dir):
     """Test dataset without HRF convolution."""
     print("="*80)
     print("TEST 7: Dataset without HRF")
     print("="*80)
-
-    data_dir = Path(__file__).parent.parent.parent / 'data'
 
     # Load without HRF
     dataset = SherlockDataset(
@@ -308,44 +297,6 @@ def test_no_hrf():
     print("\n✅ No HRF test PASSED\n")
 
 
-def main():
-    """Run all tests."""
-    print("\n" + "="*80)
-    print("SHERLOCK DATASET TESTS")
-    print("="*80)
-
-    try:
-        # Run tests
-        dataset = test_full_dataset()
-        test_dataloader()
-        test_train_val_split()
-        test_single_subject()
-        test_cross_subject()
-        test_feature_stats()
-        test_no_hrf()
-
-        print("\n" + "="*80)
-        print("✅ ALL TESTS PASSED!")
-        print("="*80)
-
-        # Print summary
-        print(f"\nDataset Summary:")
-        print(f"  Total subjects: {dataset.n_subjects}")
-        print(f"  TRs per subject: {dataset.n_trs}")
-        print(f"  Total samples: {dataset.n_samples}")
-        print(f"  Feature dimensions:")
-        for modality, dim in dataset.feature_dims.items():
-            print(f"    {modality}: {dim}")
-
-    except Exception as e:
-        print("\n" + "="*80)
-        print("❌ TEST FAILED")
-        print("="*80)
-        print(f"\nError: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
-
-
 if __name__ == '__main__':
-    main()
+    # Run tests with pytest
+    pytest.main([__file__, '-v', '-s'])

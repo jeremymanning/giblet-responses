@@ -9,37 +9,27 @@ Run with: pytest tests/data/test_encodec_sherlock_integration.py -v
 
 import pytest
 import numpy as np
-from pathlib import Path
 from giblet.data.audio import AudioProcessor
 
 
-# Check if Sherlock video exists
-SHERLOCK_PATH = Path('data/stimuli_Sherlock.m4v')
-SHERLOCK_AVAILABLE = SHERLOCK_PATH.exists()
-
-# Skip all tests if Sherlock video is not available
-pytestmark = pytest.mark.skipif(
-    not SHERLOCK_AVAILABLE,
-    reason="Sherlock video not found at data/stimuli_Sherlock.m4v"
-)
+@pytest.fixture
+def sherlock_video(data_dir):
+    """Return path to Sherlock video file."""
+    sherlock_path = data_dir / 'stimuli_Sherlock.m4v'
+    if not sherlock_path.exists():
+        pytest.skip(f"Sherlock video not found at {sherlock_path}")
+    return sherlock_path
 
 
+@pytest.mark.data
+@pytest.mark.slow
 class TestEnCodecSherlockIntegration:
     """Integration tests with real Sherlock video data"""
 
-    @pytest.fixture
-    def processor(self):
-        """Create AudioProcessor with EnCodec enabled"""
-        return AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
-
-    def test_small_subset(self, processor):
+    def test_small_subset(self, audio_processor, sherlock_video):
         """Test with 5 TRs from Sherlock - quick sanity check"""
-        features, metadata = processor.audio_to_features(
-            str(SHERLOCK_PATH),
+        features, metadata = audio_processor.audio_to_features(
+            str(sherlock_video),
             max_trs=5,
             from_video=True
         )
@@ -55,10 +45,10 @@ class TestEnCodecSherlockIntegration:
         assert 'n_codebooks' in metadata.columns
         assert 'n_frames' in metadata.columns
 
-    def test_medium_subset(self, processor):
+    def test_medium_subset(self, audio_processor, sherlock_video):
         """Test with 50 TRs from Sherlock - moderate duration"""
-        features, metadata = processor.audio_to_features(
-            str(SHERLOCK_PATH),
+        features, metadata = audio_processor.audio_to_features(
+            str(sherlock_video),
             max_trs=50,
             from_video=True
         )
@@ -72,10 +62,10 @@ class TestEnCodecSherlockIntegration:
         # Verify metadata
         assert len(metadata) == 50
 
-    def test_large_subset(self, processor):
+    def test_large_subset(self, audio_processor, sherlock_video):
         """Test with 100 TRs from Sherlock - extended duration"""
-        features, metadata = processor.audio_to_features(
-            str(SHERLOCK_PATH),
+        features, metadata = audio_processor.audio_to_features(
+            str(sherlock_video),
             max_trs=100,
             from_video=True
         )
@@ -89,10 +79,10 @@ class TestEnCodecSherlockIntegration:
         # Verify metadata
         assert len(metadata) == 100
 
-    def test_all_trs_identical_shape(self, processor):
+    def test_all_trs_identical_shape(self, audio_processor, sherlock_video):
         """Verify every TR has exactly (896,) shape - critical dimension test"""
-        features, _ = processor.audio_to_features(
-            str(SHERLOCK_PATH),
+        features, _ = audio_processor.audio_to_features(
+            str(sherlock_video),
             max_trs=20,
             from_video=True
         )
@@ -102,15 +92,15 @@ class TestEnCodecSherlockIntegration:
             tr_shape = features[i].shape
             assert tr_shape == (896,), f"TR {i} has wrong shape: {tr_shape}, expected (896,)"
 
-    def test_no_dimension_mismatch_error(self, processor):
+    def test_no_dimension_mismatch_error(self, audio_processor, sherlock_video):
         """Regression test - ensure the original dimension error doesn't occur"""
         # This test specifically checks that we don't get the error:
         # RuntimeError: The expanded size of the tensor (112) must match
         # the existing size (106697) at non-singleton dimension 1.
 
         try:
-            features, _ = processor.audio_to_features(
-                str(SHERLOCK_PATH),
+            features, _ = audio_processor.audio_to_features(
+                str(sherlock_video),
                 max_trs=10,
                 from_video=True
             )
@@ -125,10 +115,10 @@ class TestEnCodecSherlockIntegration:
                 # Different error - re-raise
                 raise
 
-    def test_metadata_consistency(self, processor):
+    def test_metadata_consistency(self, audio_processor, sherlock_video):
         """Verify metadata has consistent values across all TRs"""
-        _, metadata = processor.audio_to_features(
-            str(SHERLOCK_PATH),
+        _, metadata = audio_processor.audio_to_features(
+            str(sherlock_video),
             max_trs=20,
             from_video=True
         )
@@ -146,10 +136,10 @@ class TestEnCodecSherlockIntegration:
         # All TRs should have encoding_mode = 'encodec'
         assert (metadata['encoding_mode'] == 'encodec').all()
 
-    def test_valid_codebook_indices(self, processor):
+    def test_valid_codebook_indices(self, audio_processor, sherlock_video):
         """Verify all values are valid codebook indices (0-1023)"""
-        features, _ = processor.audio_to_features(
-            str(SHERLOCK_PATH),
+        features, _ = audio_processor.audio_to_features(
+            str(sherlock_video),
             max_trs=10,
             from_video=True
         )
@@ -161,8 +151,13 @@ class TestEnCodecSherlockIntegration:
         assert min_val >= 0, f"Negative codebook index found: {min_val}"
         assert max_val <= 1023, f"Codebook index exceeds range: {max_val}"
 
-    def test_different_bandwidths(self):
-        """Test with different EnCodec bandwidths"""
+    def test_different_bandwidths(self, sherlock_video):
+        """Test with different EnCodec bandwidths.
+
+        Note: This test creates processors with specific bandwidth settings.
+        """
+        from giblet.data.audio import AudioProcessor
+
         bandwidths_and_shapes = [
             (1.5, 2, 224),   # 2 codebooks × 112 frames = 224
             (3.0, 8, 896),   # 8 codebooks × 112 frames = 896
@@ -177,7 +172,7 @@ class TestEnCodecSherlockIntegration:
             )
 
             features, metadata = processor.audio_to_features(
-                str(SHERLOCK_PATH),
+                str(sherlock_video),
                 max_trs=5,
                 from_video=True
             )
@@ -189,8 +184,13 @@ class TestEnCodecSherlockIntegration:
             assert (metadata['n_codebooks'] == expected_codebooks).all(), \
                 f"Bandwidth {bandwidth}: Expected {expected_codebooks} codebooks, got {metadata['n_codebooks'].unique()}"
 
-    def test_different_tr_lengths(self):
-        """Test with different TR lengths"""
+    def test_different_tr_lengths(self, sherlock_video):
+        """Test with different TR lengths.
+
+        Note: This test creates processors with specific TR settings.
+        """
+        from giblet.data.audio import AudioProcessor
+
         tr_lengths_and_frames = [
             (1.0, 75),   # 75 Hz × 1.0s = 75 frames
             (1.5, 112),  # 75 Hz × 1.5s = 112.5 → 112 frames
@@ -207,7 +207,7 @@ class TestEnCodecSherlockIntegration:
             expected_flat_dim = 8 * expected_frames  # 8 codebooks
 
             features, metadata = processor.audio_to_features(
-                str(SHERLOCK_PATH),
+                str(sherlock_video),
                 max_trs=5,
                 from_video=True,
                 tr_length=tr_length
@@ -220,10 +220,10 @@ class TestEnCodecSherlockIntegration:
             assert (metadata['n_frames'] == expected_frames).all(), \
                 f"TR={tr_length}s: Expected {expected_frames} frames, got {metadata['n_frames'].unique()}"
 
-    def test_reconstruction_compatible(self, processor):
+    def test_reconstruction_compatible(self, audio_processor, sherlock_video):
         """Verify features can be used for reconstruction"""
-        features, metadata = processor.audio_to_features(
-            str(SHERLOCK_PATH),
+        features, metadata = audio_processor.audio_to_features(
+            str(sherlock_video),
             max_trs=5,
             from_video=True
         )
@@ -246,17 +246,17 @@ class TestEnCodecSherlockIntegration:
         # Verify reconstruction would work (without actually running it to save time)
         # The actual reconstruction test is in test_audio_encodec.py
 
-    def test_sequential_extraction(self, processor):
+    def test_sequential_extraction(self, audio_processor, sherlock_video):
         """Test that sequential extractions of the same data give consistent results"""
         # Extract first 10 TRs twice
-        features1, metadata1 = processor.audio_to_features(
-            str(SHERLOCK_PATH),
+        features1, metadata1 = audio_processor.audio_to_features(
+            str(sherlock_video),
             max_trs=10,
             from_video=True
         )
 
-        features2, metadata2 = processor.audio_to_features(
-            str(SHERLOCK_PATH),
+        features2, metadata2 = audio_processor.audio_to_features(
+            str(sherlock_video),
             max_trs=10,
             from_video=True
         )
@@ -270,19 +270,15 @@ class TestEnCodecSherlockIntegration:
         assert metadata1['n_frames'].equals(metadata2['n_frames'])
 
 
+@pytest.mark.data
+@pytest.mark.slow
 class TestEnCodecEdgeCases:
     """Test edge cases and boundary conditions"""
 
-    def test_single_tr(self):
+    def test_single_tr(self, audio_processor, sherlock_video):
         """Test extraction of just 1 TR"""
-        processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
-
-        features, metadata = processor.audio_to_features(
-            str(SHERLOCK_PATH),
+        features, metadata = audio_processor.audio_to_features(
+            str(sherlock_video),
             max_trs=1,
             from_video=True
         )
@@ -290,17 +286,11 @@ class TestEnCodecEdgeCases:
         assert features.shape == (1, 896)
         assert len(metadata) == 1
 
-    def test_very_short_audio(self):
+    def test_very_short_audio(self, audio_processor, sherlock_video):
         """Test with very short audio (just enough for a few TRs)"""
-        processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
-
         # Extract just 2 TRs (3 seconds of audio)
-        features, metadata = processor.audio_to_features(
-            str(SHERLOCK_PATH),
+        features, metadata = audio_processor.audio_to_features(
+            str(sherlock_video),
             max_trs=2,
             from_video=True
         )
@@ -308,15 +298,9 @@ class TestEnCodecEdgeCases:
         assert features.shape == (2, 896)
         assert len(metadata) == 2
 
-    def test_get_audio_info(self):
+    def test_get_audio_info(self, audio_processor, sherlock_video):
         """Test get_audio_info method with real Sherlock data"""
-        processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
-
-        info = processor.get_audio_info(str(SHERLOCK_PATH), from_video=True)
+        info = audio_processor.get_audio_info(str(sherlock_video), from_video=True)
 
         # Verify info has expected fields
         assert 'sample_rate' in info

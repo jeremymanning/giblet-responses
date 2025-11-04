@@ -1,61 +1,88 @@
-import sys
-sys.path.insert(0, '.')
+"""
+Test real text embedding with BGE model.
+"""
 
-print("Loading modules...")
-try:
-    from sentence_transformers import SentenceTransformer
-    import pandas as pd
-    import numpy as np
-    from sklearn.metrics.pairwise import cosine_similarity
-    
-    print("✓ All imports successful\n")
-    
+import pytest
+import pandas as pd
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+
+from giblet.data.text import TextProcessor
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+@pytest.mark.data
+def test_real_bge_embeddings(data_dir, tmp_path):
+    """Test REAL BGE embedding validation."""
+
+    print("Loading modules...")
+
     # Load REAL BGE model
     print("Loading BAAI/bge-large-en-v1.5 (this will download ~1.3GB)...")
-    model = SentenceTransformer('BAAI/bge-large-en-v1.5')
-    print("✓ BGE model loaded\n")
-    
+    processor = TextProcessor(
+        model_name='BAAI/bge-large-en-v1.5',
+        tr=1.5,
+        device='cpu'
+    )
+    print("Model loaded")
+
     # Load annotations
-    df = pd.read_excel('data/annotations.xlsx')
-    print(f"✓ Loaded {len(df)} annotations\n")
-    
+    annotations_path = data_dir / 'annotations.xlsx'
+    if not annotations_path.exists():
+        pytest.skip(f"Annotations not found at {annotations_path}")
+
+    annotations = processor.load_annotations(annotations_path)
+    print(f"Loaded {len(annotations)} annotations")
+
     # Get first 10 scene descriptions
-    scenes = df['Scene Details - A Level '].iloc[:10].tolist()
-    
+    combined_text = processor.combine_text_columns(annotations)
+    valid_mask = combined_text.notna()
+    scenes = combined_text[valid_mask].iloc[:10].tolist()
+
+    # Force model load
+    processor._load_model()
+
     # Generate REAL embeddings
     print("Generating REAL embeddings...")
-    embeddings = model.encode(scenes, normalize_embeddings=True)
-    print(f"✓ Embeddings shape: {embeddings.shape}\n")
-    
+    embeddings = processor._model.encode(
+        scenes,
+        normalize_embeddings=True,
+        show_progress_bar=False,
+        convert_to_numpy=True
+    )
+    print(f"Embeddings shape: {embeddings.shape}")
+
     # Test nearest-neighbor recovery
-    print("Testing nearest-neighbor recovery...\n")
-    
-    with open('text_embedding_validation.txt', 'w') as f:
+    print("Testing nearest-neighbor recovery...")
+
+    output_path = tmp_path / 'text_embedding_validation.txt'
+    with open(output_path, 'w') as f:
         f.write("="*80 + "\n")
         f.write("REAL BGE EMBEDDING VALIDATION\n")
         f.write("Model: BAAI/bge-large-en-v1.5\n")
         f.write("="*80 + "\n\n")
-        
+
+        perfect_matches = 0
         for i, scene in enumerate(scenes):
             # Find nearest neighbor to this embedding
             sims = cosine_similarity([embeddings[i]], embeddings)[0]
             nearest_idx = np.argmax(sims)
-            
+
             f.write(f"\nAnnotation {i}:\n")
             f.write("-"*80 + "\n")
             f.write(f"ORIGINAL: {scene}\n")
             f.write(f"RECOVERED (nearest): {scenes[nearest_idx]}\n")
             f.write(f"Cosine similarity: {sims[nearest_idx]:.4f}\n")
-            
+
             if i == nearest_idx:
-                f.write("✅ PERFECT MATCH (same annotation)\n")
+                f.write("PERFECT MATCH (same annotation)\n")
+                perfect_matches += 1
             else:
-                f.write("⚠️  Different annotation retrieved\n")
-    
-    print("✅ Results saved to text_embedding_validation.txt")
+                f.write("Different annotation retrieved\n")
+
+    print(f"Results saved to {output_path}")
     print("This shows ACTUAL BGE embeddings and nearest-neighbor recovery")
-    
-except Exception as e:
-    print(f"\n❌ Error: {e}")
-    import traceback
-    traceback.print_exc()
+
+    # Assert that all perfect matches (self-similarity should be 1.0)
+    assert perfect_matches == len(scenes), "Expected all self-matches to be perfect"

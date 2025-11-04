@@ -9,6 +9,10 @@ If this succeeds: Issue is likely related to large model size
 If this fails: Issue is NCCL/cluster configuration
 
 Usage:
+    # As pytest (single GPU test):
+    pytest tests/diagnostics/test_small_model_ddp.py -v -s
+
+    # As standalone DDP script:
     torchrun --nproc_per_node=8 tests/diagnostics/test_small_model_ddp.py
     # Or test with fewer GPUs:
     torchrun --nproc_per_node=4 tests/diagnostics/test_small_model_ddp.py
@@ -22,6 +26,8 @@ Expected output:
 
 import os
 import sys
+
+import pytest
 import torch
 import torch.nn as nn
 import torch.distributed as dist
@@ -42,9 +48,46 @@ class TinyModel(nn.Module):
         return x
 
 
-def test_ddp_initialization():
-    """Test DDP initialization with tiny model across multiple GPUs."""
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+@pytest.mark.integration
+def test_tiny_model_single_gpu():
+    """Test TinyModel on single GPU (pytest mode)."""
+    print("=" * 80)
+    print("Testing TinyModel on Single GPU")
+    print("=" * 80)
 
+    device = torch.device('cuda:0')
+    torch.cuda.set_device(device)
+
+    # Create model
+    model = TinyModel().to(device)
+    param_count = sum(p.numel() for p in model.parameters())
+    print(f"Model created: {param_count:,} parameters")
+
+    # Test forward pass
+    x = torch.randn(4, 100).to(device)
+    y = model(x)
+    print(f"Forward pass successful: output shape {y.shape}")
+
+    # Test backward pass
+    loss = y.sum()
+    loss.backward()
+    print(f"Backward pass successful")
+
+    assert y.shape == (4, 10), f"Expected output shape (4, 10), got {y.shape}"
+    print("✓ Single GPU test passed")
+
+
+def run_ddp_initialization():
+    """Run DDP initialization with tiny model across multiple GPUs.
+
+    NOTE: This function is NOT a pytest test (doesn't start with test_).
+    It should only be called by torchrun or from main() when running
+    as a standalone script with torchrun.
+
+    Usage:
+        torchrun --nproc_per_node=8 tests/diagnostics/test_small_model_ddp.py
+    """
     # Get rank info from environment (set by torchrun)
     local_rank = int(os.environ['LOCAL_RANK'])
     world_size = int(os.environ['WORLD_SIZE'])
@@ -166,7 +209,7 @@ def main():
         print("=" * 80)
 
     # Run test
-    success = test_ddp_initialization()
+    success = run_ddp_initialization()
 
     # Barrier to ensure all ranks finish
     if 'RANK' in os.environ:

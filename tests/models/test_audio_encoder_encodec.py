@@ -17,13 +17,10 @@ Verified settings for EnCodec mode (Issue #24):
 import pytest
 import torch
 import numpy as np
-from pathlib import Path
-import sys
-
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 from giblet.models.encoder import AudioEncoder, MultimodalEncoder
+
+
+@pytest.mark.unit
 
 
 class TestAudioEncoderEnCodec:
@@ -192,6 +189,7 @@ class TestAudioEncoderEnCodec:
         assert embed_params == 1024 * 64, "Embedding size should be vocab_size * embed_dim"
 
 
+@pytest.mark.unit
 class TestAudioEncoderBackwardsCompatibility:
     """Test backwards compatibility with mel spectrograms."""
 
@@ -273,6 +271,7 @@ class TestAudioEncoderBackwardsCompatibility:
         assert embed_params == 1024 * 64  # vocab_size * embed_dim
 
 
+@pytest.mark.unit
 class TestMultimodalEncoderEnCodec:
     """Test MultimodalEncoder with EnCodec audio."""
 
@@ -366,6 +365,7 @@ class TestMultimodalEncoderEnCodec:
         assert bottleneck_encodec.shape == (2, 2048)
 
 
+@pytest.mark.integration
 class TestEnCodecRealWorldScenarios:
     """Test realistic EnCodec usage scenarios."""
 
@@ -467,6 +467,7 @@ class TestEnCodecRealWorldScenarios:
         assert torch.isfinite(output).all()
 
 
+@pytest.mark.unit
 class TestEnCodecEdgeCases:
     """Test edge cases and error handling."""
 

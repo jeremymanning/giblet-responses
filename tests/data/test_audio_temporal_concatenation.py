@@ -14,12 +14,8 @@ Key requirements:
 
 import pytest
 import numpy as np
-from pathlib import Path
-import tempfile
-import shutil
 import torch
 
-# Audio processing
 from giblet.data.audio import AudioProcessor, ENCODEC_AVAILABLE
 
 # Audio I/O
@@ -28,15 +24,7 @@ import soundfile as sf
 
 
 @pytest.fixture
-def test_audio_dir():
-    """Create temporary directory for test audio files."""
-    temp_dir = Path(tempfile.mkdtemp())
-    yield temp_dir
-    shutil.rmtree(temp_dir)
-
-
-@pytest.fixture
-def sample_audio_5s(test_audio_dir):
+def sample_audio_5s(tmp_path):
     """Generate 5-second audio for testing."""
     duration = 5.0
     sample_rate = 24000
@@ -50,14 +38,14 @@ def sample_audio_5s(test_audio_dir):
     )
     signal = signal / np.max(np.abs(signal)) * 0.9
 
-    audio_path = test_audio_dir / "test_5s.wav"
+    audio_path = tmp_path / "test_5s.wav"
     sf.write(str(audio_path), signal, sample_rate)
 
     return audio_path, sample_rate, duration
 
 
 @pytest.fixture
-def sample_audio_long(test_audio_dir):
+def sample_audio_long(tmp_path):
     """Generate longer audio (10 seconds) for edge case testing."""
     duration = 10.0
     sample_rate = 24000
@@ -68,27 +56,22 @@ def sample_audio_long(test_audio_dir):
     signal = np.sin(2 * np.pi * (f0 * t + (f1 - f0) * t**2 / (2 * duration)))
     signal = signal / np.max(np.abs(signal)) * 0.9
 
-    audio_path = test_audio_dir / "test_10s.wav"
+    audio_path = tmp_path / "test_10s.wav"
     sf.write(str(audio_path), signal, sample_rate)
 
     return audio_path, sample_rate, duration
 
 
+@pytest.mark.unit
 @pytest.mark.skipif(not ENCODEC_AVAILABLE, reason="EnCodec not available")
 class TestDimensionConsistency:
     """Test that all TRs have consistent dimensions (fixes RuntimeError)."""
 
-    def test_all_trs_same_shape(self, sample_audio_5s):
+    def test_all_trs_same_shape(self, audio_processor, sample_audio_5s):
         """Critical test: All TRs must have identical shape."""
         audio_path, sr, duration = sample_audio_5s
 
-        processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
-
-        features, metadata = processor.audio_to_features(
+        features, metadata = audio_processor.audio_to_features(
             audio_path,
             from_video=False
         )
@@ -106,17 +89,11 @@ class TestDimensionConsistency:
 
         print(f"\n✓ All {n_trs} TRs have consistent shape: {expected_shape}")
 
-    def test_consistent_codebook_count(self, sample_audio_5s):
+    def test_consistent_codebook_count(self, audio_processor, sample_audio_5s):
         """Test that codebook count is consistent across all TRs."""
         audio_path, sr, duration = sample_audio_5s
 
-        processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
-
-        features, metadata = processor.audio_to_features(
+        features, metadata = audio_processor.audio_to_features(
             audio_path,
             from_video=False
         )
@@ -135,17 +112,12 @@ class TestDimensionConsistency:
 
         print(f"\n✓ Consistent codebook count: {n_codebooks}")
 
-    def test_flattened_output_shape(self, sample_audio_5s):
+    def test_flattened_output_shape(self, audio_processor, sample_audio_5s):
         """Test that output is flattened to (n_trs, n_codebooks * frames_per_tr)."""
         audio_path, sr, duration = sample_audio_5s
 
-        processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
-
-        features, metadata = processor.audio_to_features(
+        # Note: Using default audio_processor with TR=1.5s and bandwidth=3.0 kbps
+        features, metadata = audio_processor.audio_to_features(
             audio_path,
             from_video=False
         )
@@ -171,17 +143,11 @@ class TestDimensionConsistency:
         print(f"\n✓ Shape: {features.shape}")
         print(f"  {n_trs} TRs × {flat_dim} codes ({n_codebooks} codebooks × {frames_per_tr} frames)")
 
-    def test_torch_stack_compatibility(self, sample_audio_5s):
+    def test_torch_stack_compatibility(self, audio_processor, sample_audio_5s):
         """Test that features can be stacked with torch.stack() (training requirement)."""
         audio_path, sr, duration = sample_audio_5s
 
-        processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
-
-        features, metadata = processor.audio_to_features(
+        features, metadata = audio_processor.audio_to_features(
             audio_path,
             from_video=False
         )
@@ -196,17 +162,11 @@ class TestDimensionConsistency:
         except RuntimeError as e:
             pytest.fail(f"torch.stack() failed: {e}")
 
-    def test_dtype_consistency(self, sample_audio_5s):
+    def test_dtype_consistency(self, audio_processor, sample_audio_5s):
         """Test that all features have consistent dtype (int64)."""
         audio_path, sr, duration = sample_audio_5s
 
-        processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
-
-        features, metadata = processor.audio_to_features(
+        features, metadata = audio_processor.audio_to_features(
             audio_path,
             from_video=False
         )
@@ -291,18 +251,12 @@ class TestConfigurableTR:
 class TestRoundTrip:
     """Test encoding → decoding round-trip with flattened format."""
 
-    def test_flattened_reconstruction(self, sample_audio_5s, test_audio_dir):
+    def test_flattened_reconstruction(self, audio_processor, sample_audio_5s, tmp_path):
         """Test that flattened codes can be decoded back to audio."""
         audio_path, sr, duration = sample_audio_5s
 
-        processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
-
         # Encode (flattened)
-        features, metadata = processor.audio_to_features(
+        features, metadata = audio_processor.audio_to_features(
             audio_path,
             from_video=False
         )
@@ -310,8 +264,8 @@ class TestRoundTrip:
         assert features.ndim == 2, "Features should be flattened"
 
         # Decode
-        output_path = test_audio_dir / "reconstructed_flattened.wav"
-        processor.features_to_audio(features, output_path)
+        output_path = tmp_path / "reconstructed_flattened.wav"
+        audio_processor.features_to_audio(features, output_path)
 
         # Check output exists
         assert output_path.exists()
@@ -332,18 +286,12 @@ class TestRoundTrip:
         print(f"\n✓ Round-trip reconstruction successful")
         print(f"  Correlation: {correlation:.3f}")
 
-    def test_legacy_3d_format_still_works(self, sample_audio_5s, test_audio_dir):
+    def test_legacy_3d_format_still_works(self, audio_processor, sample_audio_5s, tmp_path):
         """Test backwards compatibility: legacy 3D format still works."""
         audio_path, sr, duration = sample_audio_5s
 
-        processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
-
         # Get flattened features
-        features_flat, metadata = processor.audio_to_features(
+        features_flat, metadata = audio_processor.audio_to_features(
             audio_path,
             from_video=False
         )
@@ -355,8 +303,8 @@ class TestRoundTrip:
         features_3d = features_flat.reshape(n_trs, n_codebooks, frames_per_tr)
 
         # Decode 3D format
-        output_path = test_audio_dir / "reconstructed_3d.wav"
-        processor.features_to_audio(features_3d, output_path)
+        output_path = tmp_path / "reconstructed_3d.wav"
+        audio_processor.features_to_audio(features_3d, output_path)
 
         assert output_path.exists()
 
@@ -367,17 +315,11 @@ class TestRoundTrip:
 class TestEdgeCases:
     """Test edge cases and error handling."""
 
-    def test_first_tr_vs_last_tr_same_shape(self, sample_audio_5s):
+    def test_first_tr_vs_last_tr_same_shape(self, audio_processor, sample_audio_5s):
         """Test that first and last TR have identical shapes (common failure point)."""
         audio_path, sr, duration = sample_audio_5s
 
-        processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
-
-        features, metadata = processor.audio_to_features(
+        features, metadata = audio_processor.audio_to_features(
             audio_path,
             from_video=False
         )
@@ -392,7 +334,7 @@ class TestEdgeCases:
 
         print(f"\n✓ First TR == Last TR: {first_shape}")
 
-    def test_short_audio_padding(self, test_audio_dir):
+    def test_short_audio_padding(self, audio_processor, tmp_path):
         """Test handling of audio shorter than 1 TR."""
         # Generate 0.5s audio (less than 1.5s TR)
         duration = 0.5
@@ -400,16 +342,10 @@ class TestEdgeCases:
         t = np.linspace(0, duration, int(sample_rate * duration))
         signal = np.sin(2 * np.pi * 440 * t)
 
-        audio_path = test_audio_dir / "short.wav"
+        audio_path = tmp_path / "short.wav"
         sf.write(str(audio_path), signal, sample_rate)
 
-        processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
-
-        features, metadata = processor.audio_to_features(
+        features, metadata = audio_processor.audio_to_features(
             audio_path,
             from_video=False
         )
@@ -419,18 +355,12 @@ class TestEdgeCases:
 
         print(f"\n✓ Short audio handled correctly: {features.shape[0]} TRs")
 
-    def test_max_trs_parameter(self, sample_audio_5s):
+    def test_max_trs_parameter(self, audio_processor, sample_audio_5s):
         """Test max_trs parameter limits output."""
         audio_path, sr, duration = sample_audio_5s
 
-        processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
-
         max_trs = 2
-        features, metadata = processor.audio_to_features(
+        features, metadata = audio_processor.audio_to_features(
             audio_path,
             from_video=False,
             max_trs=max_trs
@@ -457,11 +387,15 @@ class TestBandwidthSettings:
         (6.0, 16),
     ])
     def test_bandwidth_codebook_mapping(
-        self, sample_audio_5s, test_audio_dir, bandwidth, expected_codebooks
+        self, sample_audio_5s, bandwidth, expected_codebooks
     ):
-        """Test that bandwidth setting produces expected codebook count."""
+        """Test that bandwidth setting produces expected codebook count.
+
+        Note: This test creates its own processor with specific bandwidth settings.
+        """
         audio_path, sr, duration = sample_audio_5s
 
+        from giblet.data.audio import AudioProcessor
         processor = AudioProcessor(
             use_encodec=True,
             encodec_bandwidth=bandwidth,

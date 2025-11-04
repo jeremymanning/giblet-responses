@@ -3,19 +3,19 @@ Test script to validate text embedding functionality with real BGE model.
 Validates that the model loads without segfaults and performs nearest-neighbor recovery.
 """
 
-import sys
+import pytest
 import numpy as np
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
 
-# Add parent directory to path to import giblet
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from giblet.data.text import TextProcessor
 
 
-def main():
+@pytest.mark.slow
+@pytest.mark.integration
+@pytest.mark.data
+def test_text_embedding_validation(data_dir, tmp_path):
     """Run text embedding validation test."""
 
     output_lines = []
@@ -42,7 +42,7 @@ def main():
         log("   ✓ TextProcessor initialized")
     except Exception as e:
         log(f"   ✗ Failed to initialize: {e}")
-        return output_lines
+        pytest.fail(f"Failed to initialize TextProcessor: {e}")
 
     # Get model info
     log("")
@@ -58,16 +58,16 @@ def main():
         log("   ✓ Model loaded successfully without segfault!")
     except Exception as e:
         log(f"   ✗ Failed to load model: {e}")
-        return output_lines
+        pytest.fail(f"Failed to load model: {e}")
 
     # Load annotations
     log("")
     log("3. Loading annotations from data/annotations.xlsx...")
-    annotations_path = Path(__file__).parent.parent / "data" / "annotations.xlsx"
+    annotations_path = data_dir / "annotations.xlsx"
 
     if not annotations_path.exists():
         log(f"   ✗ Annotations file not found: {annotations_path}")
-        return output_lines
+        pytest.skip(f"Annotations file not found: {annotations_path}")
 
     try:
         annotations = processor.load_annotations(annotations_path)
@@ -75,7 +75,7 @@ def main():
         log(f"   Columns: {list(annotations.columns)}")
     except Exception as e:
         log(f"   ✗ Failed to load annotations: {e}")
-        return output_lines
+        pytest.fail(f"Failed to load annotations: {e}")
 
     # Test with first 10 annotations
     log("")
@@ -99,7 +99,7 @@ def main():
 
     except Exception as e:
         log(f"   ✗ Failed to process annotations: {e}")
-        return output_lines
+        pytest.fail(f"Failed to process annotations: {e}")
 
     # Embed the texts
     log("")
@@ -124,7 +124,7 @@ def main():
 
     except Exception as e:
         log(f"   ✗ Failed to embed texts: {e}")
-        return output_lines
+        pytest.fail(f"Failed to embed texts: {e}")
 
     # Test nearest-neighbor recovery
     log("")
@@ -192,7 +192,7 @@ def main():
         log(f"   ✗ Failed recovery test: {e}")
         import traceback
         log(traceback.format_exc())
-        return output_lines
+        pytest.fail(f"Failed recovery test: {e}")
 
     # Test with different batch sizes
     log("")
@@ -211,7 +211,7 @@ def main():
 
     except Exception as e:
         log(f"   ✗ Failed batch test: {e}")
-        return output_lines
+        pytest.fail(f"Failed batch test: {e}")
 
     # Test alignment to TR grid
     log("")
@@ -242,22 +242,19 @@ def main():
         log(f"   ✗ Failed TR alignment: {e}")
         import traceback
         log(traceback.format_exc())
-        return output_lines
+        pytest.fail(f"Failed TR alignment: {e}")
 
     log("")
     log("=" * 80)
     log("✓ ALL TESTS PASSED - No segfaults detected!")
     log("=" * 80)
 
-    return output_lines
-
-
-if __name__ == "__main__":
-    output_lines = main()
-
     # Save results
-    output_path = Path(__file__).parent.parent / "text_embedding_validation.txt"
+    output_path = tmp_path / "text_embedding_validation.txt"
     with open(output_path, 'w') as f:
         f.write('\n'.join(output_lines))
 
-    print(f"\nResults saved to: {output_path}")
+    log(f"\nResults saved to: {output_path}")
+
+    # Assert test passed
+    assert len(output_lines) > 0

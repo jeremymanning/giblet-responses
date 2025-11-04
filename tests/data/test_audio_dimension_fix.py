@@ -12,12 +12,6 @@ instead of using the known correct value frames_per_tr.
 import pytest
 import numpy as np
 import torch
-from pathlib import Path
-import sys
-
-# Add project root to path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
 
 from giblet.data.audio import AudioProcessor
 
@@ -30,31 +24,23 @@ except ImportError:
     ENCODEC_AVAILABLE = False
 
 
+@pytest.mark.data
+@pytest.mark.slow
 @pytest.mark.skipif(not ENCODEC_AVAILABLE, reason="EnCodec not available (transformers required)")
 class TestEnCodecDimensionFix:
     """Test suite for EnCodec dimension fix."""
 
     @pytest.fixture
-    def processor(self):
-        """Create AudioProcessor with EnCodec enabled."""
-        return AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5,
-            device='cpu'
-        )
-
-    @pytest.fixture
-    def sherlock_video(self):
+    def sherlock_video(self, data_dir):
         """Path to Sherlock video."""
-        video_path = project_root / 'data' / 'stimuli_Sherlock.m4v'
+        video_path = data_dir / 'stimuli_Sherlock.m4v'
         if not video_path.exists():
             pytest.skip(f"Sherlock video not found at {video_path}")
         return str(video_path)
 
-    def test_consistent_dimensions_small(self, processor, sherlock_video):
+    def test_consistent_dimensions_small(self, audio_processor, sherlock_video):
         """Test that all TRs have consistent dimensions (5 TRs)."""
-        features, metadata = processor.audio_to_features(
+        features, metadata = audio_processor.audio_to_features(
             sherlock_video,
             max_trs=5
         )
@@ -75,9 +61,9 @@ class TestEnCodecDimensionFix:
         assert all(metadata['n_codebooks'] == 8)
         assert all(metadata['n_frames'] == 112)
 
-    def test_consistent_dimensions_medium(self, processor, sherlock_video):
+    def test_consistent_dimensions_medium(self, audio_processor, sherlock_video):
         """Test that all TRs have consistent dimensions (20 TRs)."""
-        features, metadata = processor.audio_to_features(
+        features, metadata = audio_processor.audio_to_features(
             sherlock_video,
             max_trs=20
         )
@@ -90,9 +76,9 @@ class TestEnCodecDimensionFix:
         assert len(unique_shapes) == 1, f"Inconsistent shapes: {unique_shapes}"
         assert unique_shapes.pop() == (896,)
 
-    def test_consistent_dimensions_large(self, processor, sherlock_video):
+    def test_consistent_dimensions_large(self, audio_processor, sherlock_video):
         """Test that all TRs have consistent dimensions (100 TRs)."""
-        features, metadata = processor.audio_to_features(
+        features, metadata = audio_processor.audio_to_features(
             sherlock_video,
             max_trs=100
         )
@@ -158,7 +144,7 @@ class TestEnCodecDimensionFix:
             assert all(metadata['n_frames'] == frames_per_tr), \
                 f"TR {tr}s: expected {frames_per_tr} frames per TR"
 
-    def test_no_dimension_mismatch_error(self, processor, sherlock_video):
+    def test_no_dimension_mismatch_error(self, audio_processor, sherlock_video):
         """
         Regression test: Ensure the dimension mismatch error doesn't occur.
 
@@ -168,7 +154,7 @@ class TestEnCodecDimensionFix:
         """
         # This should NOT raise an error
         try:
-            features, metadata = processor.audio_to_features(
+            features, metadata = audio_processor.audio_to_features(
                 sherlock_video,
                 max_trs=50
             )
@@ -181,9 +167,9 @@ class TestEnCodecDimensionFix:
                 # Some other RuntimeError
                 raise
 
-    def test_features_are_integers(self, processor, sherlock_video):
+    def test_features_are_integers(self, audio_processor, sherlock_video):
         """Test that EnCodec features are integers (codebook indices)."""
-        features, _ = processor.audio_to_features(
+        features, _ = audio_processor.audio_to_features(
             sherlock_video,
             max_trs=10
         )
@@ -195,16 +181,16 @@ class TestEnCodecDimensionFix:
         assert np.all(features >= 0)
         assert np.all(features < 1024)
 
-    def test_reconstruction_compatible(self, processor, sherlock_video, tmp_path):
+    def test_reconstruction_compatible(self, audio_processor, sherlock_video, tmp_path):
         """Test that features can be reconstructed to audio."""
-        features, metadata = processor.audio_to_features(
+        features, metadata = audio_processor.audio_to_features(
             sherlock_video,
             max_trs=10
         )
 
         # Try to reconstruct audio
         output_path = tmp_path / "reconstructed.wav"
-        processor.features_to_audio(
+        audio_processor.features_to_audio(
             features,
             output_path,
             n_codebooks=8,
@@ -215,9 +201,9 @@ class TestEnCodecDimensionFix:
         assert output_path.exists()
         assert output_path.stat().st_size > 0
 
-    def test_metadata_completeness(self, processor, sherlock_video):
+    def test_metadata_completeness(self, audio_processor, sherlock_video):
         """Test that metadata contains all required fields."""
-        features, metadata = processor.audio_to_features(
+        features, metadata = audio_processor.audio_to_features(
             sherlock_video,
             max_trs=10
         )

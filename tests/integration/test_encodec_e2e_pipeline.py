@@ -27,6 +27,7 @@ SUCCESS CRITERIA:
 - WAV files ready for user verification
 """
 
+import pytest
 import torch
 import torch.nn as nn
 import numpy as np
@@ -42,10 +43,7 @@ from tqdm import tqdm
 from pesq import pesq
 from pystoi import stoi
 
-# Import project modules
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
+# Import project modules using absolute imports
 from giblet.data.audio import AudioProcessor
 from giblet.models.encoder import AudioEncoder
 from giblet.models.decoder import MultimodalDecoder
@@ -68,8 +66,16 @@ CONFIG = {
     'device': 'cuda' if torch.cuda.is_available() else 'cpu'
 }
 
-OUTPUT_DIR = Path("encodec_e2e_test")
-OUTPUT_DIR.mkdir(exist_ok=True)
+# ============================================================================
+# FIXTURES
+# ============================================================================
+
+@pytest.fixture
+def output_dir(test_data_dir):
+    """Create output directory for test results."""
+    output = test_data_dir / "encodec_e2e_test"
+    output.mkdir(exist_ok=True)
+    return output
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -190,7 +196,10 @@ class SimpleBottleneck(nn.Module):
 # MAIN TEST
 # ============================================================================
 
-def main():
+@pytest.mark.integration
+@pytest.mark.slow
+@pytest.mark.data
+def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
     """Run end-to-end pipeline test."""
 
     print("=" * 80)
@@ -201,7 +210,7 @@ def main():
     print(f"  Bandwidth: {CONFIG['encodec_bandwidth']} kbps")
     print(f"  TRs: {CONFIG['n_trs']} ({CONFIG['n_trs'] * CONFIG['tr']:.1f} seconds)")
     print(f"  Device: {CONFIG['device']}")
-    print(f"  Output: {OUTPUT_DIR}")
+    print(f"  Output: {output_dir}")
     print()
 
     # Start memory profiling
@@ -215,20 +224,13 @@ def main():
     print("[1/9] Loading audio and extracting EnCodec codes...")
     print("  Loading EnCodec model (this may take 2-3 minutes first time)...")
 
-    # Initialize AudioProcessor with EnCodec
-    audio_processor = AudioProcessor(
-        use_encodec=True,
-        encodec_bandwidth=CONFIG['encodec_bandwidth'],
-        tr=CONFIG['tr'],
-        device=CONFIG['device']
-    )
-
+    # Audio processor is provided by fixture
     print("  EnCodec model loaded successfully!")
 
-    # Load audio from video
-    video_path = Path("data/stimuli_Sherlock.m4v")
+    # Load audio from video using data_dir fixture
+    video_path = data_dir / "stimuli_Sherlock.m4v"
     if not video_path.exists():
-        raise FileNotFoundError(f"Video file not found: {video_path}")
+        pytest.skip(f"Video file not found: {video_path}")
 
     # Extract features (EnCodec codes)
     features, metadata = audio_processor.audio_to_features(
@@ -259,7 +261,7 @@ def main():
     print("[2/9] Creating baseline reconstruction (EnCodec direct)...")
 
     # Reconstruct audio directly from codes (no encoder/decoder)
-    baseline_path = OUTPUT_DIR / "baseline_encodec_direct.wav"
+    baseline_path = output_dir / "baseline_encodec_direct.wav"
     audio_processor.features_to_audio(features, baseline_path)
 
     # Load reconstructed audio
@@ -271,7 +273,7 @@ def main():
     )
 
     # Save downsampled version
-    baseline_12k_path = OUTPUT_DIR / "baseline_encodec_12khz.wav"
+    baseline_12k_path = output_dir / "baseline_encodec_12khz.wav"
     sf.write(str(baseline_12k_path), baseline_audio_12k, CONFIG['target_sample_rate'])
 
     print(f"  ✓ Baseline audio: {len(baseline_audio)} samples at {sr_baseline} Hz")
@@ -399,7 +401,7 @@ def main():
     predicted_codes_np = decoded_codes.cpu().numpy().astype(np.int64)
 
     # Reconstruct audio using EnCodec decoder
-    reconstructed_path = OUTPUT_DIR / "reconstructed_through_bottleneck.wav"
+    reconstructed_path = output_dir / "reconstructed_through_bottleneck.wav"
     audio_processor.features_to_audio(predicted_codes_np, reconstructed_path)
 
     # Load reconstructed audio
@@ -413,7 +415,7 @@ def main():
     )
 
     # Save downsampled version
-    reconstructed_12k_path = OUTPUT_DIR / "reconstructed_12khz.wav"
+    reconstructed_12k_path = output_dir / "reconstructed_12khz.wav"
     sf.write(str(reconstructed_12k_path), reconstructed_audio_12k, CONFIG['target_sample_rate'])
 
     print(f"  ✓ Reconstructed audio: {len(reconstructed_audio)} samples at {sr_recon} Hz")
@@ -442,8 +444,8 @@ def main():
     )
 
     # Save original for comparison
-    original_path = OUTPUT_DIR / "original_30trs.wav"
-    original_12k_path = OUTPUT_DIR / "original_12khz.wav"
+    original_path = output_dir / "original_30trs.wav"
+    original_12k_path = output_dir / "original_12khz.wav"
     sf.write(str(original_path), original_audio, sr_orig)
     sf.write(str(original_12k_path), original_audio_12k, CONFIG['target_sample_rate'])
 
@@ -510,13 +512,13 @@ def main():
                 'Through Bottleneck (12kHz)': reconstructed_audio_12k
             },
             sr=CONFIG['target_sample_rate'],
-            output_path=OUTPUT_DIR / "spectrograms_comparison.png"
+            output_path=output_dir / "spectrograms_comparison.png"
         )
     except Exception as e:
         print(f"  ⚠ Warning: Spectrogram generation failed: {e}")
 
     # Save metrics to file
-    metrics_path = OUTPUT_DIR / "metrics_comparison.txt"
+    metrics_path = output_dir / "metrics_comparison.txt"
     with open(metrics_path, 'w') as f:
         f.write("EnCodec End-to-End Pipeline Test - Quality Metrics\n")
         f.write("=" * 60 + "\n\n")
@@ -566,7 +568,7 @@ def main():
     print()
     print(f"Elapsed time: {elapsed_time:.1f} seconds")
     print()
-    print(f"Output files saved to: {OUTPUT_DIR}/")
+    print(f"Output files saved to: {output_dir}/")
     print()
     print("WAV files for manual verification:")
     print(f"  1. {original_12k_path.name} - Original audio (12kHz)")
@@ -578,7 +580,3 @@ def main():
     print(f"  • spectrograms_comparison.png")
     print()
     print("=" * 80)
-
-
-if __name__ == "__main__":
-    main()

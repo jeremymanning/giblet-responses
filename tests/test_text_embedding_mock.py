@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Test text embedding and reconstruction pipeline (mock version).
 
@@ -9,23 +8,23 @@ This script:
 4. Saves results for manual review
 """
 
-import sys
-import os
+import pytest
 import numpy as np
 import pandas as pd
 from pathlib import Path
 from time import time
 
-# Add project to path
-sys.path.insert(0, '/Users/jmanning/giblet-responses')
 
-
-def main():
-    """Run embedding and recovery test."""
+@pytest.mark.unit
+def test_text_embedding_mock(data_dir, tmp_path):
+    """Run embedding and recovery test with mock embeddings."""
 
     # Setup paths
-    annotations_path = Path('/Users/jmanning/giblet-responses/data/annotations.xlsx')
-    output_path = Path('/Users/jmanning/giblet-responses/text_embedding_validation.txt')
+    annotations_path = data_dir / 'annotations.xlsx'
+    if not annotations_path.exists():
+        pytest.skip(f"Annotations not found at {annotations_path}")
+
+    output_path = tmp_path / 'text_embedding_validation.txt'
 
     print("=" * 70)
     print("TEXT EMBEDDING & RECONSTRUCTION TEST (SIMULATION)")
@@ -236,13 +235,13 @@ def main():
 
             # Check match status
             if recovered in original_texts:
-                status = "✅ EXACT MATCH"
+                status = "EXACT MATCH"
                 matches_found = True
             elif any(recovered[:50] == orig[:50] for orig in original_texts):
-                status = "⚠️  PARTIAL MATCH"
+                status = "PARTIAL MATCH"
                 matches_found = True
             else:
-                status = "❌ NO MATCH"
+                status = "NO MATCH"
                 matches_found = False
 
             f.write(f"STATUS: {status}\n")
@@ -280,12 +279,6 @@ def main():
     print("Real BGE model would produce much better matches due to semantic similarity.")
     print()
 
-
-if __name__ == '__main__':
-    try:
-        main()
-    except Exception as e:
-        print(f"\nERROR: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+    # Assert we got results
+    assert len(tr_embeddings) == n_test_trs
+    assert len(recovered_texts) == n_test_trs

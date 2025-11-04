@@ -13,6 +13,7 @@ import pytest
 from giblet.alignment.sync import align_all_modalities, get_alignment_info, _resample_features
 
 
+@pytest.mark.unit
 class TestResampleFeatures:
     """Test the _resample_features helper function."""
 
@@ -135,6 +136,7 @@ class TestResampleFeatures:
         assert np.all(np.isfinite(result))
 
 
+@pytest.mark.unit
 class TestAlignAllModalities:
     """Test the main alignment function."""
 
@@ -335,6 +337,7 @@ class TestAlignAllModalities:
         assert result['video'].shape[0] == 920
 
 
+@pytest.mark.unit
 class TestGetAlignmentInfo:
     """Test the alignment info helper function."""
 
@@ -373,6 +376,7 @@ class TestGetAlignmentInfo:
         assert info['fmri_features'] == 85810
 
 
+@pytest.mark.unit
 class TestEdgeCases:
     """Test edge cases and error conditions."""
 

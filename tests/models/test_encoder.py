@@ -12,12 +12,6 @@ Tests the encoder architecture including:
 import pytest
 import torch
 import numpy as np
-from pathlib import Path
-import sys
-
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 from giblet.models.encoder import (
     VideoEncoder,
     AudioEncoder,
@@ -25,6 +19,9 @@ from giblet.models.encoder import (
     MultimodalEncoder,
     create_encoder
 )
+
+
+@pytest.mark.unit
 
 
 class TestVideoEncoder:
@@ -70,6 +67,7 @@ class TestVideoEncoder:
         assert n_params < 50_000_000  # Should be under 50M
 
 
+@pytest.mark.unit
 class TestAudioEncoder:
     """Test audio encoder component."""
 
@@ -110,6 +108,7 @@ class TestAudioEncoder:
         assert n_params < 10_000_000  # Should be under 10M
 
 
+@pytest.mark.unit
 class TestTextEncoder:
     """Test text encoder component."""
 
@@ -150,6 +149,7 @@ class TestTextEncoder:
         assert n_params < 10_000_000  # Should be under 10M
 
 
+@pytest.mark.unit
 class TestMultimodalEncoder:
     """Test full multimodal encoder."""
 
@@ -299,6 +299,7 @@ class TestMultimodalEncoder:
         assert voxels.shape == (4, 85810)
 
 
+@pytest.mark.unit
 class TestCreateEncoder:
     """Test encoder factory function."""
 
@@ -319,6 +320,7 @@ class TestCreateEncoder:
         assert encoder.bottleneck_dim == 2000
 
 
+@pytest.mark.integration
 class TestEncoderIntegration:
     """Integration tests with realistic data dimensions."""
 

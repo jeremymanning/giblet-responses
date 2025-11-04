@@ -12,8 +12,6 @@ Tests:
 import numpy as np
 import cv2
 import pytest
-from pathlib import Path
-import tempfile
 from giblet.data.video import VideoProcessor
 
 
@@ -62,14 +60,14 @@ def create_test_video(output_path, duration_seconds=5.0, fps=25, width=640, heig
 
 
 @pytest.fixture
-def test_video_path():
+def test_video_path(tmp_path):
     """Create a temporary test video."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        video_path = Path(tmpdir) / "test_video.mp4"
-        create_test_video(video_path, duration_seconds=5.0, fps=25)
-        yield video_path
+    video_path = tmp_path / "test_video.mp4"
+    create_test_video(video_path, duration_seconds=5.0, fps=25)
+    return video_path
 
 
+@pytest.mark.unit
 class TestTemporalConcatenation:
     """Test temporal concatenation of video frames."""
 
@@ -227,7 +225,7 @@ class TestTemporalConcatenation:
 
         print(f"✓ max_trs truncation works correctly")
 
-    def test_reconstruction_roundtrip(self, test_video_path):
+    def test_reconstruction_roundtrip(self, test_video_path, tmp_path):
         """Test that video can be reconstructed from features."""
         processor = VideoProcessor(tr=1.5, normalize=True)
 
@@ -235,38 +233,38 @@ class TestTemporalConcatenation:
         features, metadata = processor.video_to_features(test_video_path, max_trs=2)
 
         # Reconstruct video
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = Path(tmpdir) / "reconstructed.mp4"
-            processor.features_to_video(features, output_path, fps=25)
+        output_path = tmp_path / "reconstructed.mp4"
+        processor.features_to_video(features, output_path, fps=25)
 
-            # Check that video was created
-            assert output_path.exists()
+        # Check that video was created
+        assert output_path.exists()
 
-            # Open and check properties
-            cap = cv2.VideoCapture(str(output_path))
-            assert cap.isOpened()
+        # Open and check properties
+        cap = cv2.VideoCapture(str(output_path))
+        assert cap.isOpened()
 
-            fps = cap.get(cv2.CAP_PROP_FPS)
-            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-            cap.release()
+        cap.release()
 
-            # Check properties
-            assert fps == 25
-            assert width == 160
-            assert height == 90
+        # Check properties
+        assert fps == 25
+        assert width == 160
+        assert height == 90
 
-            # Should have frames_per_tr * n_trs frames
-            frames_per_tr = int(np.round(1.5 * 25))
-            expected_frames = frames_per_tr * 2
-            assert total_frames == expected_frames
+        # Should have frames_per_tr * n_trs frames
+        frames_per_tr = int(np.round(1.5 * 25))
+        expected_frames = frames_per_tr * 2
+        assert total_frames == expected_frames
 
-            print(f"✓ Reconstruction roundtrip successful")
-            print(f"  Output: {width}x{height} @ {fps}fps, {total_frames} frames")
+        print(f"✓ Reconstruction roundtrip successful")
+        print(f"  Output: {width}x{height} @ {fps}fps, {total_frames} frames")
 
 
+@pytest.mark.unit
 class TestDimensionConsistency:
     """Test dimension consistency across different scenarios."""
 

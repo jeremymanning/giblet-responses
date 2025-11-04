@@ -14,19 +14,16 @@ import pytest
 import torch
 import torch.nn as nn
 import numpy as np
-from pathlib import Path
-import sys
 import tempfile
 import os
-
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 from giblet.models.autoencoder import (
     MultimodalAutoencoder,
     create_autoencoder,
     prepare_for_distributed
 )
+
+
+@pytest.mark.unit
 
 
 class TestMultimodalAutoencoder:
@@ -403,6 +400,7 @@ class TestMultimodalAutoencoder:
         )
 
 
+@pytest.mark.unit
 class TestCreateAutoencoder:
     """Test factory function."""
 
@@ -427,6 +425,7 @@ class TestCreateAutoencoder:
         assert model.fmri_weight == 0.5
 
 
+@pytest.mark.unit
 class TestPrepareForDistributed:
     """Test distributed training preparation."""
 
@@ -440,6 +439,7 @@ class TestPrepareForDistributed:
             prepare_for_distributed(model)
 
 
+@pytest.mark.integration
 class TestAutoencoderIntegration:
     """Integration tests with realistic scenarios."""
 
@@ -538,6 +538,7 @@ class TestAutoencoderIntegration:
         # Check loss is finite
         assert np.isfinite(total_loss)
 
+    @pytest.mark.slow
     def test_multiple_epochs(self):
         """Test training over multiple epochs."""
         model = MultimodalAutoencoder()

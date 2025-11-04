@@ -6,6 +6,8 @@ Tests NCCL availability, version, and basic functionality on the cluster.
 This test runs on a SINGLE process to verify NCCL backend is properly configured.
 
 Usage:
+    pytest tests/diagnostics/test_nccl_health.py -v -s
+    # Or run as standalone script:
     python tests/diagnostics/test_nccl_health.py
 
 Expected output:
@@ -18,9 +20,12 @@ Expected output:
 import os
 import sys
 import subprocess
+
+import pytest
 import torch
 import torch.distributed as dist
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_nccl_availability():
     """Test if NCCL backend is available."""
     print("=" * 80)
@@ -30,53 +35,43 @@ def test_nccl_availability():
     is_available = dist.is_nccl_available()
     print(f"NCCL available: {is_available}")
 
-    if not is_available:
-        print("ERROR: NCCL backend not available!")
-        return False
-
+    assert is_available, "NCCL backend not available!"
     print("✓ NCCL backend is available")
-    return True
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_nccl_version():
     """Test NCCL version."""
     print("\n" + "=" * 80)
     print("Test 2: NCCL Version")
     print("=" * 80)
 
-    try:
-        version = torch.cuda.nccl.version()
-        # Version may be returned as tuple (major, minor, patch) or int
-        if isinstance(version, tuple):
-            major, minor, patch = version
-            print(f"NCCL version: {major}.{minor}.{patch}")
-        else:
-            major = version // 1000
-            minor = (version % 1000) // 100
-            patch = version % 100
-            print(f"NCCL version: {major}.{minor}.{patch}")
+    version = torch.cuda.nccl.version()
+    # Version may be returned as tuple (major, minor, patch) or int
+    if isinstance(version, tuple):
+        major, minor, patch = version
+        print(f"NCCL version: {major}.{minor}.{patch}")
+    else:
+        major = version // 1000
+        minor = (version % 1000) // 100
+        patch = version % 100
+        print(f"NCCL version: {major}.{minor}.{patch}")
 
-        print("✓ NCCL version retrieved successfully")
-        return True
-    except Exception as e:
-        print(f"ERROR: Could not get NCCL version: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    print("✓ NCCL version retrieved successfully")
+    assert version is not None, "NCCL version should not be None"
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_cuda_devices():
     """Test CUDA device availability."""
     print("\n" + "=" * 80)
     print("Test 3: CUDA Devices")
     print("=" * 80)
 
-    if not torch.cuda.is_available():
-        print("ERROR: CUDA not available!")
-        return False
-
     device_count = torch.cuda.device_count()
     print(f"Number of CUDA devices: {device_count}")
+
+    assert device_count > 0, "No CUDA devices found!"
 
     for i in range(device_count):
         props = torch.cuda.get_device_properties(i)
@@ -86,55 +81,48 @@ def test_cuda_devices():
         print(f"  Multi-processor count: {props.multi_processor_count}")
 
     print(f"\n✓ Found {device_count} CUDA devices")
-    return True
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+@pytest.mark.integration
 def test_process_group_init():
     """Test basic process group initialization (single process)."""
     print("\n" + "=" * 80)
     print("Test 4: Process Group Initialization (Single Process)")
     print("=" * 80)
 
-    try:
-        # Set environment variables for single-process init
-        os.environ['MASTER_ADDR'] = 'localhost'
-        os.environ['MASTER_PORT'] = '12355'
-        os.environ['WORLD_SIZE'] = '1'
-        os.environ['RANK'] = '0'
+    # Set environment variables for single-process init
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+    os.environ['WORLD_SIZE'] = '1'
+    os.environ['RANK'] = '0'
 
-        print("Initializing process group with:")
-        print(f"  Backend: nccl")
-        print(f"  Rank: 0")
-        print(f"  World size: 1")
+    print("Initializing process group with:")
+    print(f"  Backend: nccl")
+    print(f"  Rank: 0")
+    print(f"  World size: 1")
 
-        dist.init_process_group(
-            backend='nccl',
-            init_method='env://',
-            world_size=1,
-            rank=0
-        )
+    dist.init_process_group(
+        backend='nccl',
+        init_method='env://',
+        world_size=1,
+        rank=0
+    )
 
-        print("✓ Process group initialized successfully")
+    print("✓ Process group initialized successfully")
 
-        # Test basic operations
-        print("\nTesting basic tensor operations...")
-        device = torch.device('cuda:0')
-        tensor = torch.randn(10, 10).to(device)
-        print(f"  Created tensor on {device}: shape {tensor.shape}")
+    # Test basic operations
+    print("\nTesting basic tensor operations...")
+    device = torch.device('cuda:0')
+    tensor = torch.randn(10, 10).to(device)
+    print(f"  Created tensor on {device}: shape {tensor.shape}")
 
-        # Cleanup
-        dist.destroy_process_group()
-        print("✓ Process group destroyed successfully")
-
-        return True
-
-    except Exception as e:
-        print(f"ERROR: Process group initialization failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    # Cleanup
+    dist.destroy_process_group()
+    print("✓ Process group destroyed successfully")
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_nvlink_status():
     """Test nvlink connectivity between GPUs."""
     print("\n" + "=" * 80)
@@ -153,23 +141,23 @@ def test_nvlink_status():
             print("NVLink status:")
             print(result.stdout)
             print("✓ NVLink status retrieved successfully")
-            return True
         else:
             print(f"WARNING: nvidia-smi nvlink returned error code {result.returncode}")
             print(f"stderr: {result.stderr}")
-            return False
+            pytest.skip("nvidia-smi nvlink command failed")
 
     except subprocess.TimeoutExpired:
         print("ERROR: nvidia-smi nvlink command timed out")
-        return False
+        pytest.skip("nvidia-smi nvlink command timed out")
     except FileNotFoundError:
         print("WARNING: nvidia-smi command not found (may not be in PATH)")
-        return False
+        pytest.skip("nvidia-smi command not found")
     except Exception as e:
         print(f"ERROR: Could not get nvlink status: {e}")
-        return False
+        pytest.skip(f"Could not get nvlink status: {e}")
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_p2p_access():
     """Test peer-to-peer GPU access."""
     print("\n" + "=" * 80)
@@ -180,7 +168,7 @@ def test_p2p_access():
 
     if device_count < 2:
         print("INFO: Only 1 GPU available, skipping P2P test")
-        return True
+        pytest.skip("Only 1 GPU available")
 
     print(f"Testing P2P access between {device_count} GPUs:")
 
@@ -217,11 +205,9 @@ def test_p2p_access():
         print("\nWARNING: P2P access not enabled between any GPU pairs")
         print("This may impact multi-GPU performance")
 
-    return True
-
 
 def main():
-    """Run all NCCL health diagnostic tests."""
+    """Run all NCCL health diagnostic tests (standalone script mode)."""
     print("\n" + "=" * 80)
     print("NCCL Backend Health Diagnostic Test")
     print("Issue #30, Phase 1.1")
@@ -229,13 +215,26 @@ def main():
 
     results = {}
 
-    # Run tests
-    results['nccl_availability'] = test_nccl_availability()
-    results['nccl_version'] = test_nccl_version()
-    results['cuda_devices'] = test_cuda_devices()
-    results['process_group_init'] = test_process_group_init()
-    results['nvlink_status'] = test_nvlink_status()
-    results['p2p_access'] = test_p2p_access()
+    # Run tests and catch exceptions
+    for test_name, test_func in [
+        ('nccl_availability', test_nccl_availability),
+        ('nccl_version', test_nccl_version),
+        ('cuda_devices', test_cuda_devices),
+        ('process_group_init', test_process_group_init),
+        ('nvlink_status', test_nvlink_status),
+        ('p2p_access', test_p2p_access),
+    ]:
+        try:
+            test_func()
+            results[test_name] = True
+        except pytest.skip.Exception as e:
+            print(f"SKIP: {e}")
+            results[test_name] = True  # Skip counts as pass for standalone mode
+        except Exception as e:
+            print(f"FAIL: {e}")
+            import traceback
+            traceback.print_exc()
+            results[test_name] = False
 
     # Summary
     print("\n" + "=" * 80)

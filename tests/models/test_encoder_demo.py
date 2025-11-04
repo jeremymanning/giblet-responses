@@ -9,12 +9,6 @@ Run with: python tests/models/test_encoder_demo.py
 """
 
 import torch
-import sys
-from pathlib import Path
-
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 from giblet.models.encoder import MultimodalEncoder, create_encoder
 
 

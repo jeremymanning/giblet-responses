@@ -49,6 +49,7 @@ class DummyDataset(torch.utils.data.Dataset):
         }
 
 
+@pytest.mark.unit
 class TestLossFunctions:
     """Test loss functions."""
 
@@ -190,6 +191,7 @@ class TestLossFunctions:
         print("✓ R^2 score works correctly")
 
 
+@pytest.mark.integration
 class TestTrainer:
     """Test Trainer class."""
 
@@ -507,14 +509,15 @@ class TestTrainer:
         print("✓ Early stopping works")
 
 
-def test_training_with_real_data():
+@pytest.mark.slow
+@pytest.mark.integration
+@pytest.mark.data
+def test_training_with_real_data(data_dir):
     """
     Test training with real Sherlock data (if available).
 
     This test will be skipped if data is not available.
     """
-    data_dir = Path('data/')
-
     # Check if data exists
     if not (data_dir / 'sherlock_nii').exists():
         pytest.skip("Real data not available")

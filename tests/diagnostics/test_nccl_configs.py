@@ -9,6 +9,8 @@ This script tries multiple NCCL configurations in sequence to identify
 which settings allow DDP to work on tensor01/tensor02.
 
 Usage:
+    pytest tests/diagnostics/test_nccl_configs.py -v
+    # Or run as standalone script:
     python tests/diagnostics/test_nccl_configs.py
 
 Note: Run this BEFORE using torchrun, as it will spawn torchrun processes.
@@ -19,6 +21,9 @@ import sys
 import subprocess
 import time
 from pathlib import Path
+
+import pytest
+import torch
 
 
 # NCCL configurations to test (in priority order)
@@ -155,8 +160,70 @@ def run_ddp_test(config, gpus=8):
         return False
 
 
+@pytest.mark.slow
+@pytest.mark.integration
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+@pytest.mark.skipif(torch.cuda.device_count() < 2, reason="Requires at least 2 GPUs")
+def test_nccl_configurations():
+    """Test all NCCL configurations as pytest."""
+    print("=" * 80)
+    print("NCCL Configuration Test Suite")
+    print("Issue #30, Phase 2.1")
+    print("=" * 80)
+    print(f"\nTesting {len(NCCL_CONFIGS)} different NCCL configurations...")
+    print("This will take several minutes.\n")
+
+    results = {}
+
+    for i, config in enumerate(NCCL_CONFIGS, 1):
+        print(f"\n{'=' * 80}")
+        print(f"Configuration {i}/{len(NCCL_CONFIGS)}")
+        print(f"{'=' * 80}")
+
+        success = run_ddp_test(config)
+        results[config['name']] = success
+
+        if success:
+            print(f"\n✓ FOUND WORKING CONFIGURATION!")
+            print(f"Config name: {config['name']}")
+            print(f"\nRecommended environment variables:")
+            for key, value in config['env'].items():
+                print(f"export {key}={value}")
+            break  # Stop testing once we find a working config
+
+        # Wait a bit between tests
+        time.sleep(2)
+
+    # Summary
+    print("\n" + "=" * 80)
+    print("TEST SUMMARY")
+    print("=" * 80)
+
+    for config_name, passed in results.items():
+        status = "✓ PASS" if passed else "✗ FAIL"
+        print(f"{config_name:50s}: {status}")
+
+    working_configs = [name for name, passed in results.items() if passed]
+
+    print("\n" + "=" * 80)
+    if working_configs:
+        print(f"✓ Found {len(working_configs)} working configuration(s):")
+        for config_name in working_configs:
+            print(f"  - {config_name}")
+        print("\nApply the working configuration to scripts/train.py")
+    else:
+        print("✗ No working NCCL configurations found")
+        print("\nNext steps:")
+        print("1. Check /dev/shm permissions and size: df -h /dev/shm")
+        print("2. Check NCCL installation: ldconfig -p | grep nccl")
+        print("3. Try using FSDP instead of DDP (Strategy 2.4)")
+        pytest.fail("No working NCCL configurations found")
+
+    assert len(working_configs) > 0, "Expected at least one working configuration"
+
+
 def main():
-    """Test all NCCL configurations."""
+    """Test all NCCL configurations (standalone script mode)."""
     print("=" * 80)
     print("NCCL Configuration Test Suite")
     print("Issue #30, Phase 2.1")

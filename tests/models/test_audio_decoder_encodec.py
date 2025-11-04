@@ -11,6 +11,9 @@ import numpy as np
 from giblet.models.decoder import MultimodalDecoder
 
 
+@pytest.mark.unit
+
+
 class TestEnCodecAudioDecoder:
     """Test suite for EnCodec audio decoding."""
 
@@ -337,9 +340,11 @@ class TestEnCodecAudioDecoder:
         assert encodec_params['total'] <= mel_params['total']
 
 
+@pytest.mark.integration
 class TestEnCodecIntegration:
     """Integration tests for EnCodec audio decoder."""
 
+    @pytest.mark.slow
     def test_realistic_fmri_bottleneck(self):
         """Test with realistic fMRI bottleneck dimensions."""
         batch_size = 920  # Full Sherlock dataset

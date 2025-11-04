@@ -31,11 +31,9 @@ import soundfile as sf
 
 
 @pytest.fixture
-def test_audio_dir():
+def test_audio_dir(tmp_path):
     """Create temporary directory for test audio files."""
-    temp_dir = Path(tempfile.mkdtemp())
-    yield temp_dir
-    shutil.rmtree(temp_dir)
+    return tmp_path
 
 
 @pytest.fixture
@@ -64,13 +62,14 @@ def sample_audio(test_audio_dir):
     return audio_path, sample_rate, duration
 
 
+@pytest.mark.unit
 @pytest.mark.skipif(not ENCODEC_AVAILABLE, reason="EnCodec not available (transformers not installed)")
 class TestEnCodecIntegration:
     """Test EnCodec integration in AudioProcessor."""
 
-    def test_encodec_initialization(self):
+    def test_encodec_initialization(self, audio_processor):
         """Test that EnCodec model loads successfully."""
-        processor = AudioProcessor(use_encodec=True, encodec_bandwidth=3.0)
+        processor = audio_processor
 
         assert processor.use_encodec is True
         assert hasattr(processor, 'encodec_model')
@@ -237,6 +236,7 @@ class TestEnCodecIntegration:
         print(f"  Got: {features.shape[0]} TRs")
 
 
+@pytest.mark.unit
 class TestBackwardsCompatibility:
     """Test backwards compatibility with mel spectrograms."""
 
@@ -293,10 +293,11 @@ class TestBackwardsCompatibility:
         print(f"  Mel features dtype: {features_mel.dtype}")
 
 
+@pytest.mark.unit
+@pytest.mark.skipif(not ENCODEC_AVAILABLE, reason="EnCodec not available")
 class TestEnCodecBandwidths:
     """Test different EnCodec bandwidth settings."""
 
-    @pytest.mark.skipif(not ENCODEC_AVAILABLE, reason="EnCodec not available")
     @pytest.mark.parametrize("bandwidth", [1.5, 3.0, 6.0, 12.0, 24.0])
     def test_bandwidth_settings(self, sample_audio, test_audio_dir, bandwidth):
         """Test EnCodec with different bandwidth settings."""

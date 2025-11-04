@@ -356,6 +356,7 @@ class TestConvolveWithPadding:
         assert np.isfinite(convolved_padding).all()
 
 
+@pytest.mark.integration
 class TestIntegration:
     """Integration tests with realistic scenarios."""
 
@@ -426,10 +427,11 @@ class TestIntegration:
         assert np.allclose(convolved1, convolved2)
 
 
+@pytest.mark.integration
 class TestVisualization:
     """Tests that create visualizations for manual inspection."""
 
-    def test_plot_hrf_shape(self):
+    def test_plot_hrf_shape(self, test_data_dir):
         """Visualize the HRF kernel."""
         hrf = get_canonical_hrf(tr=1.5, duration=32.0)
         tr = 1.5
@@ -446,13 +448,13 @@ class TestVisualization:
                   label=f"Peak: {get_hrf_peak_latency(tr=1.5):.1f}s")
         ax.legend()
 
-        # Save figure for inspection
-        output_dir = Path(__file__).parent / 'test_outputs'
+        # Save figure for inspection using test_data_dir fixture
+        output_dir = test_data_dir / 'hrf_test_outputs'
         output_dir.mkdir(exist_ok=True)
         plt.savefig(output_dir / 'hrf_shape.png', dpi=100, bbox_inches='tight')
         plt.close()
 
-    def test_plot_impulse_response(self):
+    def test_plot_impulse_response(self, test_data_dir):
         """Visualize convolution of impulse stimulus."""
         features = np.zeros(100)
         features[10] = 1.0
@@ -478,12 +480,12 @@ class TestVisualization:
         ax2.set_xlim(0, time[-1])
         ax2.grid(True, alpha=0.3)
 
-        output_dir = Path(__file__).parent / 'test_outputs'
+        output_dir = test_data_dir / 'hrf_test_outputs'
         output_dir.mkdir(exist_ok=True)
         plt.savefig(output_dir / 'impulse_response.png', dpi=100, bbox_inches='tight')
         plt.close()
 
-    def test_plot_multifeature_convolution(self):
+    def test_plot_multifeature_convolution(self, test_data_dir):
         """Visualize convolution of multiple stimulus features."""
         np.random.seed(42)
         n_timepoints = 200
@@ -524,7 +526,7 @@ class TestVisualization:
         axes[2, 1].set_xlabel('Time (s)')
 
         plt.tight_layout()
-        output_dir = Path(__file__).parent / 'test_outputs'
+        output_dir = test_data_dir / 'hrf_test_outputs'
         output_dir.mkdir(exist_ok=True)
         plt.savefig(output_dir / 'multifeature_convolution.png', dpi=100, bbox_inches='tight')
         plt.close()

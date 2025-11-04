@@ -10,6 +10,9 @@ import numpy as np
 from giblet.models.decoder import MultimodalDecoder
 
 
+@pytest.mark.unit
+
+
 class TestMultimodalDecoder:
     """Test suite for MultimodalDecoder."""
 
@@ -391,6 +394,7 @@ class TestMultimodalDecoder:
         assert torch.all(frames <= 1)
 
 
+@pytest.mark.integration
 class TestDecoderIntegration:
     """Integration tests for decoder with realistic scenarios."""
 
@@ -412,6 +416,7 @@ class TestDecoderIntegration:
         assert audio.shape == (batch_size, 2048, 65)
         assert text.shape == (batch_size, 1024)
 
+    @pytest.mark.slow
     def test_tr_batch_processing(self):
         """Test processing batch corresponding to TRs."""
         # Simulate 100 TRs of fMRI data
