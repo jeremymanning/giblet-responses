@@ -31,7 +31,10 @@ class TestMultimodalAutoencoder:
 
     def test_autoencoder_init(self):
         """Test autoencoder initialization with default parameters."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         assert model.video_height == 90
         assert model.video_width == 160
         assert model.audio_mels == 2048
@@ -82,7 +85,10 @@ class TestMultimodalAutoencoder:
 
     def test_forward_pass_train_no_fmri(self):
         """Test forward pass in train mode without fMRI target."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         model.train()
 
         batch_size = 4
@@ -119,7 +125,10 @@ class TestMultimodalAutoencoder:
 
     def test_forward_pass_train_with_fmri(self):
         """Test forward pass in train mode with fMRI target."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         model.train()
 
         batch_size = 4
@@ -150,6 +159,8 @@ class TestMultimodalAutoencoder:
     def test_forward_pass_different_weights(self):
         """Test forward pass with different loss weights."""
         model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1,  # Single time step for unit testing
             reconstruction_weight=2.0,
             fmri_weight=0.5
         )
@@ -172,7 +183,10 @@ class TestMultimodalAutoencoder:
 
     def test_backward_pass(self):
         """Test backward pass and gradient flow."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         model.train()
 
         batch_size = 2
@@ -195,7 +209,10 @@ class TestMultimodalAutoencoder:
 
     def test_encode_only(self):
         """Test encoding without decoding."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         model.eval()
 
         batch_size = 4
@@ -220,7 +237,10 @@ class TestMultimodalAutoencoder:
 
     def test_decode_only(self):
         """Test decoding without encoding."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         model.eval()
 
         batch_size = 4
@@ -235,7 +255,10 @@ class TestMultimodalAutoencoder:
 
     def test_parameter_count(self):
         """Test parameter counting."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         param_dict = model.get_parameter_count()
 
         # Check keys present
@@ -263,6 +286,8 @@ class TestMultimodalAutoencoder:
     def test_custom_dimensions(self):
         """Test autoencoder with custom dimensions."""
         model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1,  # Single time step for unit testing
             video_height=45,
             video_width=80,
             audio_mels=64,
@@ -289,7 +314,10 @@ class TestMultimodalAutoencoder:
 
     def test_checkpoint_save_load(self):
         """Test saving and loading checkpoints."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
 
         with tempfile.TemporaryDirectory() as tmpdir:
             checkpoint_path = os.path.join(tmpdir, 'checkpoint.pt')
@@ -334,7 +362,10 @@ class TestMultimodalAutoencoder:
 
     def test_checkpoint_with_optimizer(self):
         """Test checkpoint with optimizer state."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -362,7 +393,10 @@ class TestMultimodalAutoencoder:
     @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
     def test_gpu_forward(self):
         """Test forward pass on GPU."""
-        model = MultimodalAutoencoder().cuda()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        ).cuda()
         model.eval()
 
         batch_size = 4
@@ -380,7 +414,10 @@ class TestMultimodalAutoencoder:
 
     def test_reconstruction_quality_sanity(self):
         """Test that reconstruction is not completely random."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         model.eval()
 
         batch_size = 4
@@ -435,7 +472,10 @@ class TestPrepareForDistributed:
     @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
     def test_prepare_requires_init(self):
         """Test that prepare_for_distributed requires initialized process group."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
 
         # Should raise error if not initialized
         with pytest.raises(RuntimeError, match="not initialized"):
@@ -448,7 +488,10 @@ class TestAutoencoderIntegration:
 
     def test_full_training_step(self):
         """Test complete training step."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
         model.train()
@@ -474,7 +517,10 @@ class TestAutoencoderIntegration:
 
     def test_batch_consistency(self):
         """Test that batch processing is consistent."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         model.eval()
 
         # Create batch
@@ -513,7 +559,10 @@ class TestAutoencoderIntegration:
 
     def test_gradient_accumulation(self):
         """Test gradient accumulation over multiple batches."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
         model.train()
@@ -574,7 +623,10 @@ class TestAutoencoderIntegration:
 
     def test_eval_train_mode_switch(self):
         """Test switching between eval and train modes."""
-        model = MultimodalAutoencoder()
+        model = MultimodalAutoencoder(
+            video_frames_per_tr=1,  # Single frame for unit testing
+            audio_frames_per_tr=1   # Single time step for unit testing
+        )
 
         batch_size = 4
         video = torch.randn(batch_size, 3, 90, 160)

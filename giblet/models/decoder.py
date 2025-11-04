@@ -315,6 +315,10 @@ class MultimodalDecoder(nn.Module):
                 audio = torch.round(audio)
                 # Clip to ensure valid range (defensive)
                 audio = torch.clamp(audio, 0, 1023)
+
+            # Squeeze temporal dimension for single-frame audio
+            if self.audio_frames_per_tr == 1:
+                audio = audio.squeeze(2)  # (B, n_codebooks, 1) → (B, n_codebooks)
         else:
             # Mel spectrogram: Temporal upsampling
             audio = self.layer13_audio(audio_features)  # 2048 → audio_dim * init_frames
@@ -330,6 +334,10 @@ class MultimodalDecoder(nn.Module):
             elif current_frames < self.audio_frames_per_tr:
                 padding = self.audio_frames_per_tr - current_frames
                 audio = torch.nn.functional.pad(audio, (0, padding))
+
+            # Squeeze temporal dimension for single-frame audio
+            if self.audio_frames_per_tr == 1:
+                audio = audio.squeeze(2)  # (B, mels, 1) → (B, mels)
 
         text = self.layer13_text(text_features)     # 1024 → 1,024
 
