@@ -17,21 +17,18 @@ from giblet.models.encoder import (
     AudioEncoder,
     TextEncoder,
     MultimodalEncoder,
-    create_encoder
+    create_encoder,
 )
 
 
 @pytest.mark.unit
-
-
 class TestVideoEncoder:
     """Test video encoder component."""
 
     def test_video_encoder_init(self):
         """Test video encoder initialization."""
         encoder = VideoEncoder(
-            input_dim=43200,  # Single frame: 90 × 160 × 3
-            output_features=1024
+            input_dim=43200, output_features=1024  # Single frame: 90 × 160 × 3
         )
         assert encoder.input_dim == 43200
         assert encoder.output_features == 1024
@@ -39,8 +36,7 @@ class TestVideoEncoder:
     def test_video_encoder_forward(self):
         """Test video encoder forward pass."""
         encoder = VideoEncoder(
-            input_dim=43200,  # Single frame: 90 × 160 × 3
-            output_features=1024
+            input_dim=43200, output_features=1024  # Single frame: 90 × 160 × 3
         )
         encoder.eval()
 
@@ -61,7 +57,9 @@ class TestVideoEncoder:
         n_params = sum(p.numel() for p in encoder.parameters())
         print(f"Video encoder parameters: {n_params:,}")
         assert n_params > 0
-        assert n_params < 7_000_000_000  # Updated for temporal concat (default: 38 frames)
+        assert (
+            n_params < 7_000_000_000
+        )  # Updated for temporal concat (default: 38 frames)
 
 
 @pytest.mark.unit
@@ -70,10 +68,7 @@ class TestAudioEncoder:
 
     def test_audio_encoder_init(self):
         """Test audio encoder initialization."""
-        encoder = AudioEncoder(
-            input_mels=128,
-            output_features=256
-        )
+        encoder = AudioEncoder(input_mels=128, output_features=256)
         assert encoder.input_mels == 128
         assert encoder.output_features == 256
 
@@ -82,7 +77,7 @@ class TestAudioEncoder:
         encoder = AudioEncoder(
             input_mels=128,
             frames_per_tr=1,  # Single time step for unit testing
-            output_features=256
+            output_features=256,
         )
         encoder.eval()
 
@@ -112,19 +107,13 @@ class TestTextEncoder:
 
     def test_text_encoder_init(self):
         """Test text encoder initialization."""
-        encoder = TextEncoder(
-            input_dim=1024,
-            output_features=256
-        )
+        encoder = TextEncoder(input_dim=1024, output_features=256)
         assert encoder.input_dim == 1024
         assert encoder.output_features == 256
 
     def test_text_encoder_forward(self):
         """Test text encoder forward pass."""
-        encoder = TextEncoder(
-            input_dim=1024,
-            output_features=256
-        )
+        encoder = TextEncoder(input_dim=1024, output_features=256)
         encoder.eval()
 
         # Create dummy input
@@ -165,7 +154,7 @@ class TestMultimodalEncoder:
         """Test encoder forward pass with single sample."""
         encoder = MultimodalEncoder(
             video_frames_per_tr=1,  # Single frame for unit testing
-            audio_frames_per_tr=1   # Single time step for unit testing
+            audio_frames_per_tr=1,  # Single time step for unit testing
         )
         encoder.eval()
 
@@ -188,7 +177,7 @@ class TestMultimodalEncoder:
         """Test encoder forward pass with batch."""
         encoder = MultimodalEncoder(
             video_frames_per_tr=1,  # Single frame for unit testing
-            audio_frames_per_tr=1   # Single time step for unit testing
+            audio_frames_per_tr=1,  # Single time step for unit testing
         )
         encoder.eval()
 
@@ -203,7 +192,10 @@ class TestMultimodalEncoder:
             bottleneck, voxels = encoder(video, audio, text, return_voxels=True)
 
         # Check output shapes
-        assert bottleneck.shape == (batch_size, 2048)  # Layer 7: BOTTLENECK (smallest layer)
+        assert bottleneck.shape == (
+            batch_size,
+            2048,
+        )  # Layer 7: BOTTLENECK (smallest layer)
         assert voxels.shape == (batch_size, 85810)
         assert not torch.isnan(bottleneck).any()
         assert not torch.isnan(voxels).any()
@@ -212,7 +204,7 @@ class TestMultimodalEncoder:
         """Test encoder forward pass without returning voxels."""
         encoder = MultimodalEncoder(
             video_frames_per_tr=1,  # Single frame for unit testing
-            audio_frames_per_tr=1   # Single time step for unit testing
+            audio_frames_per_tr=1,  # Single time step for unit testing
         )
         encoder.eval()
 
@@ -235,19 +227,19 @@ class TestMultimodalEncoder:
         param_dict = encoder.get_parameter_count()
 
         # Check all keys present
-        assert 'video_encoder' in param_dict
-        assert 'audio_encoder' in param_dict
-        assert 'text_encoder' in param_dict
-        assert 'feature_conv' in param_dict
-        assert 'layer5' in param_dict
-        assert 'layer6' in param_dict
-        assert 'layer7_bottleneck' in param_dict
-        assert 'bottleneck_to_voxels' in param_dict
-        assert 'total' in param_dict
+        assert "video_encoder" in param_dict
+        assert "audio_encoder" in param_dict
+        assert "text_encoder" in param_dict
+        assert "feature_conv" in param_dict
+        assert "layer5" in param_dict
+        assert "layer6" in param_dict
+        assert "layer7_bottleneck" in param_dict
+        assert "bottleneck_to_voxels" in param_dict
+        assert "total" in param_dict
 
         # Check total is sum of parts
-        total_manual = sum(v for k, v in param_dict.items() if k != 'total')
-        assert param_dict['total'] == total_manual
+        total_manual = sum(v for k, v in param_dict.items() if k != "total")
+        assert param_dict["total"] == total_manual
 
         # Print summary
         print("\n=== Encoder Parameter Count ===")
@@ -256,9 +248,11 @@ class TestMultimodalEncoder:
         print("=" * 55)
 
         # Check reasonable total
-        assert param_dict['total'] > 0
+        assert param_dict["total"] > 0
         # Relaxed constraint - large models are expected for temporal concat architecture
-        assert param_dict['total'] < 5_000_000_000  # Updated for temporal concat (19 video frames, 65 audio frames)
+        assert (
+            param_dict["total"] < 5_000_000_000
+        )  # Updated for temporal concat (19 video frames, 65 audio frames)
 
     def test_encoder_custom_dimensions(self):
         """Test encoder with custom dimensions."""
@@ -270,7 +264,7 @@ class TestMultimodalEncoder:
             audio_frames_per_tr=1,  # Single time step for testing
             text_dim=512,
             n_voxels=10000,
-            bottleneck_dim=2000
+            bottleneck_dim=2000,
         )
         encoder.eval()
 
@@ -321,10 +315,7 @@ class TestCreateEncoder:
 
     def test_create_encoder_custom(self):
         """Test factory function with custom parameters."""
-        encoder = create_encoder(
-            n_voxels=10000,
-            bottleneck_dim=2000
-        )
+        encoder = create_encoder(n_voxels=10000, bottleneck_dim=2000)
         assert encoder.n_voxels == 10000
         assert encoder.bottleneck_dim == 2000
 
@@ -343,21 +334,24 @@ class TestEncoderIntegration:
             audio_frames_per_tr=1,  # Single time step for integration testing
             text_dim=1024,
             n_voxels=85810,
-            bottleneck_dim=2048  # Layer 7: BOTTLENECK (smallest layer)
+            bottleneck_dim=2048,  # Layer 7: BOTTLENECK (smallest layer)
         )
         encoder.eval()
 
         # Simulate one TR of data
         video = torch.randn(1, 3, 90, 160)  # 160×90×3 = 43,200 per TR
-        audio = torch.randn(1, 2048)         # 2048 mels per TR
-        text = torch.randn(1, 1024)          # 1024 embeddings per TR
+        audio = torch.randn(1, 2048)  # 2048 mels per TR
+        text = torch.randn(1, 1024)  # 1024 embeddings per TR
 
         # Forward pass
         with torch.no_grad():
             bottleneck, voxels = encoder(video, audio, text, return_voxels=True)
 
         # Verify shapes
-        assert bottleneck.shape == (1, 2048), "Bottleneck should be 2048-dim (Layer 7: smallest layer)"
+        assert bottleneck.shape == (
+            1,
+            2048,
+        ), "Bottleneck should be 2048-dim (Layer 7: smallest layer)"
         assert voxels.shape == (1, 85810), "Should match 85,810 brain voxels"
 
         # Verify no NaNs or Infs
@@ -368,7 +362,7 @@ class TestEncoderIntegration:
         """Test batch processing with multiple TRs."""
         encoder = MultimodalEncoder(
             video_frames_per_tr=1,  # Single frame for integration testing
-            audio_frames_per_tr=1   # Single time step for integration testing
+            audio_frames_per_tr=1,  # Single time step for integration testing
         )
         encoder.eval()
 
@@ -382,14 +376,17 @@ class TestEncoderIntegration:
         with torch.no_grad():
             bottleneck, voxels = encoder(video, audio, text, return_voxels=True)
 
-        assert bottleneck.shape == (batch_size, 2048)  # Layer 7: BOTTLENECK (smallest layer)
+        assert bottleneck.shape == (
+            batch_size,
+            2048,
+        )  # Layer 7: BOTTLENECK (smallest layer)
         assert voxels.shape == (batch_size, 85810)
 
     def test_gradient_flow(self):
         """Test that gradients flow through encoder."""
         encoder = MultimodalEncoder(
             video_frames_per_tr=1,  # Single frame for integration testing
-            audio_frames_per_tr=1   # Single time step for integration testing
+            audio_frames_per_tr=1,  # Single time step for integration testing
         )
         encoder.train()
 
@@ -415,6 +412,6 @@ class TestEncoderIntegration:
             assert param.grad is not None, f"No gradient for {name}"
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run tests with verbose output
-    pytest.main([__file__, '-v', '-s'])
+    pytest.main([__file__, "-v", "-s"])

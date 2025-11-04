@@ -14,7 +14,7 @@ from giblet.models.encoder import MultimodalEncoder, create_encoder
 
 def format_bytes(num_bytes):
     """Format bytes as human-readable string."""
-    for unit in ['B', 'KB', 'MB', 'GB']:
+    for unit in ["B", "KB", "MB", "GB"]:
         if num_bytes < 1024.0:
             return f"{num_bytes:.2f} {unit}"
         num_bytes /= 1024.0
@@ -44,7 +44,7 @@ def main():
         audio_frames_per_tr=1,  # Single time step for demo
         text_dim=1024,
         n_voxels=85810,
-        bottleneck_dim=2048  # Layer 7: BOTTLENECK (smallest layer)
+        bottleneck_dim=2048,  # Layer 7: BOTTLENECK (smallest layer)
     )
 
     # Get parameter count
@@ -58,7 +58,7 @@ def main():
     print("-" * 80)
 
     for key, value in param_dict.items():
-        if key == 'total':
+        if key == "total":
             print("-" * 80)
         memory = format_bytes(value * 4)  # 4 bytes per float32 parameter
         print(f"{key:<30s} {value:>15,} {memory:>15s}")
@@ -66,7 +66,7 @@ def main():
     print()
 
     # Calculate model size
-    total_params = param_dict['total']
+    total_params = param_dict["total"]
     model_size_fp32 = total_params * 4  # 4 bytes per float32
     model_size_fp16 = total_params * 2  # 2 bytes per float16
 
@@ -139,21 +139,25 @@ def main():
 
     # Activations (rough estimate)
     # For batch_size=32, we need to store intermediate activations
-    activation_memory = batch_size * (
-        90 * 160 * 3 +  # Input video
-        2048 +  # Input audio
-        1024 +  # Input text
-        1024 +  # Video features
-        256 +  # Audio features
-        256 +  # Text features
-        1536 +  # Pooled features (Layer 3)
-        1536 +  # Feature conv (Layer 4)
-        4096 +  # Layer 5
-        8000 +  # Layer 6
-        2048 +  # Layer 7: BOTTLENECK (smallest layer)
-        16384 +  # Layer 8 (when decoding to voxels)
-        85810  # Voxels (Layer 9)
-    ) * 4  # 4 bytes per float32
+    activation_memory = (
+        batch_size
+        * (
+            90 * 160 * 3  # Input video
+            + 2048  # Input audio
+            + 1024  # Input text
+            + 1024  # Video features
+            + 256  # Audio features
+            + 256  # Text features
+            + 1536  # Pooled features (Layer 3)
+            + 1536  # Feature conv (Layer 4)
+            + 4096  # Layer 5
+            + 8000  # Layer 6
+            + 2048  # Layer 7: BOTTLENECK (smallest layer)
+            + 16384  # Layer 8 (when decoding to voxels)
+            + 85810  # Voxels (Layer 9)
+        )
+        * 4
+    )  # 4 bytes per float32
 
     # Gradients (same size as parameters)
     gradient_memory = model_size_fp32
@@ -234,5 +238,5 @@ def main():
     print("=" * 80)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

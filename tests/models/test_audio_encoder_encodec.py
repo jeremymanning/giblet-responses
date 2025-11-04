@@ -21,8 +21,6 @@ from giblet.models.encoder import AudioEncoder, MultimodalEncoder
 
 
 @pytest.mark.unit
-
-
 class TestAudioEncoderEnCodec:
     """Test AudioEncoder with EnCodec quantized codes."""
 
@@ -34,7 +32,7 @@ class TestAudioEncoderEnCodec:
             output_features=256,
             use_encodec=True,
             vocab_size=1024,  # Accepted for backward compat but not used
-            embed_dim=64  # Accepted for backward compat but not used
+            embed_dim=64,  # Accepted for backward compat but not used
         )
         assert encoder.use_encodec is True
         assert encoder.input_codebooks == 8
@@ -47,10 +45,7 @@ class TestAudioEncoderEnCodec:
     def test_encodec_forward_pass(self):
         """Test EnCodec encoder forward pass with quantized codes."""
         encoder = AudioEncoder(
-            input_codebooks=8,
-            frames_per_tr=112,
-            output_features=256,
-            use_encodec=True
+            input_codebooks=8, frames_per_tr=112, output_features=256, use_encodec=True
         )
         encoder.eval()
 
@@ -63,7 +58,10 @@ class TestAudioEncoderEnCodec:
             output = encoder(codes)
 
         # Check output shape
-        assert output.shape == (batch_size, 256), f"Expected shape (4, 256), got {output.shape}"
+        assert output.shape == (
+            batch_size,
+            256,
+        ), f"Expected shape (4, 256), got {output.shape}"
         assert not torch.isnan(output).any(), "Output contains NaN values"
         assert torch.isfinite(output).all(), "Output contains Inf values"
 
@@ -74,7 +72,7 @@ class TestAudioEncoderEnCodec:
             frames_per_tr=112,
             output_features=256,
             use_encodec=True,
-            embed_dim=64  # Backward compat param (not used)
+            embed_dim=64,  # Backward compat param (not used)
         )
         encoder.eval()  # Set to eval mode to avoid BatchNorm issues with batch_size=1
 
@@ -83,8 +81,10 @@ class TestAudioEncoderEnCodec:
             codes = torch.randint(0, 1024, (batch_size, 8 * 112))  # 2D flattened
             with torch.no_grad():
                 output = encoder(codes)
-            assert output.shape == (batch_size, 256), \
-                f"Batch size {batch_size}: Expected (B, 256), got {output.shape}"
+            assert output.shape == (
+                batch_size,
+                256,
+            ), f"Batch size {batch_size}: Expected (B, 256), got {output.shape}"
 
     def test_encodec_code_range(self):
         """Test that encoder handles codes at boundaries correctly."""
@@ -93,7 +93,7 @@ class TestAudioEncoderEnCodec:
             frames_per_tr=112,
             output_features=256,
             use_encodec=True,
-            vocab_size=1024  # Backward compat param (not used)
+            vocab_size=1024,  # Backward compat param (not used)
         )
         encoder.eval()
 
@@ -113,16 +113,14 @@ class TestAudioEncoderEnCodec:
         assert output_mixed.shape == (2, 256)
 
         # Outputs should be different (not all same)
-        assert not torch.allclose(output_min, output_max), \
-            "Min and max codes should produce different outputs"
+        assert not torch.allclose(
+            output_min, output_max
+        ), "Min and max codes should produce different outputs"
 
     def test_encodec_gradient_flow(self):
         """Test that gradients flow correctly through embedding and convolutions."""
         encoder = AudioEncoder(
-            input_codebooks=8,
-            frames_per_tr=112,
-            output_features=256,
-            use_encodec=True
+            input_codebooks=8, frames_per_tr=112, output_features=256, use_encodec=True
         )
         encoder.train()
 
@@ -144,10 +142,7 @@ class TestAudioEncoderEnCodec:
     def test_encodec_float_input_conversion(self):
         """Test that float codes are converted to float (int-like values)."""
         encoder = AudioEncoder(
-            input_codebooks=8,
-            frames_per_tr=112,
-            output_features=256,
-            use_encodec=True
+            input_codebooks=8, frames_per_tr=112, output_features=256, use_encodec=True
         )
         encoder.eval()
 
@@ -168,7 +163,7 @@ class TestAudioEncoderEnCodec:
             output_features=256,
             use_encodec=True,
             vocab_size=1024,  # Backward compat param (not used)
-            embed_dim=64  # Backward compat param (not used)
+            embed_dim=64,  # Backward compat param (not used)
         )
 
         n_params = sum(p.numel() for p in encoder.parameters())
@@ -192,7 +187,7 @@ class TestAudioEncoderBackwardsCompatibility:
             input_mels=2048,
             frames_per_tr=65,
             output_features=256,
-            use_encodec=False  # Explicitly set to mel mode
+            use_encodec=False,  # Explicitly set to mel mode
         )
         encoder.eval()
 
@@ -213,7 +208,7 @@ class TestAudioEncoderBackwardsCompatibility:
             input_mels=2048,
             frames_per_tr=1,  # Single time step for unit testing
             output_features=256,
-            use_encodec=False
+            use_encodec=False,
         )
         encoder.eval()
 
@@ -231,17 +226,11 @@ class TestAudioEncoderBackwardsCompatibility:
     def test_mel_vs_encodec_different_architectures(self):
         """Test that mel and EnCodec modes use different architectures."""
         encoder_mel = AudioEncoder(
-            input_mels=2048,
-            frames_per_tr=65,
-            output_features=256,
-            use_encodec=False
+            input_mels=2048, frames_per_tr=65, output_features=256, use_encodec=False
         )
 
         encoder_encodec = AudioEncoder(
-            input_codebooks=8,
-            frames_per_tr=112,
-            output_features=256,
-            use_encodec=True
+            input_codebooks=8, frames_per_tr=112, output_features=256, use_encodec=True
         )
 
         # Note: No embedding layer in Issue #29 refactor (both use Linear)
@@ -258,8 +247,12 @@ class TestAudioEncoderBackwardsCompatibility:
 
         # Architectures should differ in parameter count
         # Mel encoder has more params due to larger input dimension (133K vs 896)
-        assert params_mel != params_encodec, "Architectures should have different parameter counts"
-        assert params_mel > params_encodec, "Mel encoder should have more params (larger input)"
+        assert (
+            params_mel != params_encodec
+        ), "Architectures should have different parameter counts"
+        assert (
+            params_mel > params_encodec
+        ), "Mel encoder should have more params (larger input)"
 
 
 @pytest.mark.unit
@@ -275,7 +268,7 @@ class TestMultimodalEncoderEnCodec:
             audio_codebooks=8,
             audio_frames_per_tr=112,
             text_dim=1024,
-            use_encodec=True
+            use_encodec=True,
         )
         encoder.eval()
 
@@ -290,7 +283,10 @@ class TestMultimodalEncoderEnCodec:
             bottleneck, voxels = encoder(video, audio_codes, text, return_voxels=True)
 
         # Check outputs
-        assert bottleneck.shape == (batch_size, 2048), f"Expected (4, 2048), got {bottleneck.shape}"
+        assert bottleneck.shape == (
+            batch_size,
+            2048,
+        ), f"Expected (4, 2048), got {bottleneck.shape}"
         assert voxels.shape == (batch_size, 85810)
         assert not torch.isnan(bottleneck).any()
         assert not torch.isnan(voxels).any()
@@ -301,7 +297,7 @@ class TestMultimodalEncoderEnCodec:
             video_frames_per_tr=1,  # Single frame for unit testing
             use_encodec=True,
             audio_codebooks=8,
-            audio_frames_per_tr=112
+            audio_frames_per_tr=112,
         )
         encoder.train()
 
@@ -331,14 +327,14 @@ class TestMultimodalEncoderEnCodec:
             video_frames_per_tr=1,  # Single frame for unit testing
             audio_mels=2048,
             audio_frames_per_tr=65,
-            use_encodec=False
+            use_encodec=False,
         )
 
         encoder_encodec = MultimodalEncoder(
             video_frames_per_tr=1,  # Single frame for unit testing
             audio_codebooks=8,
             audio_frames_per_tr=112,
-            use_encodec=True
+            use_encodec=True,
         )
 
         # Check that audio encoders differ
@@ -356,7 +352,9 @@ class TestMultimodalEncoderEnCodec:
 
         # EnCodec mode - flattened
         audio_codes = torch.randint(0, 1024, (2, 8 * 112))
-        bottleneck_encodec, _ = encoder_encodec(video, audio_codes, text, return_voxels=False)
+        bottleneck_encodec, _ = encoder_encodec(
+            video, audio_codes, text, return_voxels=False
+        )
         assert bottleneck_encodec.shape == (2, 2048)
 
 
@@ -367,10 +365,7 @@ class TestEnCodecRealWorldScenarios:
     def test_typical_batch_size(self):
         """Test with typical training batch size."""
         encoder = AudioEncoder(
-            input_codebooks=8,
-            frames_per_tr=112,
-            output_features=256,
-            use_encodec=True
+            input_codebooks=8, frames_per_tr=112, output_features=256, use_encodec=True
         )
         encoder.eval()
 
@@ -387,10 +382,7 @@ class TestEnCodecRealWorldScenarios:
     def test_single_sample_inference(self):
         """Test single-sample inference (e.g., for prediction)."""
         encoder = AudioEncoder(
-            input_codebooks=8,
-            frames_per_tr=112,
-            output_features=256,
-            use_encodec=True
+            input_codebooks=8, frames_per_tr=112, output_features=256, use_encodec=True
         )
         encoder.eval()
 
@@ -409,7 +401,7 @@ class TestEnCodecRealWorldScenarios:
                 input_codebooks=8,
                 frames_per_tr=frames,
                 output_features=256,
-                use_encodec=True
+                use_encodec=True,
             )
             encoder.eval()
 
@@ -418,8 +410,10 @@ class TestEnCodecRealWorldScenarios:
             with torch.no_grad():
                 output = encoder(codes)
 
-            assert output.shape == (4, 256), \
-                f"Failed for {frames} frames: expected (4, 256), got {output.shape}"
+            assert output.shape == (
+                4,
+                256,
+            ), f"Failed for {frames} frames: expected (4, 256), got {output.shape}"
 
     def test_different_codebook_counts(self):
         """Test with different numbers of codebooks (different bandwidths)."""
@@ -429,7 +423,7 @@ class TestEnCodecRealWorldScenarios:
                 frames_per_tr=112,
                 output_features=256,
                 use_encodec=True,
-                embed_dim=64
+                embed_dim=64,
             )
             encoder.eval()
 
@@ -438,17 +432,13 @@ class TestEnCodecRealWorldScenarios:
             with torch.no_grad():
                 output = encoder(codes)
 
-            assert output.shape == (4, 256), \
-                f"Failed for {n_codebooks} codebooks"
+            assert output.shape == (4, 256), f"Failed for {n_codebooks} codebooks"
 
     @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
     def test_encodec_gpu(self):
         """Test EnCodec encoder on GPU."""
         encoder = AudioEncoder(
-            input_codebooks=8,
-            frames_per_tr=112,
-            output_features=256,
-            use_encodec=True
+            input_codebooks=8, frames_per_tr=112, output_features=256, use_encodec=True
         ).cuda()
         encoder.eval()
 
@@ -473,7 +463,7 @@ class TestEnCodecEdgeCases:
             frames_per_tr=112,
             output_features=256,
             use_encodec=True,
-            vocab_size=1024
+            vocab_size=1024,
         )
         encoder.eval()
 
@@ -488,10 +478,7 @@ class TestEnCodecEdgeCases:
     def test_zero_codes(self):
         """Test with all-zero codes (silence or padding)."""
         encoder = AudioEncoder(
-            input_codebooks=8,
-            frames_per_tr=112,
-            output_features=256,
-            use_encodec=True
+            input_codebooks=8, frames_per_tr=112, output_features=256, use_encodec=True
         )
         encoder.eval()
 
@@ -507,10 +494,7 @@ class TestEnCodecEdgeCases:
     def test_constant_codes(self):
         """Test with constant codes across time and codebooks."""
         encoder = AudioEncoder(
-            input_codebooks=8,
-            frames_per_tr=112,
-            output_features=256,
-            use_encodec=True
+            input_codebooks=8, frames_per_tr=112, output_features=256, use_encodec=True
         )
         encoder.eval()
 
@@ -524,6 +508,6 @@ class TestEnCodecEdgeCases:
         assert torch.isfinite(output).all()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run tests with verbose output
-    pytest.main([__file__, '-v', '-s'])
+    pytest.main([__file__, "-v", "-s"])

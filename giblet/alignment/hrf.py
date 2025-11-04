@@ -63,7 +63,7 @@ def get_canonical_hrf(tr=1.5, duration=32.0):
     return hrf
 
 
-def apply_hrf(features, tr=1.5, mode='same'):
+def apply_hrf(features, tr=1.5, mode="same"):
     """
     Convolve stimulus features with canonical HRF.
 
@@ -159,7 +159,7 @@ def apply_hrf(features, tr=1.5, mode='same'):
         n_timepoints, n_mels, frames_per_tr = features.shape
 
         # Determine output shape
-        if mode == 'same':
+        if mode == "same":
             output_shape = (n_timepoints, n_mels, frames_per_tr)
         else:  # mode == 'full'
             output_shape = (n_timepoints + len(hrf) - 1, n_mels, frames_per_tr)
@@ -185,8 +185,11 @@ def apply_hrf(features, tr=1.5, mode='same'):
     n_timepoints, n_features = features.shape
 
     # Convolve each feature channel with HRF
-    convolved = np.zeros_like(features) if mode == 'same' else \
-                np.zeros((n_timepoints + len(hrf) - 1, n_features))
+    convolved = (
+        np.zeros_like(features)
+        if mode == "same"
+        else np.zeros((n_timepoints + len(hrf) - 1, n_features))
+    )
 
     for i in range(n_features):
         convolved[:, i] = signal.convolve(features[:, i], hrf, mode=mode)
@@ -276,25 +279,35 @@ def convolve_with_padding(features, tr=1.5, padding_duration=10.0):
 
     # Handle 1D, 2D, and 3D input
     if features.ndim == 1:
-        features_padded = np.pad(features, (padding_samples, padding_samples),
-                                mode='constant', constant_values=0)
+        features_padded = np.pad(
+            features,
+            (padding_samples, padding_samples),
+            mode="constant",
+            constant_values=0,
+        )
         squeeze_output = True
     elif features.ndim == 2:
-        features_padded = np.pad(features,
-                               ((padding_samples, padding_samples), (0, 0)),
-                               mode='constant', constant_values=0)
+        features_padded = np.pad(
+            features,
+            ((padding_samples, padding_samples), (0, 0)),
+            mode="constant",
+            constant_values=0,
+        )
         squeeze_output = False
     elif features.ndim == 3:
         # 3D audio: (n_trs, n_mels, frames_per_tr)
-        features_padded = np.pad(features,
-                               ((padding_samples, padding_samples), (0, 0), (0, 0)),
-                               mode='constant', constant_values=0)
+        features_padded = np.pad(
+            features,
+            ((padding_samples, padding_samples), (0, 0), (0, 0)),
+            mode="constant",
+            constant_values=0,
+        )
         squeeze_output = False
     else:
         raise ValueError(f"Unsupported feature dimensionality: {features.ndim}")
 
     # Convolve with padding
-    convolved_padded = apply_hrf(features_padded, tr=tr, mode='full')
+    convolved_padded = apply_hrf(features_padded, tr=tr, mode="full")
 
     # Trim to original size
     # The convolution output size is: (n_padded + n_hrf - 1)

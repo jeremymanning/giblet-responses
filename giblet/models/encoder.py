@@ -51,7 +51,7 @@ class VideoEncoder(nn.Module):
         self,
         input_dim: int = 1641600,
         output_features: int = 1024,
-        gradient_checkpointing: bool = False
+        gradient_checkpointing: bool = False,
     ):
         super().__init__()
 
@@ -107,7 +107,9 @@ class VideoEncoder(nn.Module):
 
         # Ensure 2D input
         if x.dim() != 2:
-            raise ValueError(f"Expected 2D input (batch, features), got {x.dim()}D: {x.shape}")
+            raise ValueError(
+                f"Expected 2D input (batch, features), got {x.dim()}D: {x.shape}"
+            )
 
         # MEMORY OPTIMIZATION (Issue #30): Use gradient checkpointing to reduce activation memory
         # Trades compute for memory by not storing intermediate activations during forward pass
@@ -204,7 +206,7 @@ class AudioEncoder(nn.Module):
         output_features: int = 256,
         use_encodec: bool = False,
         vocab_size: int = 1024,  # Not used with Linear layers
-        embed_dim: int = 64  # Not used with Linear layers
+        embed_dim: int = 64,  # Not used with Linear layers
     ):
         super().__init__()
 
@@ -297,11 +299,7 @@ class TextEncoder(nn.Module):
         Dimensionality of output features
     """
 
-    def __init__(
-        self,
-        input_dim: int = 1024,
-        output_features: int = 256
-    ):
+    def __init__(self, input_dim: int = 1024, output_features: int = 256):
         super().__init__()
 
         self.input_dim = input_dim
@@ -397,7 +395,7 @@ class MultimodalEncoder(nn.Module):
         text_features: int = 256,
         use_encodec: bool = False,  # NEW: Use EnCodec codes instead of mel spectrograms
         gradient_checkpointing: bool = False,  # NEW (Issue #30): Enable gradient checkpointing for memory optimization
-        video_frames_per_tr: int = 19  # NEW (Issue #30): Video frames per TR after frame skipping
+        video_frames_per_tr: int = 19,  # NEW (Issue #30): Video frames per TR after frame skipping
     ):
         super().__init__()
 
@@ -421,7 +419,7 @@ class MultimodalEncoder(nn.Module):
         self.video_encoder = VideoEncoder(
             input_dim=video_input_dim,  # Flattened temporal concatenation
             output_features=video_features,
-            gradient_checkpointing=gradient_checkpointing  # Pass gradient checkpointing flag
+            gradient_checkpointing=gradient_checkpointing,  # Pass gradient checkpointing flag
         )
 
         # Layer 2B: Audio encoder (supports both mel spectrograms and EnCodec codes)
@@ -430,13 +428,12 @@ class MultimodalEncoder(nn.Module):
             input_codebooks=audio_codebooks,
             frames_per_tr=audio_frames_per_tr,
             output_features=audio_features,
-            use_encodec=use_encodec
+            use_encodec=use_encodec,
         )
 
         # Layer 2C: Text encoder
         self.text_encoder = TextEncoder(
-            input_dim=text_dim,
-            output_features=text_features
+            input_dim=text_dim, output_features=text_features
         )
 
         # Layer 3: Pooled features dimension
@@ -448,7 +445,7 @@ class MultimodalEncoder(nn.Module):
             nn.Linear(self.pooled_dim, self.pooled_dim),
             nn.BatchNorm1d(self.pooled_dim),
             nn.ReLU(),
-            nn.Dropout(0.2)
+            nn.Dropout(0.2),
         )
 
         # Layer 5: First expansion (1536 → 4096)
@@ -456,22 +453,19 @@ class MultimodalEncoder(nn.Module):
             nn.Linear(self.pooled_dim, 4096),
             nn.BatchNorm1d(4096),
             nn.ReLU(),
-            nn.Dropout(0.3)
+            nn.Dropout(0.3),
         )
 
         # Layer 6: Second expansion (4096 → 8000)
         self.layer6 = nn.Sequential(
-            nn.Linear(4096, 8000),
-            nn.BatchNorm1d(8000),
-            nn.ReLU(),
-            nn.Dropout(0.3)
+            nn.Linear(4096, 8000), nn.BatchNorm1d(8000), nn.ReLU(), nn.Dropout(0.3)
         )
 
         # Layer 7: BOTTLENECK - compression to smallest dimension (8000 → bottleneck_dim)
         # No ReLU after bottleneck to allow negative values in latent space
         self.layer7_bottleneck = nn.Sequential(
             nn.Linear(8000, bottleneck_dim),  # Layer 7: BOTTLENECK (smallest layer)
-            nn.BatchNorm1d(bottleneck_dim)
+            nn.BatchNorm1d(bottleneck_dim),
         )
 
         # Optional: Expand from bottleneck to voxel space (for direct voxel prediction)
@@ -481,7 +475,7 @@ class MultimodalEncoder(nn.Module):
             nn.BatchNorm1d(16384),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(16384, n_voxels)
+            nn.Linear(16384, n_voxels),
         )
 
     def forward(
@@ -489,7 +483,7 @@ class MultimodalEncoder(nn.Module):
         video: torch.Tensor,
         audio: torch.Tensor,
         text: torch.Tensor,
-        return_voxels: bool = False
+        return_voxels: bool = False,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         """
         Forward pass through encoder.
@@ -523,21 +517,23 @@ class MultimodalEncoder(nn.Module):
         if audio.dtype in [torch.int32, torch.int64, torch.long]:
             audio = audio.float()
 
-        video_feat = self.video_encoder(video)      # (B, video_features)
-        audio_feat = self.audio_encoder(audio)      # (B, audio_features)
-        text_feat = self.text_encoder(text)         # (B, text_features)
+        video_feat = self.video_encoder(video)  # (B, video_features)
+        audio_feat = self.audio_encoder(audio)  # (B, audio_features)
+        text_feat = self.text_encoder(text)  # (B, text_features)
 
         # Layer 3: Pool/concatenate features
-        pooled = torch.cat([video_feat, audio_feat, text_feat], dim=1)  # (B, pooled_dim)
+        pooled = torch.cat(
+            [video_feat, audio_feat, text_feat], dim=1
+        )  # (B, pooled_dim)
 
         # Layer 4: Feature space convolution + ReLU
-        conv_feat = self.feature_conv(pooled)       # (B, pooled_dim=1536)
+        conv_feat = self.feature_conv(pooled)  # (B, pooled_dim=1536)
 
         # Layer 5: First expansion (1536 → 4096)
-        layer5_out = self.layer5(conv_feat)         # (B, 4096)
+        layer5_out = self.layer5(conv_feat)  # (B, 4096)
 
         # Layer 6: Second expansion (4096 → 8000)
-        layer6_out = self.layer6(layer5_out)        # (B, 8000)
+        layer6_out = self.layer6(layer5_out)  # (B, 8000)
 
         # Layer 7: BOTTLENECK - compress to smallest dimension (8000 → 2048)
         bottleneck = self.layer7_bottleneck(layer6_out)  # (B, bottleneck_dim=2048)
@@ -557,19 +553,20 @@ class MultimodalEncoder(nn.Module):
         param_dict : dict
             Dictionary with parameter counts for each module
         """
+
         def count_params(module):
             return sum(p.numel() for p in module.parameters())
 
         return {
-            'video_encoder': count_params(self.video_encoder),
-            'audio_encoder': count_params(self.audio_encoder),
-            'text_encoder': count_params(self.text_encoder),
-            'feature_conv': count_params(self.feature_conv),
-            'layer5': count_params(self.layer5),
-            'layer6': count_params(self.layer6),
-            'layer7_bottleneck': count_params(self.layer7_bottleneck),
-            'bottleneck_to_voxels': count_params(self.bottleneck_to_voxels),
-            'total': count_params(self)
+            "video_encoder": count_params(self.video_encoder),
+            "audio_encoder": count_params(self.audio_encoder),
+            "text_encoder": count_params(self.text_encoder),
+            "feature_conv": count_params(self.feature_conv),
+            "layer5": count_params(self.layer5),
+            "layer6": count_params(self.layer6),
+            "layer7_bottleneck": count_params(self.layer7_bottleneck),
+            "bottleneck_to_voxels": count_params(self.bottleneck_to_voxels),
+            "total": count_params(self),
         }
 
 
@@ -579,7 +576,7 @@ def create_encoder(
     audio_mels: int = 2048,
     text_dim: int = 1024,
     n_voxels: int = 85810,
-    bottleneck_dim: int = 2048
+    bottleneck_dim: int = 2048,
 ) -> MultimodalEncoder:
     """
     Factory function to create MultimodalEncoder with default parameters.
@@ -610,5 +607,5 @@ def create_encoder(
         audio_mels=audio_mels,
         text_dim=text_dim,
         n_voxels=n_voxels,
-        bottleneck_dim=bottleneck_dim
+        bottleneck_dim=bottleneck_dim,
     )

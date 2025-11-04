@@ -1,5 +1,5 @@
 """
-Test script for SherlockDataset with real data.
+Test script for MultimodalDataset with real data.
 
 This test verifies that the dataset:
 1. Loads all 17 subjects correctly
@@ -15,7 +15,7 @@ import torch
 from torch.utils.data import DataLoader
 import numpy as np
 
-from giblet.data.dataset import SherlockDataset
+from giblet.data.dataset import MultimodalDataset
 
 
 @pytest.mark.data
@@ -26,7 +26,7 @@ def test_full_dataset(data_dir):
     print("="*80)
 
     # Load dataset
-    dataset = SherlockDataset(
+    dataset = MultimodalDataset(
         data_dir=data_dir,
         subjects='all',
         apply_hrf=True,
@@ -78,7 +78,7 @@ def test_dataloader(data_dir):
     print("TEST 2: DataLoader integration")
     print("="*80)
 
-    dataset = SherlockDataset(
+    dataset = MultimodalDataset(
         data_dir=data_dir,
         subjects='all',
         apply_hrf=True,
@@ -134,7 +134,7 @@ def test_train_val_split(data_dir):
     print("="*80)
 
     # Create train dataset
-    train_dataset = SherlockDataset(
+    train_dataset = MultimodalDataset(
         data_dir=data_dir,
         subjects='all',
         split='train',
@@ -143,7 +143,7 @@ def test_train_val_split(data_dir):
     )
 
     # Create val dataset
-    val_dataset = SherlockDataset(
+    val_dataset = MultimodalDataset(
         data_dir=data_dir,
         subjects='all',
         split='val',
@@ -182,7 +182,7 @@ def test_single_subject(data_dir):
     print("="*80)
 
     # Load single subject
-    dataset = SherlockDataset(
+    dataset = MultimodalDataset(
         data_dir=data_dir,
         subjects=1,
         apply_hrf=True,
@@ -222,7 +222,7 @@ def test_cross_subject(data_dir):
     print("="*80)
 
     # Load with cross-subject averaging
-    dataset = SherlockDataset(
+    dataset = MultimodalDataset(
         data_dir=data_dir,
         subjects='all',
         apply_hrf=True,
@@ -250,7 +250,7 @@ def test_feature_stats(data_dir):
     print("TEST 6: Feature statistics")
     print("="*80)
 
-    dataset = SherlockDataset(
+    dataset = MultimodalDataset(
         data_dir=data_dir,
         subjects='all',
         apply_hrf=True,
@@ -279,7 +279,7 @@ def test_no_hrf(data_dir):
     print("="*80)
 
     # Load without HRF
-    dataset = SherlockDataset(
+    dataset = MultimodalDataset(
         data_dir=data_dir,
         subjects=[1, 2],  # Just 2 subjects for speed
         apply_hrf=False,

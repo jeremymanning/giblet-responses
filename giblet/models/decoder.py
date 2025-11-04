@@ -94,7 +94,7 @@ class MultimodalDecoder(nn.Module):
         text_dim: int = 1024,
         dropout: float = 0.3,
         use_encodec: bool = False,  # NEW: Use EnCodec discrete codes
-        n_codebooks: int = 8  # NEW: Number of EnCodec codebooks
+        n_codebooks: int = 8,  # NEW: Number of EnCodec codebooks
     ):
         super().__init__()
 
@@ -109,37 +109,25 @@ class MultimodalDecoder(nn.Module):
         # Layer 8: Expand from bottleneck (2048 → 8000)
         # Mirror of Encoder Layer 6 (8000 → 2048)
         self.layer8 = nn.Sequential(
-            nn.Linear(2048, 8000),
-            nn.BatchNorm1d(8000),
-            nn.ReLU(),
-            nn.Dropout(dropout)
+            nn.Linear(2048, 8000), nn.BatchNorm1d(8000), nn.ReLU(), nn.Dropout(dropout)
         )
 
         # Layer 9: Feature expansion (8000 → 4096)
         # Mirror of Encoder Layer 5 (4096 → 8000)
         self.layer9 = nn.Sequential(
-            nn.Linear(8000, 4096),
-            nn.BatchNorm1d(4096),
-            nn.ReLU(),
-            nn.Dropout(dropout)
+            nn.Linear(8000, 4096), nn.BatchNorm1d(4096), nn.ReLU(), nn.Dropout(dropout)
         )
 
         # Layer 10: Feature deconvolution (4096 → 2048)
         # Mirror of Encoder Layer 4 (2048 → 4096)
         self.layer10 = nn.Sequential(
-            nn.Linear(4096, 2048),
-            nn.BatchNorm1d(2048),
-            nn.ReLU(),
-            nn.Dropout(dropout)
+            nn.Linear(4096, 2048), nn.BatchNorm1d(2048), nn.ReLU(), nn.Dropout(dropout)
         )
 
         # Layer 11: Unpool features (2048 → 1536)
         # Mirror of Encoder Layer 3 (1536 → 2048)
         self.layer11 = nn.Sequential(
-            nn.Linear(2048, 1536),
-            nn.BatchNorm1d(1536),
-            nn.ReLU(),
-            nn.Dropout(dropout)
+            nn.Linear(2048, 1536), nn.BatchNorm1d(1536), nn.ReLU(), nn.Dropout(dropout)
         )
 
         # Layer 12A/B/C: Modality-specific decoder paths
@@ -155,7 +143,7 @@ class MultimodalDecoder(nn.Module):
             nn.Linear(2048, 4096),
             nn.BatchNorm1d(4096),
             nn.ReLU(),
-            nn.Dropout(dropout)
+            nn.Dropout(dropout),
         )
 
         # Layer 12B: Audio decoder path (1536 → audio features)
@@ -168,7 +156,7 @@ class MultimodalDecoder(nn.Module):
             nn.Linear(2048, 2048),
             nn.BatchNorm1d(2048),
             nn.ReLU(),
-            nn.Dropout(dropout)
+            nn.Dropout(dropout),
         )
 
         # EnCodec-specific or Mel-specific temporal processing
@@ -185,20 +173,28 @@ class MultimodalDecoder(nn.Module):
             self.audio_temporal_init_frames = 8
             self.audio_temporal_upsample = nn.Sequential(
                 # 8 → 16 frames
-                nn.ConvTranspose1d(audio_dim, audio_dim, kernel_size=4, stride=2, padding=1),
+                nn.ConvTranspose1d(
+                    audio_dim, audio_dim, kernel_size=4, stride=2, padding=1
+                ),
                 nn.BatchNorm1d(audio_dim),
                 nn.ReLU(),
                 # 16 → 32 frames
-                nn.ConvTranspose1d(audio_dim, audio_dim, kernel_size=4, stride=2, padding=1),
+                nn.ConvTranspose1d(
+                    audio_dim, audio_dim, kernel_size=4, stride=2, padding=1
+                ),
                 nn.BatchNorm1d(audio_dim),
                 nn.ReLU(),
                 # 32 → 64 frames (close to target ~65)
-                nn.ConvTranspose1d(audio_dim, audio_dim, kernel_size=4, stride=2, padding=1),
+                nn.ConvTranspose1d(
+                    audio_dim, audio_dim, kernel_size=4, stride=2, padding=1
+                ),
                 nn.BatchNorm1d(audio_dim),
-                nn.ReLU()
+                nn.ReLU(),
             )
             # Final adjustment layer to get exact frames_per_tr
-            self.audio_temporal_adjust = nn.Conv1d(audio_dim, audio_dim, kernel_size=3, padding=1)
+            self.audio_temporal_adjust = nn.Conv1d(
+                audio_dim, audio_dim, kernel_size=3, padding=1
+            )
 
         # Layer 12C: Text decoder path (1536 → text features)
         # Moderate size for 1024 embeddings
@@ -210,7 +206,7 @@ class MultimodalDecoder(nn.Module):
             nn.Linear(1024, 1024),
             nn.BatchNorm1d(1024),
             nn.ReLU(),
-            nn.Dropout(dropout)
+            nn.Dropout(dropout),
         )
 
         # Layer 13: Output reconstruction
@@ -218,10 +214,7 @@ class MultimodalDecoder(nn.Module):
 
         # Layer 13A: Video output (4096 → 43,200)
         # Sigmoid for [0, 1] pixel range
-        self.layer13_video = nn.Sequential(
-            nn.Linear(4096, video_dim),
-            nn.Sigmoid()
-        )
+        self.layer13_video = nn.Sequential(nn.Linear(4096, video_dim), nn.Sigmoid())
 
         # Layer 13B: Audio output
         # EnCodec: Outputs discrete codes (n_codebooks × frames_per_tr)
@@ -235,7 +228,9 @@ class MultimodalDecoder(nn.Module):
             self.layer13_audio = nn.Linear(2048, n_codebooks * self.audio_frames_per_tr)
         else:
             # Predict mel spectrogram temporal features
-            self.layer13_audio = nn.Linear(2048, audio_dim * self.audio_temporal_init_frames)
+            self.layer13_audio = nn.Linear(
+                2048, audio_dim * self.audio_temporal_init_frames
+            )
 
         # Layer 13C: Text output (1024 → 1024)
         # No activation (normalized in loss/post-processing)
@@ -248,7 +243,7 @@ class MultimodalDecoder(nn.Module):
         """Initialize weights using Xavier/He initialization."""
         for m in self.modules():
             if isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm1d):
@@ -256,8 +251,7 @@ class MultimodalDecoder(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(
-        self,
-        bottleneck: torch.Tensor
+        self, bottleneck: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Forward pass through decoder.
@@ -292,9 +286,9 @@ class MultimodalDecoder(nn.Module):
         x = self.layer11(x)
 
         # Layer 12A/B/C: Separate modality decoder paths
-        video_features = self.layer12_video(x)    # 1536 → 4096
-        audio_features = self.layer12_audio(x)    # 1536 → 2048
-        text_features = self.layer12_text(x)      # 1536 → 1024
+        video_features = self.layer12_video(x)  # 1536 → 4096
+        audio_features = self.layer12_audio(x)  # 1536 → 2048
+        text_features = self.layer12_text(x)  # 1536 → 1024
 
         # Layer 13: Output reconstruction
         video = self.layer13_video(video_features)  # 4096 → 43,200
@@ -302,9 +296,13 @@ class MultimodalDecoder(nn.Module):
         # Audio decoding: EnCodec or Mel spectrogram
         if self.use_encodec:
             # EnCodec: Predict discrete codes
-            audio = self.layer13_audio(audio_features)  # 2048 → n_codebooks * frames_per_tr
+            audio = self.layer13_audio(
+                audio_features
+            )  # 2048 → n_codebooks * frames_per_tr
             batch_size = audio.size(0)
-            audio = audio.view(batch_size, self.n_codebooks, self.audio_frames_per_tr)  # (B, 8, 112)
+            audio = audio.view(
+                batch_size, self.n_codebooks, self.audio_frames_per_tr
+            )  # (B, 8, 112)
 
             # Scale to valid code range [0, 1023]
             # Use sigmoid to map to [0, 1], then scale to [0, 1023]
@@ -323,14 +321,16 @@ class MultimodalDecoder(nn.Module):
             # Mel spectrogram: Temporal upsampling
             audio = self.layer13_audio(audio_features)  # 2048 → audio_dim * init_frames
             batch_size = audio.size(0)
-            audio = audio.view(batch_size, self.audio_dim, self.audio_temporal_init_frames)  # (B, mels, 8)
+            audio = audio.view(
+                batch_size, self.audio_dim, self.audio_temporal_init_frames
+            )  # (B, mels, 8)
             audio = self.audio_temporal_upsample(audio)  # (B, mels, 64)
-            audio = self.audio_temporal_adjust(audio)    # (B, mels, 64)
+            audio = self.audio_temporal_adjust(audio)  # (B, mels, 64)
 
             # Crop or pad to exact frames_per_tr
             current_frames = audio.size(2)
             if current_frames > self.audio_frames_per_tr:
-                audio = audio[:, :, :self.audio_frames_per_tr]
+                audio = audio[:, :, : self.audio_frames_per_tr]
             elif current_frames < self.audio_frames_per_tr:
                 padding = self.audio_frames_per_tr - current_frames
                 audio = torch.nn.functional.pad(audio, (0, padding))
@@ -339,7 +339,7 @@ class MultimodalDecoder(nn.Module):
             if self.audio_frames_per_tr == 1:
                 audio = audio.squeeze(2)  # (B, mels, 1) → (B, mels)
 
-        text = self.layer13_text(text_features)     # 1024 → 1,024
+        text = self.layer13_text(text_features)  # 1024 → 1,024
 
         return video, audio, text
 
@@ -401,14 +401,16 @@ class MultimodalDecoder(nn.Module):
             # Mel: Temporal upsampling
             audio = self.layer13_audio(audio_features)
             batch_size = audio.size(0)
-            audio = audio.view(batch_size, self.audio_dim, self.audio_temporal_init_frames)
+            audio = audio.view(
+                batch_size, self.audio_dim, self.audio_temporal_init_frames
+            )
             audio = self.audio_temporal_upsample(audio)
             audio = self.audio_temporal_adjust(audio)
 
             # Crop or pad to exact frames_per_tr
             current_frames = audio.size(2)
             if current_frames > self.audio_frames_per_tr:
-                audio = audio[:, :, :self.audio_frames_per_tr]
+                audio = audio[:, :, : self.audio_frames_per_tr]
             elif current_frames < self.audio_frames_per_tr:
                 padding = self.audio_frames_per_tr - current_frames
                 audio = torch.nn.functional.pad(audio, (0, padding))
@@ -437,10 +439,7 @@ class MultimodalDecoder(nn.Module):
         text = self.layer13_text(text_features)
         return text
 
-    def get_layer_outputs(
-        self,
-        bottleneck: torch.Tensor
-    ) -> dict:
+    def get_layer_outputs(self, bottleneck: torch.Tensor) -> dict:
         """
         Get intermediate outputs from all layers for analysis/debugging.
 
@@ -460,35 +459,35 @@ class MultimodalDecoder(nn.Module):
 
         # Layer 8
         x = self.layer8(bottleneck)
-        outputs['layer8'] = x.detach()
+        outputs["layer8"] = x.detach()
 
         # Layer 9
         x = self.layer9(x)
-        outputs['layer9'] = x.detach()
+        outputs["layer9"] = x.detach()
 
         # Layer 10
         x = self.layer10(x)
-        outputs['layer10'] = x.detach()
+        outputs["layer10"] = x.detach()
 
         # Layer 11
         x = self.layer11(x)
-        outputs['layer11'] = x.detach()
+        outputs["layer11"] = x.detach()
 
         # Layer 12A/B/C
         video_features = self.layer12_video(x)
         audio_features = self.layer12_audio(x)
         text_features = self.layer12_text(x)
-        outputs['layer12_video'] = video_features.detach()
-        outputs['layer12_audio'] = audio_features.detach()
-        outputs['layer12_text'] = text_features.detach()
+        outputs["layer12_video"] = video_features.detach()
+        outputs["layer12_audio"] = audio_features.detach()
+        outputs["layer12_text"] = text_features.detach()
 
         # Layer 13
         video = self.layer13_video(video_features)
         audio = self.layer13_audio(audio_features)
         text = self.layer13_text(text_features)
-        outputs['video'] = video.detach()
-        outputs['audio'] = audio.detach()
-        outputs['text'] = text.detach()
+        outputs["video"] = video.detach()
+        outputs["audio"] = audio.detach()
+        outputs["text"] = text.detach()
 
         return outputs
 
@@ -501,19 +500,20 @@ class MultimodalDecoder(nn.Module):
         param_counts : dict
             Dictionary with parameter counts for each layer/path
         """
+
         def count_params(module):
             return sum(p.numel() for p in module.parameters() if p.requires_grad)
 
         return {
-            'layer8': count_params(self.layer8),
-            'layer9': count_params(self.layer9),
-            'layer10': count_params(self.layer10),
-            'layer11': count_params(self.layer11),
-            'layer12_video': count_params(self.layer12_video),
-            'layer12_audio': count_params(self.layer12_audio),
-            'layer12_text': count_params(self.layer12_text),
-            'layer13_video': count_params(self.layer13_video),
-            'layer13_audio': count_params(self.layer13_audio),
-            'layer13_text': count_params(self.layer13_text),
-            'total': count_params(self)
+            "layer8": count_params(self.layer8),
+            "layer9": count_params(self.layer9),
+            "layer10": count_params(self.layer10),
+            "layer11": count_params(self.layer11),
+            "layer12_video": count_params(self.layer12_video),
+            "layer12_audio": count_params(self.layer12_audio),
+            "layer12_text": count_params(self.layer12_text),
+            "layer13_video": count_params(self.layer13_video),
+            "layer13_audio": count_params(self.layer13_audio),
+            "layer13_text": count_params(self.layer13_text),
+            "total": count_params(self),
         }

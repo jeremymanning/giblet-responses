@@ -32,7 +32,7 @@ def verify_checkpoint(checkpoint_path: str):
     # Load checkpoint
     print(f"Loading checkpoint... ({checkpoint_path.stat().st_size / 1024**3:.2f} GB)")
     try:
-        checkpoint = torch.load(checkpoint_path, map_location='cpu')
+        checkpoint = torch.load(checkpoint_path, map_location="cpu")
         print("✓ Checkpoint loaded successfully\n")
     except Exception as e:
         print(f"ERROR: Failed to load checkpoint: {e}")
@@ -45,11 +45,11 @@ def verify_checkpoint(checkpoint_path: str):
     print()
 
     # Get model state dict
-    if 'model_state_dict' not in checkpoint:
+    if "model_state_dict" not in checkpoint:
         print("ERROR: 'model_state_dict' not found in checkpoint")
         return False
 
-    state_dict = checkpoint['model_state_dict']
+    state_dict = checkpoint["model_state_dict"]
     print(f"Model has {len(state_dict)} parameter tensors\n")
 
     # Check each parameter tensor
@@ -80,7 +80,9 @@ def verify_checkpoint(checkpoint_path: str):
 
         # Check for reasonable value ranges (not too large)
         elif torch.max(torch.abs(tensor)).item() > 1e6:
-            issues.append(f"Large values in {name} (max: {torch.max(torch.abs(tensor)).item():.2e})")
+            issues.append(
+                f"Large values in {name} (max: {torch.max(torch.abs(tensor)).item():.2e})"
+            )
             status = "⚠️  Large values"
 
         else:
@@ -112,13 +114,13 @@ def verify_checkpoint(checkpoint_path: str):
         print()
 
     # Check training metadata
-    if 'epoch' in checkpoint:
+    if "epoch" in checkpoint:
         print(f"Epoch: {checkpoint['epoch']}")
-    if 'train_loss' in checkpoint:
+    if "train_loss" in checkpoint:
         print(f"Train loss: {checkpoint['train_loss']:.4f}")
-    if 'val_loss' in checkpoint:
+    if "val_loss" in checkpoint:
         print(f"Val loss: {checkpoint['val_loss']:.4f}")
-    if 'best_val_loss' in checkpoint:
+    if "best_val_loss" in checkpoint:
         print(f"Best val loss: {checkpoint['best_val_loss']:.4f}")
     print()
 

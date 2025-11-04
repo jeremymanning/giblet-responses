@@ -56,7 +56,7 @@ def test_tiny_model_single_gpu():
     print("Testing TinyModel on Single GPU")
     print("=" * 80)
 
-    device = torch.device('cuda:0')
+    device = torch.device("cuda:0")
     torch.cuda.set_device(device)
 
     # Create model
@@ -89,13 +89,13 @@ def run_ddp_initialization():
         torchrun --nproc_per_node=8 tests/diagnostics/test_small_model_ddp.py
     """
     # Get rank info from environment (set by torchrun)
-    local_rank = int(os.environ['LOCAL_RANK'])
-    world_size = int(os.environ['WORLD_SIZE'])
-    rank = int(os.environ['RANK'])
+    local_rank = int(os.environ["LOCAL_RANK"])
+    world_size = int(os.environ["WORLD_SIZE"])
+    rank = int(os.environ["RANK"])
 
     # Set device
     torch.cuda.set_device(local_rank)
-    device = torch.device(f'cuda:{local_rank}')
+    device = torch.device(f"cuda:{local_rank}")
 
     print(f"[Rank {rank}/{world_size}] Starting DDP initialization test")
     print(f"[Rank {rank}] Device: {device}")
@@ -103,11 +103,12 @@ def run_ddp_initialization():
     # Initialize process group
     print(f"[Rank {rank}] Initializing process group...")
     try:
-        dist.init_process_group(backend='nccl')
+        dist.init_process_group(backend="nccl")
         print(f"[Rank {rank}] ✓ Process group initialized")
     except Exception as e:
         print(f"[Rank {rank}] ✗ Process group initialization failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -120,6 +121,7 @@ def run_ddp_initialization():
     except Exception as e:
         print(f"[Rank {rank}] ✗ Model creation failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -131,6 +133,7 @@ def run_ddp_initialization():
     except Exception as e:
         print(f"[Rank {rank}] ✗ DDP wrapping failed: {e}")
         import traceback
+
         traceback.print_exc()
         dist.destroy_process_group()
         return False
@@ -144,6 +147,7 @@ def run_ddp_initialization():
     except Exception as e:
         print(f"[Rank {rank}] ✗ Forward pass failed: {e}")
         import traceback
+
         traceback.print_exc()
         dist.destroy_process_group()
         return False
@@ -157,6 +161,7 @@ def run_ddp_initialization():
     except Exception as e:
         print(f"[Rank {rank}] ✗ Backward pass failed: {e}")
         import traceback
+
         traceback.print_exc()
         dist.destroy_process_group()
         return False
@@ -169,6 +174,7 @@ def run_ddp_initialization():
     except Exception as e:
         print(f"[Rank {rank}] ✗ Barrier synchronization failed: {e}")
         import traceback
+
         traceback.print_exc()
         dist.destroy_process_group()
         return False
@@ -185,7 +191,7 @@ def main():
     """Run small model DDP test."""
 
     # Check environment variables
-    required_vars = ['LOCAL_RANK', 'WORLD_SIZE', 'RANK']
+    required_vars = ["LOCAL_RANK", "WORLD_SIZE", "RANK"]
     missing_vars = [v for v in required_vars if v not in os.environ]
 
     if missing_vars:
@@ -195,9 +201,9 @@ def main():
         print("  torchrun --nproc_per_node=8 tests/diagnostics/test_small_model_ddp.py")
         return 1
 
-    local_rank = int(os.environ['LOCAL_RANK'])
-    world_size = int(os.environ['WORLD_SIZE'])
-    rank = int(os.environ['RANK'])
+    local_rank = int(os.environ["LOCAL_RANK"])
+    world_size = int(os.environ["WORLD_SIZE"])
+    rank = int(os.environ["RANK"])
 
     # Only print header from rank 0
     if rank == 0:
@@ -212,7 +218,7 @@ def main():
     success = run_ddp_initialization()
 
     # Barrier to ensure all ranks finish
-    if 'RANK' in os.environ:
+    if "RANK" in os.environ:
         try:
             if dist.is_initialized():
                 dist.barrier()
@@ -234,5 +240,5 @@ def main():
     return 0 if success else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

@@ -25,6 +25,7 @@ import pytest
 import torch
 import torch.distributed as dist
 
+
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_nccl_availability():
     """Test if NCCL backend is available."""
@@ -92,28 +93,23 @@ def test_process_group_init():
     print("=" * 80)
 
     # Set environment variables for single-process init
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
-    os.environ['WORLD_SIZE'] = '1'
-    os.environ['RANK'] = '0'
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "12355"
+    os.environ["WORLD_SIZE"] = "1"
+    os.environ["RANK"] = "0"
 
     print("Initializing process group with:")
     print(f"  Backend: nccl")
     print(f"  Rank: 0")
     print(f"  World size: 1")
 
-    dist.init_process_group(
-        backend='nccl',
-        init_method='env://',
-        world_size=1,
-        rank=0
-    )
+    dist.init_process_group(backend="nccl", init_method="env://", world_size=1, rank=0)
 
     print("✓ Process group initialized successfully")
 
     # Test basic operations
     print("\nTesting basic tensor operations...")
-    device = torch.device('cuda:0')
+    device = torch.device("cuda:0")
     tensor = torch.randn(10, 10).to(device)
     print(f"  Created tensor on {device}: shape {tensor.shape}")
 
@@ -131,10 +127,10 @@ def test_nvlink_status():
 
     try:
         result = subprocess.run(
-            ['nvidia-smi', 'nvlink', '--status'],
+            ["nvidia-smi", "nvlink", "--status"],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=10,
         )
 
         if result.returncode == 0:
@@ -177,10 +173,10 @@ def test_p2p_access():
         row = []
         for j in range(device_count):
             if i == j:
-                row.append('N/A')
+                row.append("N/A")
             else:
                 can_access = torch.cuda.can_device_access_peer(i, j)
-                row.append('✓' if can_access else '✗')
+                row.append("✓" if can_access else "✗")
         p2p_matrix.append(row)
 
     # Print matrix
@@ -197,7 +193,7 @@ def test_p2p_access():
         print()
 
     # Check if any P2P is enabled
-    p2p_enabled = any(cell == '✓' for row in p2p_matrix for cell in row)
+    p2p_enabled = any(cell == "✓" for row in p2p_matrix for cell in row)
 
     if p2p_enabled:
         print("\n✓ P2P access enabled between some GPU pairs")
@@ -217,12 +213,12 @@ def main():
 
     # Run tests and catch exceptions
     for test_name, test_func in [
-        ('nccl_availability', test_nccl_availability),
-        ('nccl_version', test_nccl_version),
-        ('cuda_devices', test_cuda_devices),
-        ('process_group_init', test_process_group_init),
-        ('nvlink_status', test_nvlink_status),
-        ('p2p_access', test_p2p_access),
+        ("nccl_availability", test_nccl_availability),
+        ("nccl_version", test_nccl_version),
+        ("cuda_devices", test_cuda_devices),
+        ("process_group_init", test_process_group_init),
+        ("nvlink_status", test_nvlink_status),
+        ("p2p_access", test_p2p_access),
     ]:
         try:
             test_func()
@@ -233,6 +229,7 @@ def main():
         except Exception as e:
             print(f"FAIL: {e}")
             import traceback
+
             traceback.print_exc()
             results[test_name] = False
 
@@ -259,5 +256,5 @@ def main():
     return 0 if all_passed else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

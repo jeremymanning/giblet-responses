@@ -13,6 +13,7 @@ from pathlib import Path
 
 # ==================== Path Fixtures ====================
 
+
 @pytest.fixture(scope="session")
 def project_root():
     """Return project root directory."""
@@ -35,6 +36,7 @@ def test_data_dir(project_root):
 
 # ==================== Device Fixtures ====================
 
+
 @pytest.fixture(scope="session")
 def device():
     """Return device for testing (CPU by default)."""
@@ -48,6 +50,7 @@ def use_cuda():
 
 
 # ==================== Data Fixtures ====================
+
 
 @pytest.fixture
 def sample_audio_features():
@@ -83,16 +86,17 @@ def sample_fmri_data():
 
 # ==================== Model Fixtures ====================
 
+
 @pytest.fixture
 def small_model_config():
     """Return configuration for small test model."""
     return {
         "video_dim": 43200,  # 90×160×3
-        "audio_dim": 112,    # EnCodec: 1×112
+        "audio_dim": 112,  # EnCodec: 1×112
         "text_dim": 1024,
-        "hidden_dim": 256,   # Reduced from 2048
+        "hidden_dim": 256,  # Reduced from 2048
         "bottleneck_dim": 128,  # Reduced from 8000
-        "n_voxels": 1000,    # Reduced from 85810
+        "n_voxels": 1000,  # Reduced from 85810
     }
 
 
@@ -116,41 +120,35 @@ def decoder_config(small_model_config):
 
 # ==================== Processor Fixtures ====================
 
+
 @pytest.fixture
 def audio_processor(tmp_path):
     """Create AudioProcessor instance."""
     from giblet.data.audio import AudioProcessor
-    return AudioProcessor(
-        use_encodec=True,
-        encodec_bandwidth=3.0,
-        tr=1.5,
-        device='cpu'
-    )
+
+    return AudioProcessor(use_encodec=True, encodec_bandwidth=3.0, tr=1.5, device="cpu")
 
 
 @pytest.fixture
 def video_processor():
     """Create VideoProcessor instance."""
     from giblet.data.video import VideoProcessor
-    return VideoProcessor(
-        target_height=90,
-        target_width=160,
-        tr=1.5,
-        normalize=True
-    )
+
+    return VideoProcessor(target_height=90, target_width=160, tr=1.5, normalize=True)
 
 
 @pytest.fixture
 def text_processor():
     """Create TextProcessor instance."""
     from giblet.data.text import TextProcessor
+
     return TextProcessor(
-        model_name='sentence-transformers/all-MiniLM-L6-v2',
-        device='cpu'
+        model_name="sentence-transformers/all-MiniLM-L6-v2", device="cpu"
     )
 
 
 # ==================== Cleanup Fixtures ====================
+
 
 @pytest.fixture(autouse=True)
 def cleanup_temp_files(tmp_path):
@@ -161,6 +159,7 @@ def cleanup_temp_files(tmp_path):
 
 
 # ==================== Markers ====================
+
 
 def pytest_configure(config):
     """Register custom markers."""

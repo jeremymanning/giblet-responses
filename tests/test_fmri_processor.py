@@ -39,9 +39,13 @@ class TestFMRIProcessor:
         if not nii_dir.exists():
             pytest.skip(f"Sherlock NIfTI data not found at {nii_dir}")
 
-        files = sorted(nii_dir.glob("sherlock_movie_s*.nii.gz"),
-                      key=lambda f: int(f.name.split('_')[-1].split('.')[0][1:]))
-        assert len(files) == N_SUBJECTS, f"Expected {N_SUBJECTS} files, found {len(files)}"
+        files = sorted(
+            nii_dir.glob("sherlock_movie_s*.nii.gz"),
+            key=lambda f: int(f.name.split("_")[-1].split(".")[0][1:]),
+        )
+        assert (
+            len(files) == N_SUBJECTS
+        ), f"Expected {N_SUBJECTS} files, found {len(files)}"
         return files
 
     @pytest.fixture
@@ -61,7 +65,7 @@ class TestFMRIProcessor:
             assert f.exists(), f"File not found: {f}"
 
         # Check that files are numbered s1 through s17
-        subject_ids = [f.stem.replace('.nii', '').split('_')[-1] for f in nii_files]
+        subject_ids = [f.stem.replace(".nii", "").split("_")[-1] for f in nii_files]
         expected_ids = [f"s{i}" for i in range(1, N_SUBJECTS + 1)]
         assert subject_ids == expected_ids, f"Subject IDs mismatch: {subject_ids}"
 
@@ -79,7 +83,9 @@ class TestFMRIProcessor:
         print(f"Data type: {data.dtype}")
 
         assert data.ndim == 4, f"Expected 4D data, got {data.ndim}D"
-        assert data.shape[:3] == EXPECTED_SHAPE, f"Spatial shape mismatch: {data.shape[:3]}"
+        assert (
+            data.shape[:3] == EXPECTED_SHAPE
+        ), f"Spatial shape mismatch: {data.shape[:3]}"
         print(f"Timepoints: {data.shape[3]}")
 
     def test_create_shared_mask(self, processor, nii_files):
@@ -89,8 +95,12 @@ class TestFMRIProcessor:
         mask_array, mask_img = processor.create_shared_mask(nii_files)
 
         # Check mask shape
-        assert mask_array.shape == EXPECTED_SHAPE, f"Mask shape mismatch: {mask_array.shape}"
-        assert mask_array.dtype == bool, f"Mask should be boolean, got {mask_array.dtype}"
+        assert (
+            mask_array.shape == EXPECTED_SHAPE
+        ), f"Mask shape mismatch: {mask_array.shape}"
+        assert (
+            mask_array.dtype == bool
+        ), f"Mask should be boolean, got {mask_array.dtype}"
 
         # Check number of brain voxels
         n_voxels = np.sum(mask_array)
@@ -99,16 +109,19 @@ class TestFMRIProcessor:
         print(f"Proportion brain: {n_voxels / np.prod(mask_array.shape):.2%}")
 
         # Allow some tolerance in expected voxel count
-        assert abs(n_voxels - EXPECTED_N_VOXELS) < 5000, \
-            f"Expected ~{EXPECTED_N_VOXELS:,} voxels, got {n_voxels:,}"
+        assert (
+            abs(n_voxels - EXPECTED_N_VOXELS) < 5000
+        ), f"Expected ~{EXPECTED_N_VOXELS:,} voxels, got {n_voxels:,}"
 
         # Check that mask is a NIfTI image
         assert isinstance(mask_img, nib.Nifti1Image), "Mask should be NIfTI image"
 
         # Check that coordinates were computed
         assert processor._coordinates is not None, "Coordinates not computed"
-        assert processor._coordinates.shape == (n_voxels, 3), \
-            f"Coordinates shape mismatch: {processor._coordinates.shape}"
+        assert processor._coordinates.shape == (
+            n_voxels,
+            3,
+        ), f"Coordinates shape mismatch: {processor._coordinates.shape}"
 
         print(f"Coordinates shape: {processor._coordinates.shape}")
 
@@ -123,14 +136,14 @@ class TestFMRIProcessor:
         for key, value in info.items():
             print(f"  {key}: {value}")
 
-        assert 'n_voxels' in info
-        assert 'total_voxels' in info
-        assert 'proportion_brain' in info
-        assert 'proportion_zero' in info
-        assert 'mask_shape' in info
+        assert "n_voxels" in info
+        assert "total_voxels" in info
+        assert "proportion_brain" in info
+        assert "proportion_zero" in info
+        assert "mask_shape" in info
 
         # Check that proportion_brain + proportion_zero = 1
-        assert abs(info['proportion_brain'] + info['proportion_zero'] - 1.0) < 1e-6
+        assert abs(info["proportion_brain"] + info["proportion_zero"] - 1.0) < 1e-6
 
     def test_nii_to_features_single_subject(self, processor, nii_files):
         """Test extracting features from a single subject."""
@@ -151,13 +164,19 @@ class TestFMRIProcessor:
         print(f"Metadata shape: {metadata.shape}")
 
         assert features.ndim == 2, f"Features should be 2D, got {features.ndim}D"
-        assert features.shape[0] == MAX_TRS, f"Expected {MAX_TRS} TRs, got {features.shape[0]}"
-        assert coordinates.shape[1] == 3, f"Coordinates should have 3 columns, got {coordinates.shape[1]}"
-        assert features.shape[1] == coordinates.shape[0], "Feature and coordinate dimensions mismatch"
+        assert (
+            features.shape[0] == MAX_TRS
+        ), f"Expected {MAX_TRS} TRs, got {features.shape[0]}"
+        assert (
+            coordinates.shape[1] == 3
+        ), f"Coordinates should have 3 columns, got {coordinates.shape[1]}"
+        assert (
+            features.shape[1] == coordinates.shape[0]
+        ), "Feature and coordinate dimensions mismatch"
 
         # Check metadata
-        assert 'tr_index' in metadata.columns
-        assert 'time' in metadata.columns
+        assert "tr_index" in metadata.columns
+        assert "time" in metadata.columns
         assert len(metadata) == MAX_TRS
 
         # Check that features are not all zeros
@@ -167,7 +186,7 @@ class TestFMRIProcessor:
 
         # Check time values
         expected_times = np.arange(MAX_TRS) * TR
-        np.testing.assert_allclose(metadata['time'].values, expected_times)
+        np.testing.assert_allclose(metadata["time"].values, expected_times)
 
     def test_nii_to_features_all_subjects(self, processor, nii_files):
         """Test extracting features from all subjects."""
@@ -175,7 +194,7 @@ class TestFMRIProcessor:
 
         # Create mask first
         processor.create_shared_mask(nii_files)
-        n_voxels = processor.get_mask_info()['n_voxels']
+        n_voxels = processor.get_mask_info()["n_voxels"]
 
         print(f"Processing {len(nii_files)} subjects...")
 
@@ -185,8 +204,10 @@ class TestFMRIProcessor:
             features, coordinates, metadata = processor.nii_to_features(nii_file)
 
             # Check consistent shape
-            assert features.shape == (MAX_TRS, n_voxels), \
-                f"Inconsistent shape for {nii_file.name}: {features.shape}"
+            assert features.shape == (
+                MAX_TRS,
+                n_voxels,
+            ), f"Inconsistent shape for {nii_file.name}: {features.shape}"
 
             all_features.append(features)
 
@@ -214,10 +235,7 @@ class TestFMRIProcessor:
         # Convert back to NIfTI
         output_path = temp_dir / "roundtrip_test.nii.gz"
         reconstructed_img = processor.features_to_nii(
-            features,
-            coordinates,
-            output_path,
-            template_shape=original_shape
+            features, coordinates, output_path, template_shape=original_shape
         )
 
         print(f"Reconstructed: {output_path}")
@@ -231,8 +249,9 @@ class TestFMRIProcessor:
         print(f"Original truncated shape: {original_data.shape}")
 
         # Compare shapes
-        assert reconstructed_data.shape == original_data.shape, \
-            f"Shape mismatch: {reconstructed_data.shape} vs {original_data.shape}"
+        assert (
+            reconstructed_data.shape == original_data.shape
+        ), f"Shape mismatch: {reconstructed_data.shape} vs {original_data.shape}"
 
         # Get mask
         mask = processor._shared_mask
@@ -248,7 +267,7 @@ class TestFMRIProcessor:
                 original_brain,
                 rtol=1e-5,
                 atol=1e-5,
-                err_msg=f"Brain voxels differ at timepoint {t}"
+                err_msg=f"Brain voxels differ at timepoint {t}",
             )
 
         # Check that non-brain voxels are zero in reconstruction
@@ -285,8 +304,9 @@ class TestFMRIProcessor:
         for features in features_list:
             # Should not be identical to any single subject
             # (extremely unlikely if there's noise)
-            assert not np.allclose(averaged, features), \
-                "Averaged features identical to single subject"
+            assert not np.allclose(
+                averaged, features
+            ), "Averaged features identical to single subject"
 
         # Sanity check: manual averaging should match
         manual_avg = np.mean(np.stack(features_list, axis=0), axis=0)
@@ -302,8 +322,9 @@ class TestFMRIProcessor:
         if not nii_dir.exists():
             pytest.skip(f"Sherlock NIfTI data not found at {nii_dir}")
 
-        features_list, coordinates_list, metadata_list, subject_ids = \
+        features_list, coordinates_list, metadata_list, subject_ids = (
             processor.load_all_subjects(nii_dir)
+        )
 
         # Check counts
         assert len(features_list) == N_SUBJECTS, f"Expected {N_SUBJECTS} subjects"
@@ -322,14 +343,16 @@ class TestFMRIProcessor:
         n_voxels = features_list[0].shape[1]
         for i, features in enumerate(features_list):
             assert features.shape[0] == MAX_TRS, f"Subject {i+1}: wrong number of TRs"
-            assert features.shape[1] == n_voxels, f"Subject {i+1}: wrong number of voxels"
+            assert (
+                features.shape[1] == n_voxels
+            ), f"Subject {i+1}: wrong number of voxels"
 
         # Check that all coordinates are identical
         for i in range(1, len(coordinates_list)):
             np.testing.assert_array_equal(
                 coordinates_list[0],
                 coordinates_list[i],
-                err_msg=f"Subject {i+1} coordinates differ from subject 1"
+                err_msg=f"Subject {i+1} coordinates differ from subject 1",
             )
 
         print("Load all subjects test passed!")
@@ -353,20 +376,14 @@ class TestFMRIProcessor:
         loaded_info = processor2.get_mask_info()
 
         # Compare info
-        assert original_info['n_voxels'] == loaded_info['n_voxels']
-        assert original_info['mask_shape'] == loaded_info['mask_shape']
+        assert original_info["n_voxels"] == loaded_info["n_voxels"]
+        assert original_info["mask_shape"] == loaded_info["mask_shape"]
 
         # Compare masks
-        np.testing.assert_array_equal(
-            processor._shared_mask,
-            processor2._shared_mask
-        )
+        np.testing.assert_array_equal(processor._shared_mask, processor2._shared_mask)
 
         # Compare coordinates
-        np.testing.assert_array_equal(
-            processor._coordinates,
-            processor2._coordinates
-        )
+        np.testing.assert_array_equal(processor._coordinates, processor2._coordinates)
 
         print("Save/load mask test passed!")
 

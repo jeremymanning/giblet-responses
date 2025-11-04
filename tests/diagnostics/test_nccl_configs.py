@@ -35,7 +35,7 @@ NCCL_CONFIGS = [
             "NCCL_SHM_DISABLE": "1",  # Disable shared memory
             "NCCL_P2P_DISABLE": "0",  # Keep P2P enabled
             "NCCL_DEBUG": "INFO",  # Enable debug logging
-        }
+        },
     },
     {
         "name": "Disable P2P and SHM",
@@ -44,7 +44,7 @@ NCCL_CONFIGS = [
             "NCCL_SHM_DISABLE": "1",
             "NCCL_P2P_DISABLE": "1",  # Disable P2P as well
             "NCCL_DEBUG": "INFO",
-        }
+        },
     },
     {
         "name": "Increase Timeouts and Buffers",
@@ -54,7 +54,7 @@ NCCL_CONFIGS = [
             "NCCL_TIMEOUT": "600",  # 10 minutes (default: 30s)
             "NCCL_BUFFSIZE": "33554432",  # 32MB (default: 4MB)
             "NCCL_NTHREADS": "4",  # More NCCL threads
-        }
+        },
     },
     {
         "name": "InfiniBand with Socket Fallback",
@@ -64,7 +64,7 @@ NCCL_CONFIGS = [
             "NCCL_SOCKET_IFNAME": "eth0,ib0",  # Allow fallback
             "NCCL_DEBUG": "INFO",
             "NCCL_SHM_DISABLE": "1",  # Still disable SHM
-        }
+        },
     },
     {
         "name": "Single Node Optimized",
@@ -74,7 +74,7 @@ NCCL_CONFIGS = [
             "NCCL_SINGLE_RING_THRESHOLD": "1",  # Use single ring for small sizes
             "NCCL_SHM_DISABLE": "1",
             "NCCL_ALGO": "Ring",  # Force ring algorithm
-        }
+        },
     },
 ]
 
@@ -100,19 +100,19 @@ def run_ddp_test(config, gpus=8):
     print("=" * 80)
     print(f"Description: {config['desc']}")
     print("\nEnvironment variables:")
-    for key, value in config['env'].items():
+    for key, value in config["env"].items():
         print(f"  {key}={value}")
     print("=" * 80)
 
     # Prepare environment
     env = os.environ.copy()
-    env.update(config['env'])
+    env.update(config["env"])
 
     # Run torchrun with small model test
     cmd = [
         "torchrun",
         f"--nproc_per_node={gpus}",
-        "tests/diagnostics/test_small_model_ddp.py"
+        "tests/diagnostics/test_small_model_ddp.py",
     ]
 
     print(f"\nRunning: {' '.join(cmd)}")
@@ -124,7 +124,7 @@ def run_ddp_test(config, gpus=8):
             env=env,
             capture_output=True,
             text=True,
-            timeout=120  # 2 minute timeout
+            timeout=120,  # 2 minute timeout
         )
 
         # Check if successful
@@ -132,8 +132,8 @@ def run_ddp_test(config, gpus=8):
             print("\n✓ TEST PASSED!")
             print("-" * 80)
             print("STDOUT (last 50 lines):")
-            stdout_lines = result.stdout.split('\n')[-50:]
-            print('\n'.join(stdout_lines))
+            stdout_lines = result.stdout.split("\n")[-50:]
+            print("\n".join(stdout_lines))
             print("-" * 80)
             return True
         else:
@@ -141,12 +141,12 @@ def run_ddp_test(config, gpus=8):
             print(f"Exit code: {result.returncode}")
             print("-" * 80)
             print("STDERR (last 30 lines):")
-            stderr_lines = result.stderr.split('\n')[-30:]
-            print('\n'.join(stderr_lines))
+            stderr_lines = result.stderr.split("\n")[-30:]
+            print("\n".join(stderr_lines))
             print("-" * 80)
             print("STDOUT (last 30 lines):")
-            stdout_lines = result.stdout.split('\n')[-30:]
-            print('\n'.join(stdout_lines))
+            stdout_lines = result.stdout.split("\n")[-30:]
+            print("\n".join(stdout_lines))
             print("-" * 80)
             return False
 
@@ -156,6 +156,7 @@ def run_ddp_test(config, gpus=8):
     except Exception as e:
         print(f"\n✗ TEST ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -181,13 +182,13 @@ def test_nccl_configurations():
         print(f"{'=' * 80}")
 
         success = run_ddp_test(config)
-        results[config['name']] = success
+        results[config["name"]] = success
 
         if success:
             print(f"\n✓ FOUND WORKING CONFIGURATION!")
             print(f"Config name: {config['name']}")
             print(f"\nRecommended environment variables:")
-            for key, value in config['env'].items():
+            for key, value in config["env"].items():
                 print(f"export {key}={value}")
             break  # Stop testing once we find a working config
 
@@ -239,13 +240,13 @@ def main():
         print(f"{'=' * 80}")
 
         success = run_ddp_test(config)
-        results[config['name']] = success
+        results[config["name"]] = success
 
         if success:
             print(f"\n✓ FOUND WORKING CONFIGURATION!")
             print(f"Config name: {config['name']}")
             print(f"\nRecommended environment variables:")
-            for key, value in config['env'].items():
+            for key, value in config["env"].items():
                 print(f"export {key}={value}")
             break  # Stop testing once we find a working config
 
@@ -279,7 +280,7 @@ def main():
         return 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Check we're in the right directory
     if not Path("tests/diagnostics/test_small_model_ddp.py").exists():
         print("ERROR: Must run from giblet-responses root directory")

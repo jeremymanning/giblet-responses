@@ -25,10 +25,10 @@ print("(This is what caused the RuntimeError)")
 
 # Simulate what EnCodec was returning
 old_tr_codes = [
-    torch.randint(0, 1024, (4, 112), dtype=torch.long),   # TR 0: 4 codebooks
-    torch.randint(0, 1024, (0, 112), dtype=torch.long),   # TR 1: 0 codebooks (!)
-    torch.randint(0, 1024, (8, 112), dtype=torch.long),   # TR 2: 8 codebooks
-    torch.randint(0, 1024, (2, 112), dtype=torch.long),   # TR 3: 2 codebooks
+    torch.randint(0, 1024, (4, 112), dtype=torch.long),  # TR 0: 4 codebooks
+    torch.randint(0, 1024, (0, 112), dtype=torch.long),  # TR 1: 0 codebooks (!)
+    torch.randint(0, 1024, (8, 112), dtype=torch.long),  # TR 2: 8 codebooks
+    torch.randint(0, 1024, (2, 112), dtype=torch.long),  # TR 3: 2 codebooks
 ]
 
 print("\nOLD CODE BEHAVIOR:")
@@ -51,7 +51,7 @@ print("=" * 80)
 print("\nApplying the fix: normalize to consistent codebook count...")
 
 expected_codebooks = 8  # For 3.0 kbps bandwidth
-frames_per_tr = 112     # 75 Hz × 1.5s TR
+frames_per_tr = 112  # 75 Hz × 1.5s TR
 
 fixed_tr_codes = []
 
@@ -68,9 +68,13 @@ for i, old_codes in enumerate(old_tr_codes):
         if n_available > 0:
             normalized[:n_available, :] = old_codes[:n_available, :]
         old_codes = normalized
-        print(f"    Fixed:  {old_codes.shape} ({old_codes.shape[0]} codebooks) [normalized]")
+        print(
+            f"    Fixed:  {old_codes.shape} ({old_codes.shape[0]} codebooks) [normalized]"
+        )
     else:
-        print(f"    Fixed:  {old_codes.shape} ({old_codes.shape[0]} codebooks) [no change needed]")
+        print(
+            f"    Fixed:  {old_codes.shape} ({old_codes.shape[0]} codebooks) [no change needed]"
+        )
 
     # Flatten to 1D
     flat = old_codes.reshape(-1)

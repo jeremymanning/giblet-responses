@@ -53,22 +53,23 @@ from giblet.models.decoder import MultimodalDecoder
 # ============================================================================
 
 CONFIG = {
-    'tr': 1.5,  # TR duration in seconds
-    'n_trs': 30,  # Number of TRs to test (45 seconds)
-    'use_encodec': True,
-    'encodec_bandwidth': 3.0,  # kbps
-    'encodec_sample_rate': 24000,  # EnCodec requires 24kHz
-    'target_sample_rate': 12000,  # Downsample for efficiency
-    'audio_encoder_output': 256,  # Audio encoder output dims
-    'bottleneck_dim': 2048,  # Bottleneck dimensions
-    'n_codebooks': 8,  # EnCodec 24kHz at 3.0 kbps uses 8 codebooks
-    'frames_per_tr': 112,  # 75 Hz * 1.5s = 112.5 ≈ 112 frames
-    'device': 'cuda' if torch.cuda.is_available() else 'cpu'
+    "tr": 1.5,  # TR duration in seconds
+    "n_trs": 30,  # Number of TRs to test (45 seconds)
+    "use_encodec": True,
+    "encodec_bandwidth": 3.0,  # kbps
+    "encodec_sample_rate": 24000,  # EnCodec requires 24kHz
+    "target_sample_rate": 12000,  # Downsample for efficiency
+    "audio_encoder_output": 256,  # Audio encoder output dims
+    "bottleneck_dim": 2048,  # Bottleneck dimensions
+    "n_codebooks": 8,  # EnCodec 24kHz at 3.0 kbps uses 8 codebooks
+    "frames_per_tr": 112,  # 75 Hz * 1.5s = 112.5 ≈ 112 frames
+    "device": "cuda" if torch.cuda.is_available() else "cpu",
 }
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 def output_dir(test_data_dir):
@@ -77,9 +78,11 @@ def output_dir(test_data_dir):
     output.mkdir(exist_ok=True)
     return output
 
+
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
+
 
 def calculate_snr(reference: np.ndarray, degraded: np.ndarray) -> float:
     """Calculate Signal-to-Noise Ratio in dB."""
@@ -88,17 +91,19 @@ def calculate_snr(reference: np.ndarray, degraded: np.ndarray) -> float:
     reference = reference[:min_len]
     degraded = degraded[:min_len]
 
-    signal_power = np.sum(reference ** 2)
+    signal_power = np.sum(reference**2)
     noise_power = np.sum((reference - degraded) ** 2)
 
     if noise_power == 0:
-        return float('inf')
+        return float("inf")
 
     snr = 10 * np.log10(signal_power / noise_power)
     return snr
 
 
-def calculate_pesq_metric(reference: np.ndarray, degraded: np.ndarray, sr: int) -> float:
+def calculate_pesq_metric(
+    reference: np.ndarray, degraded: np.ndarray, sr: int
+) -> float:
     """Calculate PESQ (Perceptual Evaluation of Speech Quality)."""
     # Ensure same length
     min_len = min(len(reference), len(degraded))
@@ -109,15 +114,19 @@ def calculate_pesq_metric(reference: np.ndarray, degraded: np.ndarray, sr: int) 
         # PESQ requires 8kHz or 16kHz, resample if needed
         if sr not in [8000, 16000]:
             target_sr = 16000
-            reference_resampled = librosa.resample(reference, orig_sr=sr, target_sr=target_sr)
-            degraded_resampled = librosa.resample(degraded, orig_sr=sr, target_sr=target_sr)
+            reference_resampled = librosa.resample(
+                reference, orig_sr=sr, target_sr=target_sr
+            )
+            degraded_resampled = librosa.resample(
+                degraded, orig_sr=sr, target_sr=target_sr
+            )
         else:
             target_sr = sr
             reference_resampled = reference
             degraded_resampled = degraded
 
         # PESQ mode: 'wb' (wideband) for 16kHz, 'nb' (narrowband) for 8kHz
-        mode = 'wb' if target_sr == 16000 else 'nb'
+        mode = "wb" if target_sr == 16000 else "nb"
         score = pesq(target_sr, reference_resampled, degraded_resampled, mode)
         return score
     except Exception as e:
@@ -125,7 +134,9 @@ def calculate_pesq_metric(reference: np.ndarray, degraded: np.ndarray, sr: int) 
         return -1.0
 
 
-def calculate_stoi_metric(reference: np.ndarray, degraded: np.ndarray, sr: int) -> float:
+def calculate_stoi_metric(
+    reference: np.ndarray, degraded: np.ndarray, sr: int
+) -> float:
     """Calculate STOI (Short-Time Objective Intelligibility)."""
     # Ensure same length
     min_len = min(len(reference), len(degraded))
@@ -140,11 +151,7 @@ def calculate_stoi_metric(reference: np.ndarray, degraded: np.ndarray, sr: int) 
         return -1.0
 
 
-def plot_spectrograms(
-    audio_dict: Dict[str, np.ndarray],
-    sr: int,
-    output_path: Path
-):
+def plot_spectrograms(audio_dict: Dict[str, np.ndarray], sr: int, output_path: Path):
     """Generate spectrogram comparison plot."""
     import matplotlib.pyplot as plt
 
@@ -161,14 +168,14 @@ def plot_spectrograms(
 
         # Plot
         img = librosa.display.specshow(
-            S_db, sr=sr, x_axis='time', y_axis='hz', ax=ax, cmap='viridis'
+            S_db, sr=sr, x_axis="time", y_axis="hz", ax=ax, cmap="viridis"
         )
         ax.set_title(name)
         ax.set_ylim(0, 8000)  # Focus on 0-8kHz range
-        fig.colorbar(img, ax=ax, format='%+2.0f dB')
+        fig.colorbar(img, ax=ax, format="%+2.0f dB")
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"  Saved: {output_path}")
 
@@ -176,6 +183,7 @@ def plot_spectrograms(
 # ============================================================================
 # SIMPLE BOTTLENECK SIMULATION
 # ============================================================================
+
 
 class SimpleBottleneck(nn.Module):
     """Simplified bottleneck for testing (no full autoencoder needed)."""
@@ -196,6 +204,7 @@ class SimpleBottleneck(nn.Module):
 # MAIN TEST
 # ============================================================================
 
+
 @pytest.mark.integration
 @pytest.mark.slow
 @pytest.mark.data
@@ -206,7 +215,9 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
     print("EnCodec End-to-End Pipeline Test")
     print("=" * 80)
     print(f"\nConfiguration:")
-    print(f"  Sampling rate: {CONFIG['target_sample_rate']} Hz (downsampled from 24kHz)")
+    print(
+        f"  Sampling rate: {CONFIG['target_sample_rate']} Hz (downsampled from 24kHz)"
+    )
     print(f"  Bandwidth: {CONFIG['encodec_bandwidth']} kbps")
     print(f"  TRs: {CONFIG['n_trs']} ({CONFIG['n_trs'] * CONFIG['tr']:.1f} seconds)")
     print(f"  Device: {CONFIG['device']}")
@@ -234,22 +245,26 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
 
     # Extract features (EnCodec codes)
     features, metadata = audio_processor.audio_to_features(
-        video_path,
-        max_trs=CONFIG['n_trs'],
-        from_video=True
+        video_path, max_trs=CONFIG["n_trs"], from_video=True
     )
 
     print(f"  ✓ Features shape: {features.shape}")
-    print(f"  ✓ Expected: ({CONFIG['n_trs']}, {CONFIG['n_codebooks']}, {CONFIG['frames_per_tr']})")
+    print(
+        f"  ✓ Expected: ({CONFIG['n_trs']}, {CONFIG['n_codebooks']}, {CONFIG['frames_per_tr']})"
+    )
     print(f"  ✓ Feature dtype: {features.dtype}")
     print(f"  ✓ Value range: [{features.min()}, {features.max()}]")
 
     # Verify dimensions
-    assert features.shape == (CONFIG['n_trs'], CONFIG['n_codebooks'], CONFIG['frames_per_tr']), \
-        f"Unexpected feature shape: {features.shape}"
+    assert features.shape == (
+        CONFIG["n_trs"],
+        CONFIG["n_codebooks"],
+        CONFIG["frames_per_tr"],
+    ), f"Unexpected feature shape: {features.shape}"
     assert features.dtype == np.int64, f"Expected int64, got {features.dtype}"
-    assert features.min() >= 0 and features.max() <= 1023, \
-        f"Codes out of range: [{features.min()}, {features.max()}]"
+    assert (
+        features.min() >= 0 and features.max() <= 1023
+    ), f"Codes out of range: [{features.min()}, {features.max()}]"
 
     print("  ✓ Dimension checks passed")
     print()
@@ -265,19 +280,23 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
     audio_processor.features_to_audio(features, baseline_path)
 
     # Load reconstructed audio
-    baseline_audio, sr_baseline = librosa.load(str(baseline_path), sr=CONFIG['encodec_sample_rate'])
+    baseline_audio, sr_baseline = librosa.load(
+        str(baseline_path), sr=CONFIG["encodec_sample_rate"]
+    )
 
     # Downsample to 12kHz for comparison
     baseline_audio_12k = librosa.resample(
-        baseline_audio, orig_sr=sr_baseline, target_sr=CONFIG['target_sample_rate']
+        baseline_audio, orig_sr=sr_baseline, target_sr=CONFIG["target_sample_rate"]
     )
 
     # Save downsampled version
     baseline_12k_path = output_dir / "baseline_encodec_12khz.wav"
-    sf.write(str(baseline_12k_path), baseline_audio_12k, CONFIG['target_sample_rate'])
+    sf.write(str(baseline_12k_path), baseline_audio_12k, CONFIG["target_sample_rate"])
 
     print(f"  ✓ Baseline audio: {len(baseline_audio)} samples at {sr_baseline} Hz")
-    print(f"  ✓ Downsampled: {len(baseline_audio_12k)} samples at {CONFIG['target_sample_rate']} Hz")
+    print(
+        f"  ✓ Downsampled: {len(baseline_audio_12k)} samples at {CONFIG['target_sample_rate']} Hz"
+    )
     print(f"  ✓ Saved: {baseline_path}")
     print(f"  ✓ Saved: {baseline_12k_path}")
     print()
@@ -291,7 +310,7 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
     # Convert to torch tensors
     # Shape: (n_trs, n_codebooks, frames_per_tr) → (batch, n_codebooks * frames_per_tr)
     # FLATTEN for AudioEncoder (Issue #29: temporal concatenation)
-    batch_codes_3d = torch.from_numpy(features).float().to(CONFIG['device'])
+    batch_codes_3d = torch.from_numpy(features).float().to(CONFIG["device"])
     batch_codes = batch_codes_3d.reshape(batch_codes_3d.shape[0], -1)  # Flatten to 2D
 
     print(f"  ✓ Batch shape (3D): {batch_codes_3d.shape}")
@@ -308,11 +327,11 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
 
     # Initialize encoder (Issue #29: Linear-based with temporal concatenation)
     encoder = AudioEncoder(
-        input_codebooks=CONFIG['n_codebooks'],
-        audio_frames_per_tr=CONFIG['frames_per_tr'],  # Updated parameter name
-        output_features=CONFIG['audio_encoder_output'],
-        use_encodec=True
-    ).to(CONFIG['device'])
+        input_codebooks=CONFIG["n_codebooks"],
+        audio_frames_per_tr=CONFIG["frames_per_tr"],  # Updated parameter name
+        output_features=CONFIG["audio_encoder_output"],
+        use_encodec=True,
+    ).to(CONFIG["device"])
 
     encoder.eval()
 
@@ -324,8 +343,10 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
     print(f"  ✓ Expected: ({CONFIG['n_trs']}, {CONFIG['audio_encoder_output']})")
     print(f"  ✓ Value range: [{encoded.min().item():.3f}, {encoded.max().item():.3f}]")
 
-    assert encoded.shape == (CONFIG['n_trs'], CONFIG['audio_encoder_output']), \
-        f"Unexpected encoded shape: {encoded.shape}"
+    assert encoded.shape == (
+        CONFIG["n_trs"],
+        CONFIG["audio_encoder_output"],
+    ), f"Unexpected encoded shape: {encoded.shape}"
 
     print("  ✓ Encoding successful")
     print()
@@ -338,9 +359,9 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
 
     # Initialize bottleneck
     bottleneck = SimpleBottleneck(
-        input_dim=CONFIG['audio_encoder_output'],
-        bottleneck_dim=CONFIG['bottleneck_dim']
-    ).to(CONFIG['device'])
+        input_dim=CONFIG["audio_encoder_output"],
+        bottleneck_dim=CONFIG["bottleneck_dim"],
+    ).to(CONFIG["device"])
 
     bottleneck.eval()
 
@@ -350,10 +371,14 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
 
     print(f"  ✓ Bottleneck output shape: {bottleneck_out.shape}")
     print(f"  ✓ Expected: ({CONFIG['n_trs']}, {CONFIG['audio_encoder_output']})")
-    print(f"  ✓ Value range: [{bottleneck_out.min().item():.3f}, {bottleneck_out.max().item():.3f}]")
+    print(
+        f"  ✓ Value range: [{bottleneck_out.min().item():.3f}, {bottleneck_out.max().item():.3f}]"
+    )
 
-    assert bottleneck_out.shape == (CONFIG['n_trs'], CONFIG['audio_encoder_output']), \
-        f"Unexpected bottleneck output shape: {bottleneck_out.shape}"
+    assert bottleneck_out.shape == (
+        CONFIG["n_trs"],
+        CONFIG["audio_encoder_output"],
+    ), f"Unexpected bottleneck output shape: {bottleneck_out.shape}"
 
     print("  ✓ Bottleneck pass successful")
     print()
@@ -366,12 +391,14 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
 
     # Initialize decoder
     decoder = MultimodalDecoder(
-        bottleneck_dim=CONFIG['audio_encoder_output'],  # Use encoder output as "bottleneck" for simplicity
-        audio_dim=CONFIG['n_codebooks'],
-        audio_frames_per_tr=CONFIG['frames_per_tr'],
+        bottleneck_dim=CONFIG[
+            "audio_encoder_output"
+        ],  # Use encoder output as "bottleneck" for simplicity
+        audio_dim=CONFIG["n_codebooks"],
+        audio_frames_per_tr=CONFIG["frames_per_tr"],
         use_encodec=True,
-        n_codebooks=CONFIG['n_codebooks']
-    ).to(CONFIG['device'])
+        n_codebooks=CONFIG["n_codebooks"],
+    ).to(CONFIG["device"])
 
     decoder.eval()
 
@@ -381,16 +408,23 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
 
     # Reshape to 3D for features_to_audio compatibility
     decoded_codes = decoded_codes_flat.reshape(
-        CONFIG['n_trs'], CONFIG['n_codebooks'], CONFIG['frames_per_tr']
+        CONFIG["n_trs"], CONFIG["n_codebooks"], CONFIG["frames_per_tr"]
     )
 
     print(f"  ✓ Decoded codes shape (2D): {decoded_codes_flat.shape}")
     print(f"  ✓ Decoded codes shape (3D): {decoded_codes.shape}")
-    print(f"  ✓ Expected: ({CONFIG['n_trs']}, {CONFIG['n_codebooks']}, {CONFIG['frames_per_tr']})")
-    print(f"  ✓ Value range: [{decoded_codes.min().item():.3f}, {decoded_codes.max().item():.3f}]")
+    print(
+        f"  ✓ Expected: ({CONFIG['n_trs']}, {CONFIG['n_codebooks']}, {CONFIG['frames_per_tr']})"
+    )
+    print(
+        f"  ✓ Value range: [{decoded_codes.min().item():.3f}, {decoded_codes.max().item():.3f}]"
+    )
 
-    assert decoded_codes.shape == (CONFIG['n_trs'], CONFIG['n_codebooks'], CONFIG['frames_per_tr']), \
-        f"Unexpected decoded shape: {decoded_codes.shape}"
+    assert decoded_codes.shape == (
+        CONFIG["n_trs"],
+        CONFIG["n_codebooks"],
+        CONFIG["frames_per_tr"],
+    ), f"Unexpected decoded shape: {decoded_codes.shape}"
 
     # Ensure codes are in valid range [0, 1023]
     decoded_codes = torch.clamp(decoded_codes, 0, 1023)
@@ -413,20 +447,28 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
 
     # Load reconstructed audio
     reconstructed_audio, sr_recon = librosa.load(
-        str(reconstructed_path), sr=CONFIG['encodec_sample_rate']
+        str(reconstructed_path), sr=CONFIG["encodec_sample_rate"]
     )
 
     # Downsample to 12kHz
     reconstructed_audio_12k = librosa.resample(
-        reconstructed_audio, orig_sr=sr_recon, target_sr=CONFIG['target_sample_rate']
+        reconstructed_audio, orig_sr=sr_recon, target_sr=CONFIG["target_sample_rate"]
     )
 
     # Save downsampled version
     reconstructed_12k_path = output_dir / "reconstructed_12khz.wav"
-    sf.write(str(reconstructed_12k_path), reconstructed_audio_12k, CONFIG['target_sample_rate'])
+    sf.write(
+        str(reconstructed_12k_path),
+        reconstructed_audio_12k,
+        CONFIG["target_sample_rate"],
+    )
 
-    print(f"  ✓ Reconstructed audio: {len(reconstructed_audio)} samples at {sr_recon} Hz")
-    print(f"  ✓ Downsampled: {len(reconstructed_audio_12k)} samples at {CONFIG['target_sample_rate']} Hz")
+    print(
+        f"  ✓ Reconstructed audio: {len(reconstructed_audio)} samples at {sr_recon} Hz"
+    )
+    print(
+        f"  ✓ Downsampled: {len(reconstructed_audio_12k)} samples at {CONFIG['target_sample_rate']} Hz"
+    )
     print(f"  ✓ Saved: {reconstructed_path}")
     print(f"  ✓ Saved: {reconstructed_12k_path}")
     print()
@@ -440,21 +482,21 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
     # Load original audio for comparison
     original_audio, sr_orig = librosa.load(
         str(video_path),
-        sr=CONFIG['encodec_sample_rate'],
-        duration=CONFIG['n_trs'] * CONFIG['tr'],
-        mono=True
+        sr=CONFIG["encodec_sample_rate"],
+        duration=CONFIG["n_trs"] * CONFIG["tr"],
+        mono=True,
     )
 
     # Downsample original to 12kHz
     original_audio_12k = librosa.resample(
-        original_audio, orig_sr=sr_orig, target_sr=CONFIG['target_sample_rate']
+        original_audio, orig_sr=sr_orig, target_sr=CONFIG["target_sample_rate"]
     )
 
     # Save original for comparison
     original_path = output_dir / "original_30trs.wav"
     original_12k_path = output_dir / "original_12khz.wav"
     sf.write(str(original_path), original_audio, sr_orig)
-    sf.write(str(original_12k_path), original_audio_12k, CONFIG['target_sample_rate'])
+    sf.write(str(original_12k_path), original_audio_12k, CONFIG["target_sample_rate"])
 
     print(f"  ✓ Original audio: {len(original_audio)} samples at {sr_orig} Hz")
     print(f"  ✓ Saved: {original_path}")
@@ -466,9 +508,13 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
 
     # Baseline (EnCodec direct)
     print("  Baseline (EnCodec direct, 12kHz):")
-    metrics['baseline_snr'] = calculate_snr(original_audio_12k, baseline_audio_12k)
-    metrics['baseline_pesq'] = calculate_pesq_metric(original_audio_12k, baseline_audio_12k, CONFIG['target_sample_rate'])
-    metrics['baseline_stoi'] = calculate_stoi_metric(original_audio_12k, baseline_audio_12k, CONFIG['target_sample_rate'])
+    metrics["baseline_snr"] = calculate_snr(original_audio_12k, baseline_audio_12k)
+    metrics["baseline_pesq"] = calculate_pesq_metric(
+        original_audio_12k, baseline_audio_12k, CONFIG["target_sample_rate"]
+    )
+    metrics["baseline_stoi"] = calculate_stoi_metric(
+        original_audio_12k, baseline_audio_12k, CONFIG["target_sample_rate"]
+    )
 
     print(f"    SNR:  {metrics['baseline_snr']:6.2f} dB")
     print(f"    PESQ: {metrics['baseline_pesq']:6.3f}")
@@ -477,9 +523,13 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
 
     # Reconstructed (through encoder/decoder)
     print("  Reconstructed (through bottleneck, 12kHz):")
-    metrics['recon_snr'] = calculate_snr(original_audio_12k, reconstructed_audio_12k)
-    metrics['recon_pesq'] = calculate_pesq_metric(original_audio_12k, reconstructed_audio_12k, CONFIG['target_sample_rate'])
-    metrics['recon_stoi'] = calculate_stoi_metric(original_audio_12k, reconstructed_audio_12k, CONFIG['target_sample_rate'])
+    metrics["recon_snr"] = calculate_snr(original_audio_12k, reconstructed_audio_12k)
+    metrics["recon_pesq"] = calculate_pesq_metric(
+        original_audio_12k, reconstructed_audio_12k, CONFIG["target_sample_rate"]
+    )
+    metrics["recon_stoi"] = calculate_stoi_metric(
+        original_audio_12k, reconstructed_audio_12k, CONFIG["target_sample_rate"]
+    )
 
     print(f"    SNR:  {metrics['recon_snr']:6.2f} dB")
     print(f"    PESQ: {metrics['recon_pesq']:6.3f}")
@@ -488,9 +538,9 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
 
     # Quality degradation
     print("  Quality degradation (baseline → reconstructed):")
-    stoi_drop = metrics['baseline_stoi'] - metrics['recon_stoi']
-    pesq_drop = metrics['baseline_pesq'] - metrics['recon_pesq']
-    snr_drop = metrics['baseline_snr'] - metrics['recon_snr']
+    stoi_drop = metrics["baseline_stoi"] - metrics["recon_stoi"]
+    pesq_drop = metrics["baseline_pesq"] - metrics["recon_pesq"]
+    snr_drop = metrics["baseline_snr"] - metrics["recon_snr"]
 
     print(f"    STOI drop: {stoi_drop:+.3f} (target: <0.1)")
     print(f"    PESQ drop: {pesq_drop:+.3f}")
@@ -514,25 +564,27 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
     try:
         plot_spectrograms(
             {
-                'Original (12kHz)': original_audio_12k,
-                'Baseline EnCodec (12kHz)': baseline_audio_12k,
-                'Through Bottleneck (12kHz)': reconstructed_audio_12k
+                "Original (12kHz)": original_audio_12k,
+                "Baseline EnCodec (12kHz)": baseline_audio_12k,
+                "Through Bottleneck (12kHz)": reconstructed_audio_12k,
             },
-            sr=CONFIG['target_sample_rate'],
-            output_path=output_dir / "spectrograms_comparison.png"
+            sr=CONFIG["target_sample_rate"],
+            output_path=output_dir / "spectrograms_comparison.png",
         )
     except Exception as e:
         print(f"  ⚠ Warning: Spectrogram generation failed: {e}")
 
     # Save metrics to file
     metrics_path = output_dir / "metrics_comparison.txt"
-    with open(metrics_path, 'w') as f:
+    with open(metrics_path, "w") as f:
         f.write("EnCodec End-to-End Pipeline Test - Quality Metrics\n")
         f.write("=" * 60 + "\n\n")
         f.write("Configuration:\n")
         f.write(f"  Sampling rate: {CONFIG['target_sample_rate']} Hz (12kHz)\n")
         f.write(f"  Bandwidth: {CONFIG['encodec_bandwidth']} kbps\n")
-        f.write(f"  Duration: {CONFIG['n_trs'] * CONFIG['tr']:.1f} seconds ({CONFIG['n_trs']} TRs)\n\n")
+        f.write(
+            f"  Duration: {CONFIG['n_trs'] * CONFIG['tr']:.1f} seconds ({CONFIG['n_trs']} TRs)\n\n"
+        )
 
         f.write("Baseline (EnCodec direct, 12kHz):\n")
         f.write(f"  SNR:  {metrics['baseline_snr']:6.2f} dB\n")

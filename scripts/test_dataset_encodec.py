@@ -35,21 +35,22 @@ def test_encodec_dataset():
 
     try:
         dataset = MultimodalDataset(
-            data_dir='data',
+            data_dir="data",
             subjects=1,  # Single subject for testing
             split=None,
             apply_hrf=False,  # Disable HRF for faster testing
-            mode='per_subject',
+            mode="per_subject",
             preprocess=True,
             tr=1.5,
             max_trs=10,  # Only 10 TRs for quick test
             use_encodec=True,
             encodec_bandwidth=3.0,
-            encodec_sample_rate=12000
+            encodec_sample_rate=12000,
         )
     except Exception as e:
         print(f"\n✗ Failed to load dataset: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -63,23 +64,33 @@ def test_encodec_dataset():
         sample = dataset[0]
         print(f"   ✓ Sample retrieved successfully")
         print(f"   Keys: {list(sample.keys())}")
-        print(f"   Video shape: {sample['video'].shape}, dtype: {sample['video'].dtype}")
-        print(f"   Audio shape: {sample['audio'].shape}, dtype: {sample['audio'].dtype}")
+        print(
+            f"   Video shape: {sample['video'].shape}, dtype: {sample['video'].dtype}"
+        )
+        print(
+            f"   Audio shape: {sample['audio'].shape}, dtype: {sample['audio'].dtype}"
+        )
         print(f"   Text shape: {sample['text'].shape}, dtype: {sample['text'].dtype}")
         print(f"   fMRI shape: {sample['fmri'].shape}, dtype: {sample['fmri'].dtype}")
 
         # Verify audio is discrete codes
-        if sample['audio'].dtype == torch.int64:
+        if sample["audio"].dtype == torch.int64:
             print(f"   ✓ Audio is discrete codes (int64)")
             print(f"   Code range: [{sample['audio'].min()}, {sample['audio'].max()}]")
-            if sample['audio'].ndim == 2:
-                n_codebooks, frames_per_tr = sample['audio'].shape
-                print(f"   ✓ Shape is (n_codebooks={n_codebooks}, frames_per_tr={frames_per_tr})")
+            if sample["audio"].ndim == 2:
+                n_codebooks, frames_per_tr = sample["audio"].shape
+                print(
+                    f"   ✓ Shape is (n_codebooks={n_codebooks}, frames_per_tr={frames_per_tr})"
+                )
                 expected_frames = int(1.5 * 12000 / 320)  # ~56 frames
                 if abs(frames_per_tr - expected_frames) <= 2:  # Allow small tolerance
-                    print(f"   ✓ Frames per TR (~{frames_per_tr}) matches expected (~{expected_frames})")
+                    print(
+                        f"   ✓ Frames per TR (~{frames_per_tr}) matches expected (~{expected_frames})"
+                    )
                 else:
-                    print(f"   ⚠ Frames per TR ({frames_per_tr}) != expected ({expected_frames})")
+                    print(
+                        f"   ⚠ Frames per TR ({frames_per_tr}) != expected ({expected_frames})"
+                    )
             else:
                 print(f"   ⚠ Unexpected audio shape: {sample['audio'].shape}")
         else:
@@ -89,6 +100,7 @@ def test_encodec_dataset():
     except Exception as e:
         print(f"\n✗ Failed to get sample: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -102,6 +114,7 @@ def test_encodec_dataset():
     except Exception as e:
         print(f"\n✗ Failed to get batch: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -122,19 +135,20 @@ def test_mel_dataset():
 
     try:
         dataset = MultimodalDataset(
-            data_dir='data',
+            data_dir="data",
             subjects=1,
             split=None,
             apply_hrf=False,
-            mode='per_subject',
+            mode="per_subject",
             preprocess=True,
             tr=1.5,
             max_trs=10,
-            use_encodec=False  # Use mel spectrograms
+            use_encodec=False,  # Use mel spectrograms
         )
     except Exception as e:
         print(f"\n✗ Failed to load dataset: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -147,10 +161,12 @@ def test_mel_dataset():
     try:
         sample = dataset[0]
         print(f"   ✓ Sample retrieved successfully")
-        print(f"   Audio shape: {sample['audio'].shape}, dtype: {sample['audio'].dtype}")
+        print(
+            f"   Audio shape: {sample['audio'].shape}, dtype: {sample['audio'].dtype}"
+        )
 
         # Verify audio is float
-        if sample['audio'].dtype == torch.float32:
+        if sample["audio"].dtype == torch.float32:
             print(f"   ✓ Audio is continuous (float32)")
         else:
             print(f"   ⚠ Expected float32, got {sample['audio'].dtype}")
@@ -158,6 +174,7 @@ def test_mel_dataset():
     except Exception as e:
         print(f"\n✗ Failed to get sample: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -177,21 +194,22 @@ def test_cross_subject_mode():
 
     try:
         dataset = MultimodalDataset(
-            data_dir='data',
-            subjects='all',  # All subjects
+            data_dir="data",
+            subjects="all",  # All subjects
             split=None,
             apply_hrf=False,
-            mode='cross_subject',  # Average across subjects
+            mode="cross_subject",  # Average across subjects
             preprocess=True,
             tr=1.5,
             max_trs=10,
             use_encodec=True,
             encodec_bandwidth=3.0,
-            encodec_sample_rate=12000
+            encodec_sample_rate=12000,
         )
     except Exception as e:
         print(f"\n✗ Failed to load dataset: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -203,7 +221,7 @@ def test_cross_subject_mode():
         sample = dataset[0]
         print(f"   ✓ Sample retrieved successfully")
         print(f"   Audio shape: {sample['audio'].shape}")
-        if 'subject_id' in sample:
+        if "subject_id" in sample:
             print(f"   ⚠ subject_id should not be in cross_subject mode")
             return False
         else:
@@ -211,6 +229,7 @@ def test_cross_subject_mode():
     except Exception as e:
         print(f"\n✗ Failed to get sample: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -257,5 +276,5 @@ def main():
     return 0 if all_passed else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

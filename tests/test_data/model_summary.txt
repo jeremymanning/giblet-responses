@@ -1,0 +1,67 @@
+================================================================================
+Model Architecture Summary
+================================================================================
+Total layers: 55
+Total parameters: 2,043,556,210
+================================================================================
+
+Layer Name                               Type                      Parameters
+--------------------------------------------------------------------------------
+encoder.video_encoder.fc1                Linear                   176,951,296
+encoder.video_encoder.bn1                BatchNorm1d                    8,192
+encoder.video_encoder.fc2                Linear                     8,390,656
+encoder.video_encoder.bn2                BatchNorm1d                    4,096
+encoder.video_encoder.fc3                Linear                     2,098,176
+encoder.video_encoder.bn3                BatchNorm1d                    2,048
+encoder.audio_encoder.fc1                Linear                     1,049,088
+encoder.audio_encoder.bn1                BatchNorm1d                    1,024
+encoder.audio_encoder.fc2                Linear                       131,328
+encoder.audio_encoder.bn2                BatchNorm1d                      512
+encoder.text_encoder.fc1                 Linear                       524,800
+encoder.text_encoder.bn1                 BatchNorm1d                    1,024
+encoder.text_encoder.fc2                 Linear                       131,328
+encoder.text_encoder.bn2                 BatchNorm1d                      512
+encoder.feature_conv.0                   Linear                     2,360,832
+encoder.feature_conv.1                   BatchNorm1d                    3,072
+encoder.layer5.0                         Linear                     6,295,552
+encoder.layer5.1                         BatchNorm1d                    8,192
+encoder.layer6.0                         Linear                    32,776,000
+encoder.layer6.1                         BatchNorm1d                   16,000
+encoder.layer7_bottleneck.0              Linear                    16,386,048
+encoder.layer7_bottleneck.1              BatchNorm1d                    4,096
+encoder.bottleneck_to_voxels.0           Linear                    33,570,816
+encoder.bottleneck_to_voxels.1           BatchNorm1d                   32,768
+encoder.bottleneck_to_voxels.4           Linear                 1,405,996,850
+decoder.layer8.0                         Linear                    16,392,000
+decoder.layer8.1                         BatchNorm1d                   16,000
+decoder.layer9.0                         Linear                    32,772,096
+decoder.layer9.1                         BatchNorm1d                    8,192
+decoder.layer10.0                        Linear                     8,390,656
+decoder.layer10.1                        BatchNorm1d                    4,096
+decoder.layer11.0                        Linear                     3,147,264
+decoder.layer11.1                        BatchNorm1d                    3,072
+decoder.layer12_video.0                  Linear                     3,147,776
+decoder.layer12_video.1                  BatchNorm1d                    4,096
+decoder.layer12_video.4                  Linear                     8,392,704
+decoder.layer12_video.5                  BatchNorm1d                    8,192
+decoder.layer12_audio.0                  Linear                     3,147,776
+decoder.layer12_audio.1                  BatchNorm1d                    4,096
+decoder.layer12_audio.4                  Linear                     4,196,352
+decoder.layer12_audio.5                  BatchNorm1d                    4,096
+decoder.audio_temporal_upsample.0        ConvTranspose1d           16,779,264
+decoder.audio_temporal_upsample.1        BatchNorm1d                    4,096
+decoder.audio_temporal_upsample.3        ConvTranspose1d           16,779,264
+decoder.audio_temporal_upsample.4        BatchNorm1d                    4,096
+decoder.audio_temporal_upsample.6        ConvTranspose1d           16,779,264
+decoder.audio_temporal_upsample.7        BatchNorm1d                    4,096
+decoder.audio_temporal_adjust            Conv1d                    12,584,960
+decoder.layer12_text.0                   Linear                     1,573,888
+decoder.layer12_text.1                   BatchNorm1d                    2,048
+decoder.layer12_text.4                   Linear                     1,049,600
+decoder.layer12_text.5                   BatchNorm1d                    2,048
+decoder.layer13_video.0                  Linear                   176,990,400
+decoder.layer13_audio                    Linear                    33,570,816
+decoder.layer13_text                     Linear                     1,049,600
+================================================================================
+Total parameters: 2,043,556,210
+================================================================================

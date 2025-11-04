@@ -20,17 +20,14 @@ def test_sherlock_extraction(data_dir):
     print("TESTING ENCODEC FIX WITH SHERLOCK DATA")
     print("=" * 80)
 
-    video_path = data_dir / 'stimuli_Sherlock.m4v'
+    video_path = data_dir / "stimuli_Sherlock.m4v"
     if not video_path.exists():
         pytest.skip(f"Sherlock video not found at {video_path}")
 
     # Initialize processor
     print("\n[1] Initializing AudioProcessor...")
     processor = AudioProcessor(
-        use_encodec=True,
-        encodec_bandwidth=3.0,
-        tr=1.5,
-        device='cpu'
+        use_encodec=True, encodec_bandwidth=3.0, tr=1.5, device="cpu"
     )
     print(f"   EnCodec enabled")
 
@@ -44,9 +41,7 @@ def test_sherlock_extraction(data_dir):
 
         try:
             features, metadata = processor.audio_to_features(
-                str(video_path),
-                max_trs=max_trs,
-                from_video=True
+                str(video_path), max_trs=max_trs, from_video=True
             )
 
             print(f"   SUCCESS!")
@@ -59,11 +54,15 @@ def test_sherlock_extraction(data_dir):
                 print(f"      Correct shape: {expected_shape}")
                 results.append((max_trs, True, None))
             else:
-                print(f"      Wrong shape! Expected {expected_shape}, got {features.shape}")
+                print(
+                    f"      Wrong shape! Expected {expected_shape}, got {features.shape}"
+                )
                 results.append((max_trs, False, f"Shape mismatch"))
 
             # Verify all TRs have consistent dimensions
-            all_consistent = all(features[i].shape == features[0].shape for i in range(len(features)))
+            all_consistent = all(
+                features[i].shape == features[0].shape for i in range(len(features))
+            )
             if all_consistent:
                 print(f"      All TRs consistent")
             else:

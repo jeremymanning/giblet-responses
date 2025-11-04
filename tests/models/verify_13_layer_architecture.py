@@ -65,9 +65,9 @@ print(f"✓ Bottleneck dimension: {encoder.bottleneck_dim} (Layer 7)")
 print(f"✓ Pooled dimension: {encoder.pooled_dim} (Layer 3)")
 
 # Check layer existence
-assert hasattr(encoder, 'layer5'), "Layer 5 not found"
-assert hasattr(encoder, 'layer6'), "Layer 6 not found"
-assert hasattr(encoder, 'layer7_bottleneck'), "Layer 7 not found"
+assert hasattr(encoder, "layer5"), "Layer 5 not found"
+assert hasattr(encoder, "layer6"), "Layer 6 not found"
+assert hasattr(encoder, "layer7_bottleneck"), "Layer 7 not found"
 
 print("✓ All encoder layers present")
 

@@ -9,27 +9,27 @@ from .encoder import (
     AudioEncoder,
     TextEncoder,
     MultimodalEncoder,
-    create_encoder
+    create_encoder,
 )
 from .decoder import MultimodalDecoder
 from .autoencoder import (
     MultimodalAutoencoder,
     create_autoencoder,
-    prepare_for_distributed
+    prepare_for_distributed,
 )
 
 # Alias for backwards compatibility
 SherlockAutoencoder = MultimodalAutoencoder
 
 __all__ = [
-    'VideoEncoder',
-    'AudioEncoder',
-    'TextEncoder',
-    'MultimodalEncoder',
-    'create_encoder',
-    'MultimodalDecoder',
-    'MultimodalAutoencoder',
-    'SherlockAutoencoder',  # Backwards compatibility alias
-    'create_autoencoder',
-    'prepare_for_distributed'
+    "VideoEncoder",
+    "AudioEncoder",
+    "TextEncoder",
+    "MultimodalEncoder",
+    "create_encoder",
+    "MultimodalDecoder",
+    "MultimodalAutoencoder",
+    "SherlockAutoencoder",  # Backwards compatibility alias
+    "create_autoencoder",
+    "prepare_for_distributed",
 ]

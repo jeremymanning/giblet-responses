@@ -19,9 +19,9 @@ from giblet.training.losses import (
     FMRIMatchingLoss,
     CombinedAutoEncoderLoss,
     compute_correlation_metric,
-    compute_r2_score
+    compute_r2_score,
 )
-from giblet.data.dataset import SherlockDataset
+from giblet.data.dataset import MultimodalDataset
 
 
 class DummyDataset(torch.utils.data.Dataset):
@@ -40,12 +40,12 @@ class DummyDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         return {
-            'video': torch.randn(3, 90, 160),  # (C, H, W) format for convolutions
-            'audio': torch.randn(self.audio_dim),
-            'text': torch.randn(self.text_dim),
-            'fmri': torch.randn(self.fmri_dim),
-            'subject_id': 1,
-            'tr_index': idx
+            "video": torch.randn(3, 90, 160),  # (C, H, W) format for convolutions
+            "audio": torch.randn(self.audio_dim),
+            "text": torch.randn(self.text_dim),
+            "fmri": torch.randn(self.fmri_dim),
+            "subject_id": 1,
+            "tr_index": idx,
         }
 
 
@@ -56,9 +56,7 @@ class TestLossFunctions:
     def test_reconstruction_loss(self):
         """Test ReconstructionLoss."""
         loss_fn = ReconstructionLoss(
-            video_weight=1.0,
-            audio_weight=1.0,
-            text_weight=1.0
+            video_weight=1.0, audio_weight=1.0, text_weight=1.0
         )
 
         batch_size = 4
@@ -70,31 +68,32 @@ class TestLossFunctions:
         text_target = torch.randn(batch_size, 1024)
 
         loss, loss_dict = loss_fn(
-            video_recon, video_target,
-            audio_recon, audio_target,
-            text_recon, text_target
+            video_recon,
+            video_target,
+            audio_recon,
+            audio_target,
+            text_recon,
+            text_target,
         )
 
         # Check loss is computed
         assert loss.item() > 0
-        assert 'video_loss' in loss_dict
-        assert 'audio_loss' in loss_dict
-        assert 'text_loss' in loss_dict
-        assert 'reconstruction_loss' in loss_dict
+        assert "video_loss" in loss_dict
+        assert "audio_loss" in loss_dict
+        assert "text_loss" in loss_dict
+        assert "reconstruction_loss" in loss_dict
 
         # Check loss is sum of components
         total = (
-            loss_dict['video_loss'] +
-            loss_dict['audio_loss'] +
-            loss_dict['text_loss']
+            loss_dict["video_loss"] + loss_dict["audio_loss"] + loss_dict["text_loss"]
         )
-        assert torch.allclose(loss_dict['reconstruction_loss'], total)
+        assert torch.allclose(loss_dict["reconstruction_loss"], total)
 
         print("✓ ReconstructionLoss works correctly")
 
     def test_fmri_loss_mse(self):
         """Test FMRIMatchingLoss with MSE."""
-        loss_fn = FMRIMatchingLoss(loss_type='mse')
+        loss_fn = FMRIMatchingLoss(loss_type="mse")
 
         batch_size = 4
         predicted = torch.randn(batch_size, 85810)
@@ -107,7 +106,7 @@ class TestLossFunctions:
 
     def test_fmri_loss_correlation(self):
         """Test FMRIMatchingLoss with correlation."""
-        loss_fn = FMRIMatchingLoss(loss_type='correlation')
+        loss_fn = FMRIMatchingLoss(loss_type="correlation")
 
         batch_size = 4
         predicted = torch.randn(batch_size, 85810)
@@ -125,15 +124,15 @@ class TestLossFunctions:
             fmri_weight=1.0,
             video_weight=1.0,
             audio_weight=1.0,
-            text_weight=1.0
+            text_weight=1.0,
         )
 
         batch_size = 4
         outputs = {
-            'video_recon': torch.randn(batch_size, 43200),
-            'audio_recon': torch.randn(batch_size, 128),
-            'text_recon': torch.randn(batch_size, 1024),
-            'predicted_fmri': torch.randn(batch_size, 85810)
+            "video_recon": torch.randn(batch_size, 43200),
+            "audio_recon": torch.randn(batch_size, 128),
+            "text_recon": torch.randn(batch_size, 1024),
+            "predicted_fmri": torch.randn(batch_size, 85810),
         }
 
         video_target = torch.randn(batch_size, 43200)
@@ -146,12 +145,12 @@ class TestLossFunctions:
         )
 
         assert loss.item() > 0
-        assert 'total_loss' in loss_dict
-        assert 'reconstruction_loss' in loss_dict
-        assert 'fmri_loss' in loss_dict
-        assert 'video_loss' in loss_dict
-        assert 'audio_loss' in loss_dict
-        assert 'text_loss' in loss_dict
+        assert "total_loss" in loss_dict
+        assert "reconstruction_loss" in loss_dict
+        assert "fmri_loss" in loss_dict
+        assert "video_loss" in loss_dict
+        assert "audio_loss" in loss_dict
+        assert "text_loss" in loss_dict
 
         print("✓ CombinedAutoEncoderLoss works correctly")
 
@@ -211,7 +210,7 @@ class TestTrainer:
             audio_mels=128,
             text_dim=1024,
             n_voxels=85810,
-            bottleneck_dim=8000
+            bottleneck_dim=8000,
         )
 
     @pytest.fixture
@@ -232,7 +231,7 @@ class TestTrainer:
             checkpoint_dir=temp_dir,
             log_dir=temp_dir,
             use_mixed_precision=False,  # Disable for CPU testing
-            num_workers=0  # Disable multiprocessing for testing
+            num_workers=0,  # Disable multiprocessing for testing
         )
 
         trainer = Trainer(
@@ -240,7 +239,7 @@ class TestTrainer:
             train_dataset=train_dataset,
             val_dataset=val_dataset,
             config=config,
-            distributed=False
+            distributed=False,
         )
 
         assert trainer.model is not None
@@ -262,7 +261,7 @@ class TestTrainer:
             checkpoint_dir=temp_dir,
             log_dir=temp_dir,
             use_mixed_precision=False,
-            num_workers=0
+            num_workers=0,
         )
 
         trainer = Trainer(
@@ -270,7 +269,7 @@ class TestTrainer:
             train_dataset=train_dataset,
             val_dataset=val_dataset,
             config=config,
-            distributed=False
+            distributed=False,
         )
 
         # Get initial parameters
@@ -280,10 +279,10 @@ class TestTrainer:
         model.train()
         batch = next(iter(trainer.train_loader))
 
-        video = batch['video']
-        audio = batch['audio']
-        text = batch['text']
-        fmri = batch['fmri']
+        video = batch["video"]
+        audio = batch["audio"]
+        text = batch["text"]
+        fmri = batch["fmri"]
 
         # Forward pass
         outputs = model(video, audio, text, fmri_target=fmri)
@@ -293,9 +292,7 @@ class TestTrainer:
         video_flat = video.view(batch_size, -1)
 
         # Compute loss
-        loss, loss_dict = trainer.criterion(
-            outputs, video_flat, audio, text, fmri
-        )
+        loss, loss_dict = trainer.criterion(outputs, video_flat, audio, text, fmri)
 
         # Backward pass
         trainer.optimizer.zero_grad()
@@ -328,7 +325,7 @@ class TestTrainer:
             use_mixed_precision=True,
             num_workers=0,
             validate_every=1,
-            save_every=1
+            save_every=1,
         )
 
         trainer = Trainer(
@@ -336,21 +333,21 @@ class TestTrainer:
             train_dataset=train_dataset,
             val_dataset=val_dataset,
             config=config,
-            distributed=False
+            distributed=False,
         )
 
         # Train
         history = trainer.train()
 
         # Check history
-        assert len(history['train_history']) == 2  # 2 epochs
-        assert len(history['val_history']) == 2
-        assert history['best_val_loss'] < float('inf')
+        assert len(history["train_history"]) == 2  # 2 epochs
+        assert len(history["val_history"]) == 2
+        assert history["best_val_loss"] < float("inf")
 
         # Check checkpoints were saved
         checkpoint_dir = Path(temp_dir)
-        assert (checkpoint_dir / 'checkpoint_epoch_1.pt').exists()
-        assert (checkpoint_dir / 'final_checkpoint.pt').exists()
+        assert (checkpoint_dir / "checkpoint_epoch_1.pt").exists()
+        assert (checkpoint_dir / "final_checkpoint.pt").exists()
 
         print("✓ Training loop works on GPU")
 
@@ -367,7 +364,7 @@ class TestTrainer:
             use_mixed_precision=False,  # No FP16 on CPU
             num_workers=0,
             validate_every=1,
-            save_every=1
+            save_every=1,
         )
 
         trainer = Trainer(
@@ -375,20 +372,20 @@ class TestTrainer:
             train_dataset=train_dataset,
             val_dataset=val_dataset,
             config=config,
-            distributed=False
+            distributed=False,
         )
 
         # Train
         history = trainer.train()
 
         # Check history
-        assert len(history['train_history']) == 2
-        assert len(history['val_history']) == 2
-        assert history['best_val_loss'] < float('inf')
+        assert len(history["train_history"]) == 2
+        assert len(history["val_history"]) == 2
+        assert history["best_val_loss"] < float("inf")
 
         # Check losses decreased (or at least training ran)
-        assert all('total_loss' in h for h in history['train_history'])
-        assert all('total_loss' in h for h in history['val_history'])
+        assert all("total_loss" in h for h in history["train_history"])
+        assert all("total_loss" in h for h in history["val_history"])
 
         print("✓ Training loop works on CPU")
 
@@ -403,7 +400,7 @@ class TestTrainer:
             checkpoint_dir=temp_dir,
             log_dir=temp_dir,
             use_mixed_precision=False,
-            num_workers=0
+            num_workers=0,
         )
 
         # Train for 1 epoch
@@ -412,19 +409,21 @@ class TestTrainer:
             train_dataset=train_dataset,
             val_dataset=val_dataset,
             config=config,
-            distributed=False
+            distributed=False,
         )
 
         # Save initial state
-        initial_params = {name: param.clone() for name, param in model.named_parameters()}
+        initial_params = {
+            name: param.clone() for name, param in model.named_parameters()
+        }
 
         # Train one epoch
         trainer1.current_epoch = 0
         train_metrics = trainer1._train_epoch()
 
         # Save checkpoint
-        checkpoint_path = Path(temp_dir) / 'test_checkpoint.pt'
-        trainer1.save_checkpoint(epoch=1, val_loss=train_metrics['total_loss'])
+        checkpoint_path = Path(temp_dir) / "test_checkpoint.pt"
+        trainer1.save_checkpoint(epoch=1, val_loss=train_metrics["total_loss"])
 
         # Create new model and trainer
         model2 = create_autoencoder(
@@ -433,7 +432,7 @@ class TestTrainer:
             audio_mels=128,
             text_dim=1024,
             n_voxels=85810,
-            bottleneck_dim=8000
+            bottleneck_dim=8000,
         )
 
         config2 = TrainingConfig(
@@ -444,7 +443,7 @@ class TestTrainer:
             log_dir=temp_dir,
             use_mixed_precision=False,
             num_workers=0,
-            resume_from=str(checkpoint_path)
+            resume_from=str(checkpoint_path),
         )
 
         trainer2 = Trainer(
@@ -452,7 +451,7 @@ class TestTrainer:
             train_dataset=train_dataset,
             val_dataset=val_dataset,
             config=config2,
-            distributed=False
+            distributed=False,
         )
 
         # Check loaded state
@@ -460,8 +459,7 @@ class TestTrainer:
 
         # Check parameters match
         for (name1, param1), (name2, param2) in zip(
-            model.named_parameters(),
-            model2.named_parameters()
+            model.named_parameters(), model2.named_parameters()
         ):
             assert name1 == name2
             assert torch.allclose(param1, param2, atol=1e-6)
@@ -481,7 +479,7 @@ class TestTrainer:
             use_mixed_precision=False,
             num_workers=0,
             early_stopping_patience=2,
-            validate_every=1
+            validate_every=1,
         )
 
         trainer = Trainer(
@@ -489,7 +487,7 @@ class TestTrainer:
             train_dataset=train_dataset,
             val_dataset=val_dataset,
             config=config,
-            distributed=False
+            distributed=False,
         )
 
         # Manually set validation loss to simulate no improvement
@@ -519,29 +517,29 @@ def test_training_with_real_data(data_dir):
     This test will be skipped if data is not available.
     """
     # Check if data exists
-    if not (data_dir / 'sherlock_nii').exists():
+    if not (data_dir / "sherlock_nii").exists():
         pytest.skip("Real data not available")
 
     print("\nTesting with real Sherlock data...")
 
     # Create small dataset (single subject, limited TRs)
     try:
-        train_dataset = SherlockDataset(
+        train_dataset = MultimodalDataset(
             data_dir=data_dir,
             subjects=1,  # Single subject
-            split='train',
+            split="train",
             apply_hrf=True,
-            mode='per_subject',
-            max_trs=50  # Only 50 TRs for quick test
+            mode="per_subject",
+            max_trs=50,  # Only 50 TRs for quick test
         )
 
-        val_dataset = SherlockDataset(
+        val_dataset = MultimodalDataset(
             data_dir=data_dir,
             subjects=1,
-            split='val',
+            split="val",
             apply_hrf=True,
-            mode='per_subject',
-            max_trs=50
+            mode="per_subject",
+            max_trs=50,
         )
     except Exception as e:
         pytest.skip(f"Could not load data: {e}")
@@ -558,7 +556,7 @@ def test_training_with_real_data(data_dir):
             checkpoint_dir=temp_dir,
             log_dir=temp_dir,
             use_mixed_precision=False,
-            num_workers=0
+            num_workers=0,
         )
 
         # Create trainer
@@ -567,20 +565,20 @@ def test_training_with_real_data(data_dir):
             train_dataset=train_dataset,
             val_dataset=val_dataset,
             config=config,
-            distributed=False
+            distributed=False,
         )
 
         # Train
         history = trainer.train()
 
         # Check training completed
-        assert len(history['train_history']) == 2
-        assert len(history['val_history']) == 2
+        assert len(history["train_history"]) == 2
+        assert len(history["val_history"]) == 2
 
         print("✓ Training works with real data")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run tests
     print("\n" + "=" * 80)
     print("Testing Training System")
@@ -607,16 +605,26 @@ if __name__ == '__main__':
         train_dataset = DummyDataset(n_samples=80)
         val_dataset = DummyDataset(n_samples=20)
 
-        trainer_tests.test_trainer_initialization(model, (train_dataset, val_dataset), temp_dir)
-        trainer_tests.test_single_training_step(model, (train_dataset, val_dataset), temp_dir)
-        trainer_tests.test_training_loop_cpu(model, (train_dataset, val_dataset), temp_dir)
-        trainer_tests.test_checkpoint_save_load(model, (train_dataset, val_dataset), temp_dir)
+        trainer_tests.test_trainer_initialization(
+            model, (train_dataset, val_dataset), temp_dir
+        )
+        trainer_tests.test_single_training_step(
+            model, (train_dataset, val_dataset), temp_dir
+        )
+        trainer_tests.test_training_loop_cpu(
+            model, (train_dataset, val_dataset), temp_dir
+        )
+        trainer_tests.test_checkpoint_save_load(
+            model, (train_dataset, val_dataset), temp_dir
+        )
         trainer_tests.test_early_stopping(model, (train_dataset, val_dataset), temp_dir)
 
         # Test GPU if available
         if torch.cuda.is_available():
             print("\nTesting on GPU...")
-            trainer_tests.test_training_loop_gpu(model, (train_dataset, val_dataset), temp_dir)
+            trainer_tests.test_training_loop_gpu(
+                model, (train_dataset, val_dataset), temp_dir
+            )
 
     finally:
         shutil.rmtree(temp_dir)

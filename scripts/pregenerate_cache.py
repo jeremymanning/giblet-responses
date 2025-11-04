@@ -23,9 +23,10 @@ from giblet.data.dataset import MultimodalDataset
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Pre-generate dataset cache')
-    parser.add_argument('--config', type=str, required=True,
-                        help='Path to training config YAML file')
+    parser = argparse.ArgumentParser(description="Pre-generate dataset cache")
+    parser.add_argument(
+        "--config", type=str, required=True, help="Path to training config YAML file"
+    )
     args = parser.parse_args()
 
     # Load config
@@ -33,7 +34,7 @@ def main():
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
-    with open(config_path, 'r') as f:
+    with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
     print("=" * 80)
@@ -43,21 +44,21 @@ def main():
     print()
 
     # Extract dataset parameters from config
-    data_config = config.get('data', {})
-    model_config = config.get('model', {})
+    data_config = config.get("data", {})
+    model_config = config.get("model", {})
 
     dataset_params = {
-        'data_dir': data_config.get('data_dir', 'data/'),
-        'subjects': data_config.get('subjects', 'all'),
-        'split': None,  # Load full dataset for caching
-        'apply_hrf': data_config.get('apply_hrf', True),
-        'mode': data_config.get('mode', 'per_subject'),
-        'tr': data_config.get('tr', 1.5),
-        'use_encodec': model_config.get('use_encodec', True),
-        'encodec_bandwidth': 3.0,
-        'encodec_sample_rate': 12000,
-        'frame_skip': data_config.get('frame_skip', 2),
-        'preprocess': True  # Force preprocessing
+        "data_dir": data_config.get("data_dir", "data/"),
+        "subjects": data_config.get("subjects", "all"),
+        "split": None,  # Load full dataset for caching
+        "apply_hrf": data_config.get("apply_hrf", True),
+        "mode": data_config.get("mode", "per_subject"),
+        "tr": data_config.get("tr", 1.5),
+        "use_encodec": model_config.get("use_encodec", True),
+        "encodec_bandwidth": 3.0,
+        "encodec_sample_rate": 12000,
+        "frame_skip": data_config.get("frame_skip", 2),
+        "preprocess": True,  # Force preprocessing
     }
 
     print("Dataset parameters:")
@@ -83,5 +84,5 @@ def main():
     print("=" * 80)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

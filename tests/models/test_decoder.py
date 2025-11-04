@@ -11,8 +11,6 @@ from giblet.models.decoder import MultimodalDecoder
 
 
 @pytest.mark.unit
-
-
 class TestMultimodalDecoder:
     """Test suite for MultimodalDecoder."""
 
@@ -26,7 +24,7 @@ class TestMultimodalDecoder:
             audio_frames_per_tr=65,
             text_dim=1024,
             dropout=0.3,
-            use_encodec=False  # Use mel spectrograms (legacy)
+            use_encodec=False,  # Use mel spectrograms (legacy)
         )
 
     @pytest.fixture
@@ -39,7 +37,7 @@ class TestMultimodalDecoder:
             audio_frames_per_tr=65,
             text_dim=1024,
             dropout=0.1,
-            use_encodec=False  # Use mel spectrograms (legacy)
+            use_encodec=False,  # Use mel spectrograms (legacy)
         )
 
     def test_initialization(self, decoder):
@@ -52,16 +50,16 @@ class TestMultimodalDecoder:
         assert decoder.audio_frames_per_tr == 65
 
         # Check all layers exist
-        assert hasattr(decoder, 'layer8')
-        assert hasattr(decoder, 'layer9')
-        assert hasattr(decoder, 'layer10')
-        assert hasattr(decoder, 'layer11')
-        assert hasattr(decoder, 'layer12_video')
-        assert hasattr(decoder, 'layer12_audio')
-        assert hasattr(decoder, 'layer12_text')
-        assert hasattr(decoder, 'layer13_video')
-        assert hasattr(decoder, 'layer13_audio')
-        assert hasattr(decoder, 'layer13_text')
+        assert hasattr(decoder, "layer8")
+        assert hasattr(decoder, "layer9")
+        assert hasattr(decoder, "layer10")
+        assert hasattr(decoder, "layer11")
+        assert hasattr(decoder, "layer12_video")
+        assert hasattr(decoder, "layer12_audio")
+        assert hasattr(decoder, "layer12_text")
+        assert hasattr(decoder, "layer13_video")
+        assert hasattr(decoder, "layer13_audio")
+        assert hasattr(decoder, "layer13_text")
 
     def test_forward_pass_single_sample(self, decoder):
         """Test forward pass with single sample."""
@@ -169,9 +167,16 @@ class TestMultimodalDecoder:
 
         # Check all expected keys exist
         expected_keys = [
-            'layer8', 'layer9', 'layer10', 'layer11',
-            'layer12_video', 'layer12_audio', 'layer12_text',
-            'video', 'audio', 'text'
+            "layer8",
+            "layer9",
+            "layer10",
+            "layer11",
+            "layer12_video",
+            "layer12_audio",
+            "layer12_text",
+            "video",
+            "audio",
+            "text",
         ]
         for key in expected_keys:
             assert key in outputs
@@ -179,28 +184,28 @@ class TestMultimodalDecoder:
             assert outputs[key].shape[0] == batch_size
 
         # Check final outputs match expected shapes (note: get_layer_outputs may return intermediate values)
-        assert outputs['video'].shape == (batch_size, 43200)
+        assert outputs["video"].shape == (batch_size, 43200)
         # Audio output from get_layer_outputs might be before temporal upsampling
-        assert outputs['text'].shape == (batch_size, 1024)
+        assert outputs["text"].shape == (batch_size, 1024)
 
     def test_count_parameters(self, decoder):
         """Test parameter counting."""
         param_counts = decoder.count_parameters()
 
         # Check all components have parameters
-        assert param_counts['layer8'] > 0
-        assert param_counts['layer9'] > 0
-        assert param_counts['layer10'] > 0
-        assert param_counts['layer11'] > 0
-        assert param_counts['layer12_video'] > 0
-        assert param_counts['layer12_audio'] > 0
-        assert param_counts['layer12_text'] > 0
-        assert param_counts['layer13_video'] > 0
-        assert param_counts['layer13_audio'] > 0
-        assert param_counts['layer13_text'] > 0
+        assert param_counts["layer8"] > 0
+        assert param_counts["layer9"] > 0
+        assert param_counts["layer10"] > 0
+        assert param_counts["layer11"] > 0
+        assert param_counts["layer12_video"] > 0
+        assert param_counts["layer12_audio"] > 0
+        assert param_counts["layer12_text"] > 0
+        assert param_counts["layer13_video"] > 0
+        assert param_counts["layer13_audio"] > 0
+        assert param_counts["layer13_text"] > 0
 
         # Check total is reasonable
-        assert param_counts['total'] > 0
+        assert param_counts["total"] > 0
 
         print(f"\nDecoder parameter counts:")
         for key, count in param_counts.items():
@@ -212,10 +217,7 @@ class TestMultimodalDecoder:
         batch_size = 4
         bottleneck_dim = 2048
 
-        decoder = MultimodalDecoder(
-            bottleneck_dim=bottleneck_dim,
-            use_encodec=False
-        )
+        decoder = MultimodalDecoder(bottleneck_dim=bottleneck_dim, use_encodec=False)
 
         bottleneck = torch.randn(batch_size, bottleneck_dim)
         decoder.eval()
@@ -232,9 +234,7 @@ class TestMultimodalDecoder:
 
         # Test mel spectrogram mode
         mel_decoder = MultimodalDecoder(
-            bottleneck_dim=bottleneck_dim,
-            use_encodec=False,
-            audio_frames_per_tr=65
+            bottleneck_dim=bottleneck_dim, use_encodec=False, audio_frames_per_tr=65
         )
         mel_decoder.eval()
         bottleneck = torch.randn(batch_size, bottleneck_dim)
@@ -245,9 +245,7 @@ class TestMultimodalDecoder:
 
         # Test EnCodec mode
         encodec_decoder = MultimodalDecoder(
-            bottleneck_dim=bottleneck_dim,
-            use_encodec=True,
-            audio_frames_per_tr=112
+            bottleneck_dim=bottleneck_dim, use_encodec=True, audio_frames_per_tr=112
         )
         encodec_decoder.eval()
         video, audio, text = encodec_decoder(bottleneck)
@@ -403,10 +401,7 @@ class TestDecoderIntegration:
         # Standard bottleneck dimension
         batch_size = 16
 
-        decoder = MultimodalDecoder(
-            bottleneck_dim=2048,
-            use_encodec=False
-        )
+        decoder = MultimodalDecoder(bottleneck_dim=2048, use_encodec=False)
 
         decoder.eval()
         bottleneck = torch.randn(batch_size, 2048)
@@ -423,10 +418,7 @@ class TestDecoderIntegration:
         n_trs = 100
         bottleneck_dim = 2048
 
-        decoder = MultimodalDecoder(
-            bottleneck_dim=bottleneck_dim,
-            use_encodec=False
-        )
+        decoder = MultimodalDecoder(bottleneck_dim=bottleneck_dim, use_encodec=False)
 
         decoder.eval()
 
@@ -440,7 +432,7 @@ class TestDecoderIntegration:
         text_individual = []
 
         for i in range(n_trs):
-            v, a, t = decoder(bottleneck_batch[i:i+1])
+            v, a, t = decoder(bottleneck_batch[i : i + 1])
             video_individual.append(v)
             audio_individual.append(a)
             text_individual.append(t)
@@ -456,10 +448,7 @@ class TestDecoderIntegration:
 
     def test_memory_efficiency(self):
         """Test decoder can process without excessive memory."""
-        decoder = MultimodalDecoder(
-            bottleneck_dim=5000,
-            use_encodec=False
-        )
+        decoder = MultimodalDecoder(bottleneck_dim=5000, use_encodec=False)
 
         decoder.eval()
 
@@ -475,6 +464,6 @@ class TestDecoderIntegration:
         assert text.shape == (batch_size, 1024)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run tests with verbose output
-    pytest.main([__file__, '-v', '-s'])
+    pytest.main([__file__, "-v", "-s"])

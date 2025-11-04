@@ -20,11 +20,11 @@ def test_text_embedding_mock(data_dir, tmp_path):
     """Run embedding and recovery test with mock embeddings."""
 
     # Setup paths
-    annotations_path = data_dir / 'annotations.xlsx'
+    annotations_path = data_dir / "annotations.xlsx"
     if not annotations_path.exists():
         pytest.skip(f"Annotations not found at {annotations_path}")
 
-    output_path = tmp_path / 'text_embedding_validation.txt'
+    output_path = tmp_path / "text_embedding_validation.txt"
 
     print("=" * 70)
     print("TEXT EMBEDDING & RECONSTRUCTION TEST (SIMULATION)")
@@ -43,18 +43,15 @@ def test_text_embedding_mock(data_dir, tmp_path):
     print()
 
     # Get text columns
-    text_columns = ['Scene Details - A Level', 'Name - All', 'Location']
+    text_columns = ["Scene Details - A Level", "Name - All", "Location"]
     available_cols = [col for col in text_columns if col in annotations.columns]
     print(f"Text columns to use: {available_cols}")
 
     # Combine text columns
     print("Combining text columns...")
-    combined = annotations[available_cols].fillna('').astype(str)
-    combined_text = combined.apply(
-        lambda row: '; '.join([x for x in row if x]),
-        axis=1
-    )
-    combined_text = combined_text.replace('', np.nan)
+    combined = annotations[available_cols].fillna("").astype(str)
+    combined_text = combined.apply(lambda row: "; ".join([x for x in row if x]), axis=1)
+    combined_text = combined_text.replace("", np.nan)
 
     valid_mask = combined_text.notna()
     valid_annotations = annotations[valid_mask].copy().reset_index(drop=True)
@@ -66,8 +63,8 @@ def test_text_embedding_mock(data_dir, tmp_path):
     # Show first few annotations for reference
     print("First 5 annotations:")
     for i in range(min(5, len(valid_text))):
-        start_time = valid_annotations.iloc[i]['Start Time (s)']
-        end_time = valid_annotations.iloc[i]['End Time (s)']
+        start_time = valid_annotations.iloc[i]["Start Time (s)"]
+        end_time = valid_annotations.iloc[i]["End Time (s)"]
         text = valid_text[i]
         print(f"  [{i}] {start_time:.1f}s - {end_time:.1f}s: {text[:50]}...")
     print()
@@ -76,7 +73,9 @@ def test_text_embedding_mock(data_dir, tmp_path):
     print("Simulating text embeddings (1024-dim random vectors)...")
     embedding_dim = 1024
     np.random.seed(42)  # For reproducibility
-    segment_embeddings = np.random.randn(len(valid_text), embedding_dim).astype(np.float32)
+    segment_embeddings = np.random.randn(len(valid_text), embedding_dim).astype(
+        np.float32
+    )
 
     # Normalize embeddings
     norms = np.linalg.norm(segment_embeddings, axis=1, keepdims=True)
@@ -95,8 +94,8 @@ def test_text_embedding_mock(data_dir, tmp_path):
     segment_to_trs = {}  # Which TRs each segment contributes to
 
     for seg_idx, (_, row) in enumerate(valid_annotations.iterrows()):
-        start_time = row['Start Time (s)']
-        end_time = row['End Time (s)']
+        start_time = row["Start Time (s)"]
+        end_time = row["End Time (s)"]
 
         # Find TRs that overlap with this segment
         start_tr = int(np.floor(start_time / tr_duration))
@@ -177,7 +176,7 @@ def test_text_embedding_mock(data_dir, tmp_path):
 
     # Write results to file
     print("Writing results to file...")
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         f.write("=" * 70 + "\n")
         f.write("TEXT EMBEDDING & RECONSTRUCTION VALIDATION\n")
         f.write("=" * 70 + "\n\n")
@@ -192,14 +191,22 @@ def test_text_embedding_mock(data_dir, tmp_path):
         f.write("SUMMARY\n")
         f.write("-" * 70 + "\n")
         if total_with_data > 0:
-            f.write(f"Exact matches: {matches}/{total_with_data} ({matches/total_with_data*100:.1f}%)\n")
-            f.write(f"Partial matches: {partial_matches}/{total_with_data} ({partial_matches/total_with_data*100:.1f}%)\n")
-            f.write(f"Total match rate: {(matches + partial_matches)/total_with_data*100:.1f}%\n\n")
+            f.write(
+                f"Exact matches: {matches}/{total_with_data} ({matches/total_with_data*100:.1f}%)\n"
+            )
+            f.write(
+                f"Partial matches: {partial_matches}/{total_with_data} ({partial_matches/total_with_data*100:.1f}%)\n"
+            )
+            f.write(
+                f"Total match rate: {(matches + partial_matches)/total_with_data*100:.1f}%\n\n"
+            )
         else:
             f.write("No TRs with data to test\n\n")
 
         f.write("NOTE: Using random embeddings for simulation. With real BGE model,\n")
-        f.write("expect much higher match rates since semantically similar texts will\n")
+        f.write(
+            "expect much higher match rates since semantically similar texts will\n"
+        )
         f.write("have higher cosine similarities.\n\n")
 
         f.write("=" * 70 + "\n")
@@ -251,7 +258,9 @@ def test_text_embedding_mock(data_dir, tmp_path):
             top_3_indices = np.argsort(sim_scores)[-3:][::-1]
             f.write(f"TOP 3 SIMILARITIES:\n")
             for rank, idx in enumerate(top_3_indices, 1):
-                f.write(f"  [{rank}] {sim_scores[idx]:.4f} - {valid_text[idx][:60]}...\n")
+                f.write(
+                    f"  [{rank}] {sim_scores[idx]:.4f} - {valid_text[idx][:60]}...\n"
+                )
 
             f.write("\n")
 
@@ -268,15 +277,21 @@ def test_text_embedding_mock(data_dir, tmp_path):
     print("TEST COMPLETE")
     print("=" * 70)
     if total_with_data > 0:
-        print(f"Exact match rate: {matches}/{total_with_data} ({matches/total_with_data*100:.1f}%)")
-        print(f"Partial match rate: {(matches + partial_matches)/total_with_data*100:.1f}%")
+        print(
+            f"Exact match rate: {matches}/{total_with_data} ({matches/total_with_data*100:.1f}%)"
+        )
+        print(
+            f"Partial match rate: {(matches + partial_matches)/total_with_data*100:.1f}%"
+        )
     else:
         print("No data to test")
     print(f"File ready for manual review: {output_path}")
     print()
 
     print("NOTE: This is a simulation using random embeddings.")
-    print("Real BGE model would produce much better matches due to semantic similarity.")
+    print(
+        "Real BGE model would produce much better matches due to semantic similarity."
+    )
     print()
 
     # Assert we got results

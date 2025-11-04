@@ -9,12 +9,14 @@ Run this on the cluster where EnCodec can load properly.
 """
 
 import sys
-sys.path.insert(0, '.')
+
+sys.path.insert(0, ".")
 
 from giblet.data.audio import AudioProcessor
 import numpy as np
 import traceback
 from pathlib import Path
+
 
 def verify_single_test(processor, max_trs, audio_path):
     """Test extraction of specified number of TRs"""
@@ -24,9 +26,7 @@ def verify_single_test(processor, max_trs, audio_path):
         print(f"{'='*60}")
 
         features, metadata = processor.audio_to_features(
-            audio_path,
-            max_trs=max_trs,
-            from_video=True
+            audio_path, max_trs=max_trs, from_video=True
         )
 
         # Verify shape
@@ -87,7 +87,14 @@ def verify_single_test(processor, max_trs, audio_path):
         print(f"✓ Metadata rows: {len(metadata)}")
 
         # Check metadata fields
-        required_fields = ['tr_index', 'start_time', 'end_time', 'n_frames', 'n_codebooks', 'encoding_mode']
+        required_fields = [
+            "tr_index",
+            "start_time",
+            "end_time",
+            "n_frames",
+            "n_codebooks",
+            "encoding_mode",
+        ]
         missing_fields = [f for f in required_fields if f not in metadata.columns]
 
         if missing_fields:
@@ -97,18 +104,18 @@ def verify_single_test(processor, max_trs, audio_path):
         print(f"✓ Metadata fields: {list(metadata.columns)}")
 
         # Verify n_frames and n_codebooks are consistent
-        if metadata['n_frames'].nunique() != 1:
+        if metadata["n_frames"].nunique() != 1:
             print(f"✗ FAIL: Inconsistent n_frames in metadata")
             print(f"  Values: {metadata['n_frames'].unique()}")
             return False
 
-        if metadata['n_codebooks'].nunique() != 1:
+        if metadata["n_codebooks"].nunique() != 1:
             print(f"✗ FAIL: Inconsistent n_codebooks in metadata")
             print(f"  Values: {metadata['n_codebooks'].unique()}")
             return False
 
-        n_frames = metadata['n_frames'].iloc[0]
-        n_codebooks = metadata['n_codebooks'].iloc[0]
+        n_frames = metadata["n_frames"].iloc[0]
+        n_codebooks = metadata["n_codebooks"].iloc[0]
         expected_flat_dim = n_frames * n_codebooks
 
         print(f"✓ Metadata consistency:")
@@ -140,7 +147,7 @@ def main():
     print("=" * 80)
 
     # Check if Sherlock video exists
-    audio_path = Path('data/stimuli_Sherlock.m4v')
+    audio_path = Path("data/stimuli_Sherlock.m4v")
     if not audio_path.exists():
         print(f"\n✗ ERROR: Sherlock video not found at {audio_path}")
         print("Please ensure the video is available before running this script.")
@@ -159,10 +166,7 @@ def main():
 
     try:
         processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            sample_rate=12000,
-            tr=1.5
+            use_encodec=True, encodec_bandwidth=3.0, sample_rate=12000, tr=1.5
         )
         print("\n✓ AudioProcessor initialized")
     except Exception as e:

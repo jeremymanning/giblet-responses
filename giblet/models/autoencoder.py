@@ -81,7 +81,7 @@ class MultimodalAutoencoder(nn.Module):
         use_encodec: bool = False,  # NEW: Use EnCodec discrete codes
         audio_frames_per_tr: int = 65,  # NEW: Frames per TR (65 mel, 112 EnCodec)
         gradient_checkpointing: bool = False,  # NEW (Issue #30): Enable gradient checkpointing for memory optimization
-        video_frames_per_tr: int = 19  # NEW (Issue #30): Video frames per TR after frame skipping
+        video_frames_per_tr: int = 19,  # NEW (Issue #30): Video frames per TR after frame skipping
     ):
         super().__init__()
 
@@ -113,7 +113,7 @@ class MultimodalAutoencoder(nn.Module):
             text_features=text_features,
             use_encodec=use_encodec,  # Pass through from autoencoder
             gradient_checkpointing=gradient_checkpointing,  # Pass through gradient checkpointing flag
-            video_frames_per_tr=video_frames_per_tr  # Pass through video frames per TR
+            video_frames_per_tr=video_frames_per_tr,  # Pass through video frames per TR
         )
 
         # Decoder: bottleneck → reconstructed stimulus
@@ -126,7 +126,7 @@ class MultimodalAutoencoder(nn.Module):
             audio_frames_per_tr=audio_frames_per_tr,
             text_dim=text_dim,
             dropout=decoder_dropout,
-            use_encodec=use_encodec
+            use_encodec=use_encodec,
         )
 
     def forward(
@@ -134,7 +134,7 @@ class MultimodalAutoencoder(nn.Module):
         video: torch.Tensor,
         audio: torch.Tensor,
         text: torch.Tensor,
-        fmri_target: Optional[torch.Tensor] = None
+        fmri_target: Optional[torch.Tensor] = None,
     ) -> Dict[str, torch.Tensor]:
         """
         Forward pass through full autoencoder.
@@ -174,11 +174,11 @@ class MultimodalAutoencoder(nn.Module):
         video_recon, audio_recon, text_recon = self.decoder(bottleneck)
 
         outputs = {
-            'bottleneck': bottleneck,
-            'predicted_fmri': predicted_fmri,
-            'video_recon': video_recon,
-            'audio_recon': audio_recon,
-            'text_recon': text_recon
+            "bottleneck": bottleneck,
+            "predicted_fmri": predicted_fmri,
+            "video_recon": video_recon,
+            "audio_recon": audio_recon,
+            "text_recon": text_recon,
         }
 
         # Compute losses if in training mode
@@ -191,7 +191,7 @@ class MultimodalAutoencoder(nn.Module):
             # TODO: Update decoder for temporal concatenation (separate from Issue #29)
             if video.dim() == 2 and video.size(1) != video_recon.size(1):
                 # Temporal concatenation mode: truncate target to match decoder output
-                video_flat = video[:, :video_recon.size(1)]
+                video_flat = video[:, : video_recon.size(1)]
             else:
                 # Single frame mode: (B, 3, H, W) → (B, 3*H*W)
                 video_flat = video.view(batch_size, -1)
@@ -224,25 +224,25 @@ class MultimodalAutoencoder(nn.Module):
             text_loss = F.mse_loss(text_recon, text)
             reconstruction_loss = video_loss + audio_loss + text_loss
 
-            outputs['reconstruction_loss'] = reconstruction_loss
-            outputs['video_loss'] = video_loss
-            outputs['audio_loss'] = audio_loss
-            outputs['text_loss'] = text_loss
+            outputs["reconstruction_loss"] = reconstruction_loss
+            outputs["video_loss"] = video_loss
+            outputs["audio_loss"] = audio_loss
+            outputs["text_loss"] = text_loss
 
             # fMRI matching loss (if target provided)
             if fmri_target is not None:
                 fmri_loss = F.mse_loss(predicted_fmri, fmri_target)
-                outputs['fmri_loss'] = fmri_loss
+                outputs["fmri_loss"] = fmri_loss
 
                 # Total loss (weighted combination)
                 total_loss = (
-                    self.reconstruction_weight * reconstruction_loss +
-                    self.fmri_weight * fmri_loss
+                    self.reconstruction_weight * reconstruction_loss
+                    + self.fmri_weight * fmri_loss
                 )
-                outputs['total_loss'] = total_loss
+                outputs["total_loss"] = total_loss
             else:
                 # Only reconstruction loss if no fMRI target
-                outputs['total_loss'] = self.reconstruction_weight * reconstruction_loss
+                outputs["total_loss"] = self.reconstruction_weight * reconstruction_loss
 
         return outputs
 
@@ -251,7 +251,7 @@ class MultimodalAutoencoder(nn.Module):
         video: torch.Tensor,
         audio: torch.Tensor,
         text: torch.Tensor,
-        return_voxels: bool = False
+        return_voxels: bool = False,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         """
         Encode stimulus to bottleneck and optionally fMRI voxels.
@@ -277,8 +277,7 @@ class MultimodalAutoencoder(nn.Module):
         return self.encoder(video, audio, text, return_voxels=return_voxels)
 
     def decode_only(
-        self,
-        bottleneck: torch.Tensor
+        self, bottleneck: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Decode bottleneck to reconstructed stimulus.
@@ -308,6 +307,7 @@ class MultimodalAutoencoder(nn.Module):
         param_dict : dict
             Dictionary with parameter counts
         """
+
         def count_params(module):
             return sum(p.numel() for p in module.parameters())
 
@@ -315,11 +315,11 @@ class MultimodalAutoencoder(nn.Module):
         decoder_params = self.decoder.count_parameters()
 
         return {
-            'encoder': encoder_params['total'],
-            'encoder_breakdown': encoder_params,
-            'decoder': decoder_params['total'],
-            'decoder_breakdown': decoder_params,
-            'total': count_params(self)
+            "encoder": encoder_params["total"],
+            "encoder_breakdown": encoder_params,
+            "decoder": decoder_params["total"],
+            "decoder_breakdown": decoder_params,
+            "total": count_params(self),
         }
 
     def save_checkpoint(
@@ -328,7 +328,7 @@ class MultimodalAutoencoder(nn.Module):
         epoch: int,
         optimizer_state: Optional[dict] = None,
         loss: Optional[float] = None,
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
     ):
         """
         Save model checkpoint.
@@ -347,41 +347,39 @@ class MultimodalAutoencoder(nn.Module):
             Additional metadata to save
         """
         checkpoint = {
-            'epoch': epoch,
-            'model_state_dict': self.state_dict(),
-            'architecture': {
-                'video_height': self.video_height,
-                'video_width': self.video_width,
-                'audio_mels': self.audio_mels,
-                'text_dim': self.text_dim,
-                'n_voxels': self.n_voxels,
-                'bottleneck_dim': self.bottleneck_dim,
-                'reconstruction_weight': self.reconstruction_weight,
-                'fmri_weight': self.fmri_weight,
-                'use_encodec': self.use_encodec,
-                'audio_frames_per_tr': self.audio_frames_per_tr,
-                'video_frames_per_tr': self.video_frames_per_tr
-            }
+            "epoch": epoch,
+            "model_state_dict": self.state_dict(),
+            "architecture": {
+                "video_height": self.video_height,
+                "video_width": self.video_width,
+                "audio_mels": self.audio_mels,
+                "text_dim": self.text_dim,
+                "n_voxels": self.n_voxels,
+                "bottleneck_dim": self.bottleneck_dim,
+                "reconstruction_weight": self.reconstruction_weight,
+                "fmri_weight": self.fmri_weight,
+                "use_encodec": self.use_encodec,
+                "audio_frames_per_tr": self.audio_frames_per_tr,
+                "video_frames_per_tr": self.video_frames_per_tr,
+            },
         }
 
         if optimizer_state is not None:
-            checkpoint['optimizer_state_dict'] = optimizer_state
+            checkpoint["optimizer_state_dict"] = optimizer_state
 
         if loss is not None:
-            checkpoint['loss'] = loss
+            checkpoint["loss"] = loss
 
         if metadata is not None:
-            checkpoint['metadata'] = metadata
+            checkpoint["metadata"] = metadata
 
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         torch.save(checkpoint, path)
 
     @classmethod
     def load_checkpoint(
-        cls,
-        path: str,
-        device: Optional[torch.device] = None
-    ) -> Tuple['MultimodalAutoencoder', dict]:
+        cls, path: str, device: Optional[torch.device] = None
+    ) -> Tuple["MultimodalAutoencoder", dict]:
         """
         Load model from checkpoint.
 
@@ -402,23 +400,29 @@ class MultimodalAutoencoder(nn.Module):
         checkpoint = torch.load(path, map_location=device)
 
         # Create model with saved architecture
-        arch = checkpoint['architecture']
+        arch = checkpoint["architecture"]
         model = cls(
-            video_height=arch['video_height'],
-            video_width=arch['video_width'],
-            audio_mels=arch['audio_mels'],
-            text_dim=arch['text_dim'],
-            n_voxels=arch['n_voxels'],
-            bottleneck_dim=arch['bottleneck_dim'],
-            reconstruction_weight=arch['reconstruction_weight'],
-            fmri_weight=arch['fmri_weight'],
-            use_encodec=arch.get('use_encodec', False),  # Default to False for old checkpoints
-            audio_frames_per_tr=arch.get('audio_frames_per_tr', 65),  # Default to mel value
-            video_frames_per_tr=arch.get('video_frames_per_tr', 19)  # Default to mel value
+            video_height=arch["video_height"],
+            video_width=arch["video_width"],
+            audio_mels=arch["audio_mels"],
+            text_dim=arch["text_dim"],
+            n_voxels=arch["n_voxels"],
+            bottleneck_dim=arch["bottleneck_dim"],
+            reconstruction_weight=arch["reconstruction_weight"],
+            fmri_weight=arch["fmri_weight"],
+            use_encodec=arch.get(
+                "use_encodec", False
+            ),  # Default to False for old checkpoints
+            audio_frames_per_tr=arch.get(
+                "audio_frames_per_tr", 65
+            ),  # Default to mel value
+            video_frames_per_tr=arch.get(
+                "video_frames_per_tr", 19
+            ),  # Default to mel value
         )
 
         # Load weights
-        model.load_state_dict(checkpoint['model_state_dict'])
+        model.load_state_dict(checkpoint["model_state_dict"])
 
         if device is not None:
             model = model.to(device)
@@ -440,7 +444,7 @@ def create_autoencoder(
     gradient_checkpointing: bool = False,
     frame_skip: int = 2,
     fps: float = 25.0,
-    tr: float = 1.5
+    tr: float = 1.5,
 ) -> MultimodalAutoencoder:
     """
     Factory function to create MultimodalAutoencoder with default parameters.
@@ -488,6 +492,7 @@ def create_autoencoder(
     # Example: 25fps × 1.5s TR = 37.5 frames → 38 frames
     #          With frame_skip=2: 38 / 2 = 19 frames per TR
     import numpy as np
+
     frames_per_tr_original = int(np.round(fps * tr))
     video_frames_per_tr = int(np.ceil(frames_per_tr_original / frame_skip))
 
@@ -503,7 +508,7 @@ def create_autoencoder(
         use_encodec=use_encodec,
         audio_frames_per_tr=audio_frames_per_tr,
         gradient_checkpointing=gradient_checkpointing,
-        video_frames_per_tr=video_frames_per_tr
+        video_frames_per_tr=video_frames_per_tr,
     )
 
 
@@ -511,7 +516,7 @@ def prepare_for_distributed(
     model: MultimodalAutoencoder,
     device_ids: Optional[list] = None,
     output_device: Optional[int] = None,
-    find_unused_parameters: bool = False
+    find_unused_parameters: bool = False,
 ) -> nn.parallel.DistributedDataParallel:
     """
     Wrap model in DistributedDataParallel for multi-GPU training.
@@ -545,7 +550,7 @@ def prepare_for_distributed(
 
     # Move model to GPU
     if device_ids is not None and len(device_ids) > 0:
-        model = model.to(f'cuda:{device_ids[0]}')
+        model = model.to(f"cuda:{device_ids[0]}")
     else:
         model = model.cuda()
 
@@ -554,7 +559,7 @@ def prepare_for_distributed(
         model,
         device_ids=device_ids,
         output_device=output_device,
-        find_unused_parameters=find_unused_parameters
+        find_unused_parameters=find_unused_parameters,
     )
 
     return ddp_model

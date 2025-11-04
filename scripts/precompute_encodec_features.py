@@ -32,45 +32,45 @@ from giblet.data.audio import AudioProcessor
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Precompute EnCodec features for Sherlock stimulus'
+        description="Precompute EnCodec features for Sherlock stimulus"
     )
     parser.add_argument(
-        '--data-dir',
+        "--data-dir",
         type=str,
-        default='data',
-        help='Path to data directory (default: data)'
+        default="data",
+        help="Path to data directory (default: data)",
     )
     parser.add_argument(
-        '--bandwidth',
+        "--bandwidth",
         type=float,
         default=3.0,
-        help='EnCodec bandwidth in kbps (default: 3.0)'
+        help="EnCodec bandwidth in kbps (default: 3.0)",
     )
     parser.add_argument(
-        '--sample-rate',
+        "--sample-rate",
         type=int,
         default=12000,
-        help='Audio sample rate in Hz (default: 12000)'
+        help="Audio sample rate in Hz (default: 12000)",
     )
     parser.add_argument(
-        '--max-trs',
+        "--max-trs",
         type=int,
         default=None,
-        help='Maximum number of TRs to process (default: all 920)'
+        help="Maximum number of TRs to process (default: all 920)",
     )
     parser.add_argument(
-        '--force',
-        action='store_true',
-        help='Force recomputation even if cache exists'
+        "--force", action="store_true", help="Force recomputation even if cache exists"
     )
 
     args = parser.parse_args()
 
     # Paths
     data_dir = Path(args.data_dir)
-    video_path = data_dir / 'stimuli_Sherlock.m4v'
-    cache_dir = data_dir / 'cache' / f'encodec_{args.sample_rate//1000}khz_{args.bandwidth}kbps'
-    cache_path = cache_dir / f'{video_path.stem}_encodec.npz'
+    video_path = data_dir / "stimuli_Sherlock.m4v"
+    cache_dir = (
+        data_dir / "cache" / f"encodec_{args.sample_rate//1000}khz_{args.bandwidth}kbps"
+    )
+    cache_path = cache_dir / f"{video_path.stem}_encodec.npz"
 
     # Check if already exists
     if cache_path.exists() and not args.force:
@@ -107,7 +107,7 @@ def main():
         use_encodec=True,
         encodec_bandwidth=args.bandwidth,
         sample_rate=args.sample_rate,
-        tr=1.5
+        tr=1.5,
     )
 
     # Process audio
@@ -117,13 +117,12 @@ def main():
 
     try:
         features, metadata = processor.audio_to_features(
-            video_path,
-            max_trs=args.max_trs,
-            from_video=True
+            video_path, max_trs=args.max_trs, from_video=True
         )
     except Exception as e:
         print(f"\nError during processing: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 
@@ -142,7 +141,10 @@ def main():
     print(f"Code range:        [{features.min()}, {features.max()}]")
 
     # Verify codes are valid
-    assert features.dtype in [np.int32, np.int64], f"Expected integer dtype, got {features.dtype}"
+    assert features.dtype in [
+        np.int32,
+        np.int64,
+    ], f"Expected integer dtype, got {features.dtype}"
     assert features.min() >= 0, f"Codes should be >= 0, got min={features.min()}"
     assert features.max() <= 1023, f"Codes should be <= 1023, got max={features.max()}"
     print("✓ Code validation passed")
@@ -152,10 +154,10 @@ def main():
     np.savez_compressed(
         cache_path,
         features=features,
-        tr_indices=metadata['tr_index'].values,
-        start_times=metadata['start_time'].values,
-        end_times=metadata['end_time'].values,
-        n_frames=metadata['n_frames'].values
+        tr_indices=metadata["tr_index"].values,
+        start_times=metadata["start_time"].values,
+        end_times=metadata["end_time"].values,
+        n_frames=metadata["n_frames"].values,
     )
 
     cache_size_mb = cache_path.stat().st_size / 1024 / 1024
@@ -176,9 +178,11 @@ def main():
     print("\nPer-Codebook Statistics:")
     for i in range(features.shape[1]):
         codebook = features[:, i, :]
-        print(f"  Codebook {i}: min={codebook.min()}, max={codebook.max()}, "
-              f"mean={codebook.mean():.1f}, std={codebook.std():.1f}, "
-              f"unique={len(np.unique(codebook))}")
+        print(
+            f"  Codebook {i}: min={codebook.min()}, max={codebook.max()}, "
+            f"mean={codebook.mean():.1f}, std={codebook.std():.1f}, "
+            f"unique={len(np.unique(codebook))}"
+        )
 
     print("\n" + "=" * 70)
     print("✓ Precomputation Complete!")
@@ -188,5 +192,5 @@ def main():
     print(f"\nDataset will automatically load from cache during training.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

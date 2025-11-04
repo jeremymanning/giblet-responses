@@ -25,11 +25,11 @@ def test_text_embedding_reconstruction(data_dir, tmp_path):
     """Run embedding and recovery test."""
 
     # Setup paths
-    annotations_path = data_dir / 'annotations.xlsx'
+    annotations_path = data_dir / "annotations.xlsx"
     if not annotations_path.exists():
         pytest.skip(f"Annotations not found at {annotations_path}")
 
-    output_path = tmp_path / 'text_embedding_validation.txt'
+    output_path = tmp_path / "text_embedding_validation.txt"
 
     print("=" * 70)
     print("TEXT EMBEDDING & RECONSTRUCTION TEST")
@@ -41,10 +41,10 @@ def test_text_embedding_reconstruction(data_dir, tmp_path):
     # Initialize TextProcessor
     print("Initializing TextProcessor...")
     processor = TextProcessor(
-        model_name='BAAI/bge-large-en-v1.5',
+        model_name="BAAI/bge-large-en-v1.5",
         tr=1.5,
-        aggregation='mean',
-        gap_fill='forward_fill'
+        aggregation="mean",
+        gap_fill="forward_fill",
     )
     print(f"Model config: {processor.get_embedding_info()}")
     print()
@@ -68,8 +68,8 @@ def test_text_embedding_reconstruction(data_dir, tmp_path):
     # Show first few annotations for reference
     print("First 5 annotations:")
     for i in range(min(5, len(valid_text))):
-        start_time = valid_annotations.iloc[i]['Start Time (s)']
-        end_time = valid_annotations.iloc[i]['End Time (s)']
+        start_time = valid_annotations.iloc[i]["Start Time (s)"]
+        end_time = valid_annotations.iloc[i]["End Time (s)"]
         text = valid_text[i]
         print(f"  [{i}] {start_time:.1f}s - {end_time:.1f}s: {text[:50]}...")
     print()
@@ -86,7 +86,7 @@ def test_text_embedding_reconstruction(data_dir, tmp_path):
         valid_text,
         show_progress_bar=True,
         convert_to_numpy=True,
-        normalize_embeddings=True
+        normalize_embeddings=True,
     )
     embed_time = time() - start_embed
     print(f"Embedded {len(segment_embeddings)} segments in {embed_time:.2f}s")
@@ -99,8 +99,8 @@ def test_text_embedding_reconstruction(data_dir, tmp_path):
     segment_to_trs = {}  # Which TRs each segment contributes to
 
     for seg_idx, (_, row) in enumerate(valid_annotations.iterrows()):
-        start_time = row['Start Time (s)']
-        end_time = row['End Time (s)']
+        start_time = row["Start Time (s)"]
+        end_time = row["End Time (s)"]
 
         # Find TRs that overlap with this segment
         start_tr = int(np.floor(start_time / processor.tr))
@@ -170,7 +170,7 @@ def test_text_embedding_reconstruction(data_dir, tmp_path):
 
     # Write results to file
     print("Writing results to file...")
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         f.write("=" * 70 + "\n")
         f.write("TEXT EMBEDDING & RECONSTRUCTION VALIDATION\n")
         f.write("=" * 70 + "\n\n")
@@ -185,7 +185,9 @@ def test_text_embedding_reconstruction(data_dir, tmp_path):
         f.write("SUMMARY\n")
         f.write("-" * 70 + "\n")
         f.write(f"Exact matches: {matches}/30 ({matches/30*100:.1f}%)\n")
-        f.write(f"Partial matches: {partial_matches}/30 ({partial_matches/30*100:.1f}%)\n")
+        f.write(
+            f"Partial matches: {partial_matches}/30 ({partial_matches/30*100:.1f}%)\n"
+        )
         f.write(f"Total match rate: {(matches + partial_matches)/30*100:.1f}%\n\n")
 
         f.write("=" * 70 + "\n")
@@ -237,7 +239,9 @@ def test_text_embedding_reconstruction(data_dir, tmp_path):
             top_3_indices = np.argsort(sim_scores)[-3:][::-1]
             f.write(f"TOP 3 SIMILARITIES:\n")
             for rank, idx in enumerate(top_3_indices, 1):
-                f.write(f"  [{rank}] {sim_scores[idx]:.4f} - {valid_text[idx][:60]}...\n")
+                f.write(
+                    f"  [{rank}] {sim_scores[idx]:.4f} - {valid_text[idx][:60]}...\n"
+                )
 
             f.write("\n")
 

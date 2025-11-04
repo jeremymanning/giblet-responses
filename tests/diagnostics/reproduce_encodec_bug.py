@@ -2,7 +2,8 @@
 """Reproduce the EnCodec dimension bug locally with real Sherlock audio"""
 
 import sys
-sys.path.insert(0, '.')
+
+sys.path.insert(0, ".")
 
 from giblet.data.audio import AudioProcessor
 import traceback
@@ -14,18 +15,13 @@ print("EnCodec Bug Reproduction with Real Sherlock Audio")
 print("=" * 80)
 
 processor = AudioProcessor(
-    use_encodec=True,
-    encodec_bandwidth=3.0,
-    sample_rate=12000,
-    tr=1.5
+    use_encodec=True, encodec_bandwidth=3.0, sample_rate=12000, tr=1.5
 )
 
 try:
     print("\n1. Testing with first 5 TRs...")
     features, metadata = processor.audio_to_features(
-        'data/stimuli_Sherlock.m4v',
-        max_trs=5,
-        from_video=True
+        "data/stimuli_Sherlock.m4v", max_trs=5, from_video=True
     )
     print(f"✓ Success! Shape: {features.shape}")
     print(f"✓ Dtype: {features.dtype}")
@@ -56,8 +52,9 @@ except Exception as e:
     # Load and process audio manually to see what EnCodec actually returns
     try:
         import librosa
+
         print("\nLoading audio from Sherlock video...")
-        y, sr = librosa.load('data/stimuli_Sherlock.m4v', sr=24000, mono=False)
+        y, sr = librosa.load("data/stimuli_Sherlock.m4v", sr=24000, mono=False)
         if y.ndim > 1:
             y = np.mean(y, axis=0)
 
@@ -66,14 +63,16 @@ except Exception as e:
 
         # Process with EnCodec
         print("\nEncoding with EnCodec...")
-        inputs = processor.encodec_processor(raw_audio=y, sampling_rate=sr, return_tensors="pt")
+        inputs = processor.encodec_processor(
+            raw_audio=y, sampling_rate=sr, return_tensors="pt"
+        )
         inputs = {k: v.to(processor.device) for k, v in inputs.items()}
 
         with torch.no_grad():
             encoded = processor.encodec_model.encode(
                 inputs["input_values"],
                 inputs["padding_mask"],
-                bandwidth=processor.encodec_bandwidth
+                bandwidth=processor.encodec_bandwidth,
             )
 
         codes = encoded.audio_codes[0].cpu()
@@ -110,7 +109,9 @@ except Exception as e:
         print(f"TR codes shape: {tr_codes.shape}")
 
         # Try the problematic operation
-        normalized_codes = torch.zeros(expected_codebooks, frames_per_tr, dtype=tr_codes.dtype)
+        normalized_codes = torch.zeros(
+            expected_codebooks, frames_per_tr, dtype=tr_codes.dtype
+        )
         print(f"Normalized target shape: {normalized_codes.shape}")
 
         print(f"\nAttempting assignment: normalized_codes[:4, :] = tr_codes[:4, :]")

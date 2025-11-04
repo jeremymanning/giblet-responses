@@ -35,9 +35,9 @@ def test_text_embedding_validation(data_dir, tmp_path):
     log("1. Initializing TextProcessor with BGE-large-en-v1.5...")
     try:
         processor = TextProcessor(
-            model_name='BAAI/bge-large-en-v1.5',
+            model_name="BAAI/bge-large-en-v1.5",
             tr=1.5,
-            device=None  # Auto-detect (should use MPS on Mac)
+            device=None,  # Auto-detect (should use MPS on Mac)
         )
         log("   ✓ TextProcessor initialized")
     except Exception as e:
@@ -112,7 +112,7 @@ def test_text_embedding_validation(data_dir, tmp_path):
             valid_text,
             show_progress_bar=False,
             convert_to_numpy=True,
-            normalize_embeddings=True
+            normalize_embeddings=True,
         )
 
         log(f"   ✓ Generated embeddings: shape {embeddings.shape}")
@@ -154,12 +154,16 @@ def test_text_embedding_validation(data_dir, tmp_path):
                 perfect_recovery += 1
 
             if i < 3:  # Show first 3
-                log(f"     [{i}] Self-similarity: {self_similarity:.6f}, "
-                    f"Next best: {nearest_similarity:.6f} (idx {nearest_idx})")
+                log(
+                    f"     [{i}] Self-similarity: {self_similarity:.6f}, "
+                    f"Next best: {nearest_similarity:.6f} (idx {nearest_idx})"
+                )
 
         recovery_rate = perfect_recovery / len(embeddings) * 100
         log("")
-        log(f"   ✓ Perfect self-recovery: {perfect_recovery}/{len(embeddings)} ({recovery_rate:.1f}%)")
+        log(
+            f"   ✓ Perfect self-recovery: {perfect_recovery}/{len(embeddings)} ({recovery_rate:.1f}%)"
+        )
 
         # Now test actual recovery by treating each embedding as query
         log("")
@@ -172,25 +176,36 @@ def test_text_embedding_validation(data_dir, tmp_path):
             recovered_text = valid_text[nearest_idx]
             original_text = valid_text[i]
 
-            is_match = (nearest_idx == i)
+            is_match = nearest_idx == i
             if is_match:
                 recovered_count += 1
 
             log(f"")
             log(f"   Query [{i}]:")
-            orig_trunc = original_text[:80] + "..." if len(original_text) > 80 else original_text
+            orig_trunc = (
+                original_text[:80] + "..." if len(original_text) > 80 else original_text
+            )
             log(f"     Original: {orig_trunc}")
 
             if is_match:
-                log(f"     Recovered: EXACT MATCH (similarity: {similarities[i, nearest_idx]:.6f})")
+                log(
+                    f"     Recovered: EXACT MATCH (similarity: {similarities[i, nearest_idx]:.6f})"
+                )
             else:
-                recov_trunc = recovered_text[:80] + "..." if len(recovered_text) > 80 else recovered_text
+                recov_trunc = (
+                    recovered_text[:80] + "..."
+                    if len(recovered_text) > 80
+                    else recovered_text
+                )
                 log(f"     Recovered: {recov_trunc}")
-                log(f"     Match: {nearest_idx} (similarity: {similarities[i, nearest_idx]:.6f})")
+                log(
+                    f"     Match: {nearest_idx} (similarity: {similarities[i, nearest_idx]:.6f})"
+                )
 
     except Exception as e:
         log(f"   ✗ Failed recovery test: {e}")
         import traceback
+
         log(traceback.format_exc())
         pytest.fail(f"Failed recovery test: {e}")
 
@@ -205,7 +220,7 @@ def test_text_embedding_validation(data_dir, tmp_path):
                 test_texts,
                 show_progress_bar=False,
                 convert_to_numpy=True,
-                normalize_embeddings=True
+                normalize_embeddings=True,
             )
             log(f"   ✓ Batch size {batch_size}: shape {test_embeddings.shape}")
 
@@ -220,27 +235,30 @@ def test_text_embedding_validation(data_dir, tmp_path):
         # Use first 10 annotations, align to 20 TRs (covers ~30 seconds at TR=1.5s)
         n_trs = 20
         tr_embeddings, metadata = processor.align_to_trs(
-            valid_annotations,
-            embeddings,
-            n_trs
+            valid_annotations, embeddings, n_trs
         )
 
         log(f"   ✓ Aligned to TR grid: shape {tr_embeddings.shape}")
-        log(f"   TRs with segments: {(metadata['n_segments_contributing'] > 0).sum()}/{n_trs}")
-        log(f"   TRs with gaps: {(metadata['n_segments_contributing'] == 0).sum()}/{n_trs}")
+        log(
+            f"   TRs with segments: {(metadata['n_segments_contributing'] > 0).sum()}/{n_trs}"
+        )
+        log(
+            f"   TRs with gaps: {(metadata['n_segments_contributing'] == 0).sum()}/{n_trs}"
+        )
 
         # Show first few TRs
         log("")
         log("   First 5 TRs:")
         for i in range(min(5, n_trs)):
-            n_segs = metadata.iloc[i]['n_segments_contributing']
-            start_t = metadata.iloc[i]['start_time']
-            end_t = metadata.iloc[i]['end_time']
+            n_segs = metadata.iloc[i]["n_segments_contributing"]
+            start_t = metadata.iloc[i]["start_time"]
+            end_t = metadata.iloc[i]["end_time"]
             log(f"     TR {i}: [{start_t:.1f}s - {end_t:.1f}s] {n_segs} segments")
 
     except Exception as e:
         log(f"   ✗ Failed TR alignment: {e}")
         import traceback
+
         log(traceback.format_exc())
         pytest.fail(f"Failed TR alignment: {e}")
 
@@ -251,8 +269,8 @@ def test_text_embedding_validation(data_dir, tmp_path):
 
     # Save results
     output_path = tmp_path / "text_embedding_validation.txt"
-    with open(output_path, 'w') as f:
-        f.write('\n'.join(output_lines))
+    with open(output_path, "w") as f:
+        f.write("\n".join(output_lines))
 
     log(f"\nResults saved to: {output_path}")
 

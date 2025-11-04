@@ -11,20 +11,17 @@ from .hrf import (
     get_canonical_hrf,
     apply_hrf,
     convolve_with_padding,
-    get_hrf_peak_latency
+    get_hrf_peak_latency,
 )
-from .sync import (
-    align_all_modalities,
-    get_alignment_info
-)
+from .sync import align_all_modalities, get_alignment_info
 
 __all__ = [
     # HRF functions
-    'get_canonical_hrf',
-    'apply_hrf',
-    'convolve_with_padding',
-    'get_hrf_peak_latency',
+    "get_canonical_hrf",
+    "apply_hrf",
+    "convolve_with_padding",
+    "get_hrf_peak_latency",
     # Synchronization functions
-    'align_all_modalities',
-    'get_alignment_info',
+    "align_all_modalities",
+    "get_alignment_info",
 ]

@@ -12,8 +12,6 @@ from giblet.models.decoder import MultimodalDecoder
 
 
 @pytest.mark.unit
-
-
 class TestEnCodecAudioDecoder:
     """Test suite for EnCodec audio decoding."""
 
@@ -28,7 +26,7 @@ class TestEnCodecAudioDecoder:
             text_dim=1024,
             dropout=0.3,
             use_encodec=True,
-            n_codebooks=8
+            n_codebooks=8,
         )
 
     @pytest.fixture
@@ -41,7 +39,7 @@ class TestEnCodecAudioDecoder:
             audio_frames_per_tr=65,  # Mel @ 44Hz
             text_dim=1024,
             dropout=0.3,
-            use_encodec=False
+            use_encodec=False,
         )
 
     def test_encodec_initialization(self, encodec_decoder):
@@ -75,7 +73,11 @@ class TestEnCodecAudioDecoder:
 
         # Check shapes
         assert video.shape == (batch_size, 43200)
-        assert audio.shape == (batch_size, 8, 112), f"Expected (32, 8, 112), got {audio.shape}"
+        assert audio.shape == (
+            batch_size,
+            8,
+            112,
+        ), f"Expected (32, 8, 112), got {audio.shape}"
         assert text.shape == (batch_size, 1024)
 
     def test_encodec_code_range_training(self, encodec_decoder):
@@ -105,7 +107,9 @@ class TestEnCodecAudioDecoder:
         assert torch.all(audio <= 1023)
 
         # Check that values are integers (no fractional part)
-        assert torch.all(audio == torch.round(audio)), "Codes should be integers during inference"
+        assert torch.all(
+            audio == torch.round(audio)
+        ), "Codes should be integers during inference"
 
     def test_encodec_code_distribution(self, encodec_decoder):
         """Test EnCodec codes use full vocabulary range."""
@@ -132,7 +136,11 @@ class TestEnCodecAudioDecoder:
 
         # Check shapes for mel path
         assert video.shape == (batch_size, 43200)
-        assert audio.shape == (batch_size, 2048, 65), f"Expected (32, 2048, 65), got {audio.shape}"
+        assert audio.shape == (
+            batch_size,
+            2048,
+            65,
+        ), f"Expected (32, 2048, 65), got {audio.shape}"
         assert text.shape == (batch_size, 1024)
 
     def test_gradient_flow_encodec(self, encodec_decoder):
@@ -297,7 +305,7 @@ class TestEnCodecAudioDecoder:
                 bottleneck_dim=2048,
                 use_encodec=True,
                 n_codebooks=n_codebooks,
-                audio_frames_per_tr=112
+                audio_frames_per_tr=112,
             )
 
             decoder.eval()
@@ -317,7 +325,7 @@ class TestEnCodecAudioDecoder:
                 bottleneck_dim=2048,
                 use_encodec=True,
                 n_codebooks=8,
-                audio_frames_per_tr=frames_per_tr
+                audio_frames_per_tr=frames_per_tr,
             )
 
             decoder.eval()
@@ -337,7 +345,7 @@ class TestEnCodecAudioDecoder:
         print(f"Mel decoder parameters: {mel_params['total']:,}")
 
         # EnCodec should be smaller (no Conv1D upsampling)
-        assert encodec_params['total'] <= mel_params['total']
+        assert encodec_params["total"] <= mel_params["total"]
 
 
 @pytest.mark.integration
@@ -354,7 +362,7 @@ class TestEnCodecIntegration:
             bottleneck_dim=bottleneck_dim,
             use_encodec=True,
             n_codebooks=8,
-            audio_frames_per_tr=112
+            audio_frames_per_tr=112,
         )
 
         decoder.eval()
@@ -373,10 +381,7 @@ class TestEnCodecIntegration:
 
     def test_mixed_training_inference(self):
         """Test switching between training and inference modes."""
-        decoder = MultimodalDecoder(
-            bottleneck_dim=2048,
-            use_encodec=True
-        )
+        decoder = MultimodalDecoder(bottleneck_dim=2048, use_encodec=True)
 
         batch_size = 16
         bottleneck = torch.randn(batch_size, 2048)
@@ -401,10 +406,7 @@ class TestEnCodecIntegration:
 
     def test_memory_efficiency(self):
         """Test decoder doesn't use excessive memory."""
-        decoder = MultimodalDecoder(
-            bottleneck_dim=2048,
-            use_encodec=True
-        )
+        decoder = MultimodalDecoder(bottleneck_dim=2048, use_encodec=True)
 
         decoder.eval()
 
@@ -418,6 +420,6 @@ class TestEnCodecIntegration:
         assert audio.shape == (batch_size, 8, 112)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run tests with verbose output
-    pytest.main([__file__, '-v', '-s'])
+    pytest.main([__file__, "-v", "-s"])

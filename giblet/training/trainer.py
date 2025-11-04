@@ -46,6 +46,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 # MEMORY OPTIMIZATION (Issue #30): Use 8-bit Adam to reduce optimizer memory
 try:
     import bitsandbytes as bnb
+
     HAS_BITSANDBYTES = True
 except ImportError:
     HAS_BITSANDBYTES = False
@@ -60,9 +61,14 @@ from tqdm import tqdm
 import numpy as np
 
 from ..models.autoencoder import MultimodalAutoencoder
+
 # Keep backwards compatibility
 SherlockAutoencoder = MultimodalAutoencoder
-from .losses import CombinedAutoEncoderLoss, compute_correlation_metric, compute_r2_score
+from .losses import (
+    CombinedAutoEncoderLoss,
+    compute_correlation_metric,
+    compute_r2_score,
+)
 
 
 @dataclass
@@ -134,10 +140,10 @@ class TrainingConfig:
     video_weight: float = 1.0
     audio_weight: float = 1.0
     text_weight: float = 1.0
-    fmri_loss_type: str = 'mse'
+    fmri_loss_type: str = "mse"
 
     # Learning rate scheduling
-    scheduler_type: str = 'cosine'
+    scheduler_type: str = "cosine"
     warmup_epochs: int = 5
     min_lr: float = 1e-6
 
@@ -148,8 +154,8 @@ class TrainingConfig:
     pin_memory: bool = True
 
     # Checkpointing and logging
-    checkpoint_dir: str = 'checkpoints'
-    log_dir: str = 'logs'
+    checkpoint_dir: str = "checkpoints"
+    log_dir: str = "logs"
     save_every: int = 5
     validate_every: int = 1
 
@@ -191,7 +197,7 @@ class Trainer:
         config: TrainingConfig,
         distributed: bool = False,
         local_rank: int = 0,
-        world_size: int = 1
+        world_size: int = 1,
     ):
         self.model = model
         self.train_dataset = train_dataset
@@ -202,14 +208,14 @@ class Trainer:
         self.distributed = distributed
         self.local_rank = local_rank
         self.world_size = world_size
-        self.is_main_process = (local_rank == 0)
+        self.is_main_process = local_rank == 0
 
         # Set device
         if torch.cuda.is_available():
-            self.device = torch.device(f'cuda:{local_rank}')
+            self.device = torch.device(f"cuda:{local_rank}")
             torch.cuda.set_device(self.device)
         else:
-            self.device = torch.device('cpu')
+            self.device = torch.device("cpu")
 
         # Move model to device
         self.model = self.model.to(self.device)
@@ -220,7 +226,7 @@ class Trainer:
                 self.model,
                 device_ids=[local_rank],
                 output_device=local_rank,
-                find_unused_parameters=False
+                find_unused_parameters=False,
             )
             self.model_module = self.model.module
         else:
@@ -238,16 +244,20 @@ class Trainer:
             try:
                 if self.is_main_process:
                     print("  Using 8-bit AdamW optimizer (memory-efficient)")
-                    print("  Expected optimizer memory: ~3 GB per GPU (vs ~12.5 GB for standard AdamW)")
+                    print(
+                        "  Expected optimizer memory: ~3 GB per GPU (vs ~12.5 GB for standard AdamW)"
+                    )
                 self.optimizer = bnb.optim.AdamW8bit(
                     self.model.parameters(),
                     lr=config.learning_rate,
-                    weight_decay=config.weight_decay
+                    weight_decay=config.weight_decay,
                 )
                 use_8bit_optimizer = True
             except Exception as e:
                 if self.is_main_process:
-                    print(f"  WARNING: 8-bit optimizer failed ({str(e)[:100]}), falling back to standard AdamW")
+                    print(
+                        f"  WARNING: 8-bit optimizer failed ({str(e)[:100]}), falling back to standard AdamW"
+                    )
                     print("  This may cause OOM on GPUs with limited memory")
 
         if not use_8bit_optimizer:
@@ -257,7 +267,7 @@ class Trainer:
             self.optimizer = optim.AdamW(
                 self.model.parameters(),
                 lr=config.learning_rate,
-                weight_decay=config.weight_decay
+                weight_decay=config.weight_decay,
             )
 
         # Create loss function
@@ -267,7 +277,7 @@ class Trainer:
             video_weight=config.video_weight,
             audio_weight=config.audio_weight,
             text_weight=config.text_weight,
-            fmri_loss_type=config.fmri_loss_type
+            fmri_loss_type=config.fmri_loss_type,
         ).to(self.device)
 
         # Create learning rate scheduler
@@ -283,12 +293,14 @@ class Trainer:
 
         if config.use_mixed_precision and model_dtype == torch.bfloat16:
             if self.is_main_process:
-                print("  Using bfloat16 mixed precision WITHOUT GradScaler (bfloat16 doesn't need scaling)")
+                print(
+                    "  Using bfloat16 mixed precision WITHOUT GradScaler (bfloat16 doesn't need scaling)"
+                )
 
         # Training state
         self.current_epoch = 0
         self.global_step = 0
-        self.best_val_loss = float('inf')
+        self.best_val_loss = float("inf")
         self.epochs_without_improvement = 0
 
         # History
@@ -312,13 +324,13 @@ class Trainer:
                 self.train_dataset,
                 num_replicas=self.world_size,
                 rank=self.local_rank,
-                shuffle=True
+                shuffle=True,
             )
             val_sampler = DistributedSampler(
                 self.val_dataset,
                 num_replicas=self.world_size,
                 rank=self.local_rank,
-                shuffle=False
+                shuffle=False,
             )
         else:
             train_sampler = None
@@ -331,7 +343,7 @@ class Trainer:
             shuffle=(train_sampler is None),
             num_workers=self.config.num_workers,
             pin_memory=self.config.pin_memory,
-            drop_last=True
+            drop_last=True,
         )
 
         self.val_loader = DataLoader(
@@ -341,12 +353,12 @@ class Trainer:
             shuffle=False,
             num_workers=self.config.num_workers,
             pin_memory=self.config.pin_memory,
-            drop_last=False
+            drop_last=False,
         )
 
     def _create_scheduler(self):
         """Create learning rate scheduler."""
-        if self.config.scheduler_type == 'cosine':
+        if self.config.scheduler_type == "cosine":
             # Cosine annealing with warmup
             total_steps = len(self.train_loader) * self.config.num_epochs
             warmup_steps = len(self.train_loader) * self.config.warmup_epochs
@@ -354,21 +366,19 @@ class Trainer:
             self.scheduler = optim.lr_scheduler.CosineAnnealingLR(
                 self.optimizer,
                 T_max=total_steps - warmup_steps,
-                eta_min=self.config.min_lr
+                eta_min=self.config.min_lr,
             )
             self.warmup_scheduler = optim.lr_scheduler.LinearLR(
                 self.optimizer,
                 start_factor=0.1,
                 end_factor=1.0,
-                total_iters=warmup_steps
+                total_iters=warmup_steps,
             )
 
-        elif self.config.scheduler_type == 'step':
+        elif self.config.scheduler_type == "step":
             # Step decay
             self.scheduler = optim.lr_scheduler.StepLR(
-                self.optimizer,
-                step_size=30,
-                gamma=0.1
+                self.optimizer, step_size=30, gamma=0.1
             )
             self.warmup_scheduler = None
 
@@ -382,8 +392,10 @@ class Trainer:
             return
 
         # Use warmup scheduler for first few epochs
-        if (self.warmup_scheduler is not None and
-            self.current_epoch < self.config.warmup_epochs):
+        if (
+            self.warmup_scheduler is not None
+            and self.current_epoch < self.config.warmup_epochs
+        ):
             self.warmup_scheduler.step()
         else:
             self.scheduler.step()
@@ -442,14 +454,17 @@ class Trainer:
             if self.is_main_process and epoch % self.config.save_every == 0:
                 self.save_checkpoint(
                     epoch=epoch,
-                    val_loss=val_metrics['total_loss'] if val_metrics else None
+                    val_loss=val_metrics["total_loss"] if val_metrics else None,
                 )
 
             # Check early stopping
             if val_metrics is not None:
-                self._check_early_stopping(val_metrics['total_loss'])
+                self._check_early_stopping(val_metrics["total_loss"])
 
-                if self.epochs_without_improvement >= self.config.early_stopping_patience:
+                if (
+                    self.epochs_without_improvement
+                    >= self.config.early_stopping_patience
+                ):
                     if self.is_main_process:
                         print(f"\nEarly stopping triggered after {epoch + 1} epochs")
                     break
@@ -457,9 +472,7 @@ class Trainer:
         # Save final checkpoint
         if self.is_main_process:
             self.save_checkpoint(
-                epoch=self.config.num_epochs,
-                val_loss=self.best_val_loss,
-                is_final=True
+                epoch=self.config.num_epochs, val_loss=self.best_val_loss, is_final=True
             )
 
             print("\n" + "=" * 80)
@@ -468,9 +481,9 @@ class Trainer:
             print("=" * 80 + "\n")
 
         return {
-            'train_history': self.train_history,
-            'val_history': self.val_history,
-            'best_val_loss': self.best_val_loss
+            "train_history": self.train_history,
+            "val_history": self.val_history,
+            "best_val_loss": self.best_val_loss,
         }
 
     def _train_epoch(self) -> Dict[str, float]:
@@ -485,12 +498,12 @@ class Trainer:
         self.model.train()
 
         losses = {
-            'total_loss': 0.0,
-            'reconstruction_loss': 0.0,
-            'video_loss': 0.0,
-            'audio_loss': 0.0,
-            'text_loss': 0.0,
-            'fmri_loss': 0.0
+            "total_loss": 0.0,
+            "reconstruction_loss": 0.0,
+            "video_loss": 0.0,
+            "audio_loss": 0.0,
+            "text_loss": 0.0,
+            "fmri_loss": 0.0,
         }
 
         num_batches = len(self.train_loader)
@@ -499,17 +512,17 @@ class Trainer:
             pbar = tqdm(
                 self.train_loader,
                 desc=f"Epoch {self.current_epoch + 1}/{self.config.num_epochs}",
-                leave=False
+                leave=False,
             )
         else:
             pbar = self.train_loader
 
         for batch_idx, batch in enumerate(pbar):
             # Move batch to device
-            video = batch['video'].to(self.device)
-            audio = batch['audio'].to(self.device)
-            text = batch['text'].to(self.device)
-            fmri = batch['fmri'].to(self.device)
+            video = batch["video"].to(self.device)
+            audio = batch["audio"].to(self.device)
+            text = batch["text"].to(self.device)
+            fmri = batch["fmri"].to(self.device)
 
             # Prepare targets
             batch_size = video.size(0)
@@ -524,10 +537,18 @@ class Trainer:
 
                     # NUMERICAL STABILITY: Cast to float32 for loss computation
                     # Loss functions need higher precision to avoid numerical issues
-                    outputs_fp32 = {k: v.float() if torch.is_tensor(v) and torch.is_floating_point(v) else v
-                                    for k, v in outputs.items()}
+                    outputs_fp32 = {
+                        k: (
+                            v.float()
+                            if torch.is_tensor(v) and torch.is_floating_point(v)
+                            else v
+                        )
+                        for k, v in outputs.items()
+                    }
                     video_flat_fp32 = video_flat.float()
-                    audio_fp32 = audio.float() if torch.is_floating_point(audio) else audio
+                    audio_fp32 = (
+                        audio.float() if torch.is_floating_point(audio) else audio
+                    )
                     text_fp32 = text.float()
                     fmri_fp32 = fmri.float()
 
@@ -536,9 +557,7 @@ class Trainer:
                     )
             else:
                 outputs = self.model(video, audio, text, fmri_target=fmri)
-                loss, loss_dict = self.criterion(
-                    outputs, video_flat, audio, text, fmri
-                )
+                loss, loss_dict = self.criterion(outputs, video_flat, audio, text, fmri)
 
             # Backward pass
             self.optimizer.zero_grad()
@@ -549,8 +568,7 @@ class Trainer:
                 # Gradient clipping
                 self.scaler.unscale_(self.optimizer)
                 nn.utils.clip_grad_norm_(
-                    self.model.parameters(),
-                    self.config.gradient_clip_val
+                    self.model.parameters(), self.config.gradient_clip_val
                 )
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
@@ -559,8 +577,7 @@ class Trainer:
                 loss.backward()
                 # Gradient clipping
                 nn.utils.clip_grad_norm_(
-                    self.model.parameters(),
-                    self.config.gradient_clip_val
+                    self.model.parameters(), self.config.gradient_clip_val
                 )
                 self.optimizer.step()
 
@@ -573,14 +590,16 @@ class Trainer:
 
             # Update progress bar
             if self.is_main_process:
-                pbar.set_postfix({
-                    'loss': f"{loss.item():.4f}",
-                    'lr': f"{self.optimizer.param_groups[0]['lr']:.2e}"
-                })
+                pbar.set_postfix(
+                    {
+                        "loss": f"{loss.item():.4f}",
+                        "lr": f"{self.optimizer.param_groups[0]['lr']:.2e}",
+                    }
+                )
 
         # Average losses
         metrics = {k: v / num_batches for k, v in losses.items()}
-        metrics['lr'] = self.optimizer.param_groups[0]['lr']
+        metrics["lr"] = self.optimizer.param_groups[0]["lr"]
 
         self.train_history.append(metrics)
 
@@ -599,12 +618,12 @@ class Trainer:
         self.model.eval()
 
         losses = {
-            'total_loss': 0.0,
-            'reconstruction_loss': 0.0,
-            'video_loss': 0.0,
-            'audio_loss': 0.0,
-            'text_loss': 0.0,
-            'fmri_loss': 0.0
+            "total_loss": 0.0,
+            "reconstruction_loss": 0.0,
+            "video_loss": 0.0,
+            "audio_loss": 0.0,
+            "text_loss": 0.0,
+            "fmri_loss": 0.0,
         }
 
         correlations = []
@@ -619,10 +638,10 @@ class Trainer:
 
         for batch in pbar:
             # Move batch to device
-            video = batch['video'].to(self.device)
-            audio = batch['audio'].to(self.device)
-            text = batch['text'].to(self.device)
-            fmri = batch['fmri'].to(self.device)
+            video = batch["video"].to(self.device)
+            audio = batch["audio"].to(self.device)
+            text = batch["text"].to(self.device)
+            fmri = batch["fmri"].to(self.device)
 
             # Prepare targets
             batch_size = video.size(0)
@@ -635,10 +654,18 @@ class Trainer:
                     outputs = self.model(video, audio, text, fmri_target=fmri)
 
                     # NUMERICAL STABILITY: Cast to float32 for loss computation
-                    outputs_fp32 = {k: v.float() if torch.is_tensor(v) and torch.is_floating_point(v) else v
-                                    for k, v in outputs.items()}
+                    outputs_fp32 = {
+                        k: (
+                            v.float()
+                            if torch.is_tensor(v) and torch.is_floating_point(v)
+                            else v
+                        )
+                        for k, v in outputs.items()
+                    }
                     video_flat_fp32 = video_flat.float()
-                    audio_fp32 = audio.float() if torch.is_floating_point(audio) else audio
+                    audio_fp32 = (
+                        audio.float() if torch.is_floating_point(audio) else audio
+                    )
                     text_fp32 = text.float()
                     fmri_fp32 = fmri.float()
 
@@ -647,9 +674,7 @@ class Trainer:
                     )
             else:
                 outputs = self.model(video, audio, text, fmri_target=fmri)
-                loss, loss_dict = self.criterion(
-                    outputs, video_flat, audio, text, fmri
-                )
+                loss, loss_dict = self.criterion(outputs, video_flat, audio, text, fmri)
 
             # Accumulate losses
             for key in losses.keys():
@@ -657,13 +682,11 @@ class Trainer:
                     losses[key] += loss_dict[key].item()
 
             # Compute metrics for fMRI prediction
-            if 'predicted_fmri' in outputs:
+            if "predicted_fmri" in outputs:
                 corr = compute_correlation_metric(
-                    outputs['predicted_fmri'], fmri, dim=1
+                    outputs["predicted_fmri"], fmri, dim=1
                 )
-                r2 = compute_r2_score(
-                    outputs['predicted_fmri'], fmri, dim=1
-                )
+                r2 = compute_r2_score(outputs["predicted_fmri"], fmri, dim=1)
                 correlations.append(corr.cpu())
                 r2_scores.append(r2.cpu())
 
@@ -674,8 +697,8 @@ class Trainer:
         if correlations:
             correlations = torch.cat(correlations)
             r2_scores = torch.cat(r2_scores)
-            metrics['fmri_correlation'] = correlations.mean().item()
-            metrics['fmri_r2'] = r2_scores.mean().item()
+            metrics["fmri_correlation"] = correlations.mean().item()
+            metrics["fmri_r2"] = r2_scores.mean().item()
 
         self.val_history.append(metrics)
 
@@ -695,7 +718,7 @@ class Trainer:
         self,
         epoch: int,
         train_metrics: Dict[str, float],
-        val_metrics: Optional[Dict[str, float]] = None
+        val_metrics: Optional[Dict[str, float]] = None,
     ):
         """Log metrics to console and file."""
         log_str = f"Epoch {epoch + 1}/{self.config.num_epochs} | "
@@ -703,7 +726,7 @@ class Trainer:
 
         if val_metrics is not None:
             log_str += f"Val Loss: {val_metrics['total_loss']:.4f} | "
-            if 'fmri_correlation' in val_metrics:
+            if "fmri_correlation" in val_metrics:
                 log_str += f"fMRI Corr: {val_metrics['fmri_correlation']:.4f} | "
 
         log_str += f"LR: {train_metrics['lr']:.2e}"
@@ -711,15 +734,12 @@ class Trainer:
         print(log_str)
 
         # Save to file
-        log_file = Path(self.config.log_dir) / 'training.log'
-        with open(log_file, 'a') as f:
-            f.write(log_str + '\n')
+        log_file = Path(self.config.log_dir) / "training.log"
+        with open(log_file, "a") as f:
+            f.write(log_str + "\n")
 
     def save_checkpoint(
-        self,
-        epoch: int,
-        val_loss: Optional[float] = None,
-        is_final: bool = False
+        self, epoch: int, val_loss: Optional[float] = None, is_final: bool = False
     ):
         """
         Save training checkpoint.
@@ -734,36 +754,38 @@ class Trainer:
             Whether this is the final checkpoint
         """
         checkpoint = {
-            'epoch': epoch,
-            'global_step': self.global_step,
-            'model_state_dict': self.model_module.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'best_val_loss': self.best_val_loss,
-            'config': asdict(self.config),
-            'train_history': self.train_history,
-            'val_history': self.val_history
+            "epoch": epoch,
+            "global_step": self.global_step,
+            "model_state_dict": self.model_module.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "best_val_loss": self.best_val_loss,
+            "config": asdict(self.config),
+            "train_history": self.train_history,
+            "val_history": self.val_history,
         }
 
         if self.scheduler is not None:
-            checkpoint['scheduler_state_dict'] = self.scheduler.state_dict()
+            checkpoint["scheduler_state_dict"] = self.scheduler.state_dict()
 
         if self.scaler is not None:
-            checkpoint['scaler_state_dict'] = self.scaler.state_dict()
+            checkpoint["scaler_state_dict"] = self.scaler.state_dict()
 
         if val_loss is not None:
-            checkpoint['val_loss'] = val_loss
+            checkpoint["val_loss"] = val_loss
 
         # Save checkpoint
         if is_final:
-            checkpoint_path = Path(self.config.checkpoint_dir) / 'final_checkpoint.pt'
+            checkpoint_path = Path(self.config.checkpoint_dir) / "final_checkpoint.pt"
         else:
-            checkpoint_path = Path(self.config.checkpoint_dir) / f'checkpoint_epoch_{epoch}.pt'
+            checkpoint_path = (
+                Path(self.config.checkpoint_dir) / f"checkpoint_epoch_{epoch}.pt"
+            )
 
         torch.save(checkpoint, checkpoint_path)
 
         # Save best checkpoint
         if val_loss is not None and val_loss <= self.best_val_loss:
-            best_path = Path(self.config.checkpoint_dir) / 'best_checkpoint.pt'
+            best_path = Path(self.config.checkpoint_dir) / "best_checkpoint.pt"
             torch.save(checkpoint, best_path)
 
         print(f"Saved checkpoint: {checkpoint_path}")
@@ -783,25 +805,25 @@ class Trainer:
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
 
         # Load model
-        self.model_module.load_state_dict(checkpoint['model_state_dict'])
+        self.model_module.load_state_dict(checkpoint["model_state_dict"])
 
         # Load optimizer
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
         # Load scheduler
-        if 'scheduler_state_dict' in checkpoint and self.scheduler is not None:
-            self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        if "scheduler_state_dict" in checkpoint and self.scheduler is not None:
+            self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
         # Load scaler
-        if 'scaler_state_dict' in checkpoint and self.scaler is not None:
-            self.scaler.load_state_dict(checkpoint['scaler_state_dict'])
+        if "scaler_state_dict" in checkpoint and self.scaler is not None:
+            self.scaler.load_state_dict(checkpoint["scaler_state_dict"])
 
         # Load training state
-        self.current_epoch = checkpoint['epoch']
-        self.global_step = checkpoint['global_step']
-        self.best_val_loss = checkpoint['best_val_loss']
-        self.train_history = checkpoint.get('train_history', [])
-        self.val_history = checkpoint.get('val_history', [])
+        self.current_epoch = checkpoint["epoch"]
+        self.global_step = checkpoint["global_step"]
+        self.best_val_loss = checkpoint["best_val_loss"]
+        self.train_history = checkpoint.get("train_history", [])
+        self.val_history = checkpoint.get("val_history", [])
 
         if self.is_main_process:
             print(f"Resumed from epoch {self.current_epoch}, step {self.global_step}")
@@ -811,7 +833,7 @@ class Trainer:
         return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
 
-def setup_distributed(rank: int, world_size: int, backend: str = 'nccl'):
+def setup_distributed(rank: int, world_size: int, backend: str = "nccl"):
     """
     Setup distributed training.
 
@@ -824,8 +846,8 @@ def setup_distributed(rank: int, world_size: int, backend: str = 'nccl'):
     backend : str, default='nccl'
         Distributed backend ('nccl' or 'gloo')
     """
-    os.environ['MASTER_ADDR'] = os.environ.get('MASTER_ADDR', 'localhost')
-    os.environ['MASTER_PORT'] = os.environ.get('MASTER_PORT', '12355')
+    os.environ["MASTER_ADDR"] = os.environ.get("MASTER_ADDR", "localhost")
+    os.environ["MASTER_PORT"] = os.environ.get("MASTER_PORT", "12355")
 
     dist.init_process_group(backend, rank=rank, world_size=world_size)
 

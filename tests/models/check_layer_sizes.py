@@ -9,7 +9,7 @@ model = MultimodalAutoencoder(
     audio_mels=2048,
     text_dim=1024,
     n_voxels=85810,
-    bottleneck_dim=8000
+    bottleneck_dim=8000,
 )
 
 # Collect all layer sizes
@@ -58,7 +58,11 @@ sorted_layers = sorted(layer_sizes, key=lambda x: x[1])
 print("All layers sorted by size (smallest to largest):")
 print("=" * 80)
 for name, size in sorted_layers:
-    marker = " ★ SMALLEST ★" if size == encoder.bottleneck_dim and name.startswith("Layer 6") else ""
+    marker = (
+        " ★ SMALLEST ★"
+        if size == encoder.bottleneck_dim and name.startswith("Layer 6")
+        else ""
+    )
     print(f"{size:>10,}  {name}{marker}")
 
 print("\n" + "=" * 80)

@@ -14,7 +14,7 @@ print("=" * 80)
 
 # Parse the audio.py file
 audio_py_path = Path("giblet/data/audio.py")
-with open(audio_py_path, 'r') as f:
+with open(audio_py_path, "r") as f:
     code = f.read()
     tree = ast.parse(code)
 
@@ -26,7 +26,9 @@ print("\n1. Checking EnCodec imports...")
 has_encodec_import = "from transformers import EncodecModel, AutoProcessor" in code
 has_encodec_flag = "ENCODEC_AVAILABLE = True" in code
 checks.append(("EnCodec imports", has_encodec_import and has_encodec_flag))
-print(f"   {'✓' if has_encodec_import and has_encodec_flag else '✗'} EnCodec imports present")
+print(
+    f"   {'✓' if has_encodec_import and has_encodec_flag else '✗'} EnCodec imports present"
+)
 
 # 2. Check AudioProcessor class
 print("\n2. Checking AudioProcessor class structure...")
@@ -34,21 +36,21 @@ audio_processor_found = False
 methods_found = {}
 
 for node in ast.walk(tree):
-    if isinstance(node, ast.ClassDef) and node.name == 'AudioProcessor':
+    if isinstance(node, ast.ClassDef) and node.name == "AudioProcessor":
         audio_processor_found = True
         for item in node.body:
             if isinstance(item, ast.FunctionDef):
                 methods_found[item.name] = True
 
 expected_methods = [
-    '__init__',
-    'audio_to_features',
-    '_audio_to_features_encodec',
-    '_audio_to_features_mel',
-    'features_to_audio',
-    '_features_to_audio_encodec',
-    '_features_to_audio_mel',
-    'get_audio_info'
+    "__init__",
+    "audio_to_features",
+    "_audio_to_features_encodec",
+    "_audio_to_features_mel",
+    "features_to_audio",
+    "_features_to_audio_encodec",
+    "_features_to_audio_mel",
+    "get_audio_info",
 ]
 
 for method in expected_methods:
@@ -60,12 +62,12 @@ for method in expected_methods:
 print("\n3. Checking __init__ parameters...")
 init_params = []
 for node in ast.walk(tree):
-    if isinstance(node, ast.FunctionDef) and node.name == '__init__':
+    if isinstance(node, ast.FunctionDef) and node.name == "__init__":
         for arg in node.args.args:
-            if arg.arg != 'self':
+            if arg.arg != "self":
                 init_params.append(arg.arg)
 
-expected_params = ['use_encodec', 'encodec_bandwidth', 'device']
+expected_params = ["use_encodec", "encodec_bandwidth", "device"]
 for param in expected_params:
     present = param in init_params
     checks.append((f"Parameter: {param}", present))
@@ -102,7 +104,7 @@ checks.append(("Test file exists", test_exists))
 print(f"   {'✓' if test_exists else '✗'} Test file: {test_file}")
 
 if test_exists:
-    with open(test_file, 'r') as f:
+    with open(test_file, "r") as f:
         test_code = f.read()
 
     test_classes = []
@@ -112,9 +114,9 @@ if test_exists:
             test_classes.append(node.name)
 
     expected_test_classes = [
-        'TestEnCodecIntegration',
-        'TestBackwardsCompatibility',
-        'TestEnCodecBandwidths'
+        "TestEnCodecIntegration",
+        "TestBackwardsCompatibility",
+        "TestEnCodecBandwidths",
     ]
 
     for cls in expected_test_classes:

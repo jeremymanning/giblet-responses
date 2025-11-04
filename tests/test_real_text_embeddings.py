@@ -20,15 +20,11 @@ def test_real_bge_embeddings(data_dir, tmp_path):
 
     # Load REAL BGE model
     print("Loading BAAI/bge-large-en-v1.5 (this will download ~1.3GB)...")
-    processor = TextProcessor(
-        model_name='BAAI/bge-large-en-v1.5',
-        tr=1.5,
-        device='cpu'
-    )
+    processor = TextProcessor(model_name="BAAI/bge-large-en-v1.5", tr=1.5, device="cpu")
     print("Model loaded")
 
     # Load annotations
-    annotations_path = data_dir / 'annotations.xlsx'
+    annotations_path = data_dir / "annotations.xlsx"
     if not annotations_path.exists():
         pytest.skip(f"Annotations not found at {annotations_path}")
 
@@ -49,19 +45,19 @@ def test_real_bge_embeddings(data_dir, tmp_path):
         scenes,
         normalize_embeddings=True,
         show_progress_bar=False,
-        convert_to_numpy=True
+        convert_to_numpy=True,
     )
     print(f"Embeddings shape: {embeddings.shape}")
 
     # Test nearest-neighbor recovery
     print("Testing nearest-neighbor recovery...")
 
-    output_path = tmp_path / 'text_embedding_validation.txt'
-    with open(output_path, 'w') as f:
-        f.write("="*80 + "\n")
+    output_path = tmp_path / "text_embedding_validation.txt"
+    with open(output_path, "w") as f:
+        f.write("=" * 80 + "\n")
         f.write("REAL BGE EMBEDDING VALIDATION\n")
         f.write("Model: BAAI/bge-large-en-v1.5\n")
-        f.write("="*80 + "\n\n")
+        f.write("=" * 80 + "\n\n")
 
         perfect_matches = 0
         for i, scene in enumerate(scenes):
@@ -70,7 +66,7 @@ def test_real_bge_embeddings(data_dir, tmp_path):
             nearest_idx = np.argmax(sims)
 
             f.write(f"\nAnnotation {i}:\n")
-            f.write("-"*80 + "\n")
+            f.write("-" * 80 + "\n")
             f.write(f"ORIGINAL: {scene}\n")
             f.write(f"RECOVERED (nearest): {scenes[nearest_idx]}\n")
             f.write(f"Cosine similarity: {sims[nearest_idx]:.4f}\n")

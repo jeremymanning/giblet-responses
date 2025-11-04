@@ -20,7 +20,9 @@ from typing import Optional, Dict, Union
 from .hrf import apply_hrf, convolve_with_padding
 
 
-def _resample_features(features: np.ndarray, current_trs: int, target_trs: int) -> np.ndarray:
+def _resample_features(
+    features: np.ndarray, current_trs: int, target_trs: int
+) -> np.ndarray:
     """
     Resample feature matrix from current_trs to target_trs.
 
@@ -76,18 +78,20 @@ def _resample_features(features: np.ndarray, current_trs: int, target_trs: int) 
             target_indices_int = np.clip(target_indices_int, 0, current_trs - 1)
 
             # Direct indexing (no interpolation)
-            resampled = features[target_indices_int]  # Shape: (target_trs, n_codebooks, frames_per_tr)
+            resampled = features[
+                target_indices_int
+            ]  # Shape: (target_trs, n_codebooks, frames_per_tr)
 
         else:
             # Continuous features: Use linear interpolation
-            resampled = np.zeros((target_trs, n_mels, frames_per_tr), dtype=features.dtype)
+            resampled = np.zeros(
+                (target_trs, n_mels, frames_per_tr), dtype=features.dtype
+            )
 
             for mel_idx in range(n_mels):
                 for frame_idx in range(frames_per_tr):
                     resampled[:, mel_idx, frame_idx] = np.interp(
-                        target_indices,
-                        current_indices,
-                        features[:, mel_idx, frame_idx]
+                        target_indices, current_indices, features[:, mel_idx, frame_idx]
                     )
 
         return resampled
@@ -113,9 +117,7 @@ def _resample_features(features: np.ndarray, current_trs: int, target_trs: int) 
 
         for feat_idx in range(n_features):
             resampled[:, feat_idx] = np.interp(
-                target_indices,
-                current_indices,
-                features[:, feat_idx]
+                target_indices, current_indices, features[:, feat_idx]
             )
 
     return resampled
@@ -128,7 +130,7 @@ def align_all_modalities(
     fmri_features: np.ndarray,
     apply_hrf_conv: bool = True,
     tr: float = 1.5,
-    hrf_padding_duration: float = 10.0
+    hrf_padding_duration: float = 10.0,
 ) -> Dict[str, Union[np.ndarray, int]]:
     """
     Align all stimulus modalities to a common TR grid and apply HRF convolution.
@@ -231,7 +233,9 @@ def align_all_modalities(
     print(f"  Audio:  {n_audio} TRs -> {target_trs} TRs")
     print(f"  Text:   {n_text} TRs -> {target_trs} TRs")
     print(f"  fMRI:   {n_fmri} TRs (reference, already {target_trs})")
-    print(f"  Target: {target_trs} TRs at TR={tr}s (~{target_trs * tr / 60:.1f} minutes)")
+    print(
+        f"  Target: {target_trs} TRs at TR={tr}s (~{target_trs * tr / 60:.1f} minutes)"
+    )
 
     # Resample stimulus modalities to target TRs
     video_aligned = _resample_features(video_features, n_video, target_trs)
@@ -248,34 +252,28 @@ def align_all_modalities(
         # Convolve each stimulus modality with HRF
         # Use padding to minimize edge effects
         video_aligned = convolve_with_padding(
-            video_aligned,
-            tr=tr,
-            padding_duration=hrf_padding_duration
+            video_aligned, tr=tr, padding_duration=hrf_padding_duration
         )
         audio_aligned = convolve_with_padding(
-            audio_aligned,
-            tr=tr,
-            padding_duration=hrf_padding_duration
+            audio_aligned, tr=tr, padding_duration=hrf_padding_duration
         )
         text_aligned = convolve_with_padding(
-            text_aligned,
-            tr=tr,
-            padding_duration=hrf_padding_duration
+            text_aligned, tr=tr, padding_duration=hrf_padding_duration
         )
 
         print("  HRF convolution complete")
 
     # Build result dictionary
     result = {
-        'video': video_aligned,
-        'audio': audio_aligned,
-        'text': text_aligned,
-        'fmri': fmri_aligned,
-        'n_trs': target_trs,
-        'video_orig_trs': n_video,
-        'audio_orig_trs': n_audio,
-        'text_orig_trs': n_text,
-        'fmri_orig_trs': n_fmri,
+        "video": video_aligned,
+        "audio": audio_aligned,
+        "text": text_aligned,
+        "fmri": fmri_aligned,
+        "n_trs": target_trs,
+        "video_orig_trs": n_video,
+        "audio_orig_trs": n_audio,
+        "text_orig_trs": n_text,
+        "fmri_orig_trs": n_fmri,
     }
 
     # Print alignment summary
@@ -304,17 +302,17 @@ def get_alignment_info(alignment_result: Dict) -> Dict:
         Dictionary with alignment statistics
     """
     return {
-        'n_trs': alignment_result['n_trs'],
-        'video_trs_aligned': alignment_result['video'].shape[0],
-        'audio_trs_aligned': alignment_result['audio'].shape[0],
-        'text_trs_aligned': alignment_result['text'].shape[0],
-        'fmri_trs_aligned': alignment_result['fmri'].shape[0],
-        'video_features': alignment_result['video'].shape[1],
-        'audio_features': alignment_result['audio'].shape[1],
-        'text_features': alignment_result['text'].shape[1],
-        'fmri_features': alignment_result['fmri'].shape[1],
-        'video_orig_trs': alignment_result['video_orig_trs'],
-        'audio_orig_trs': alignment_result['audio_orig_trs'],
-        'text_orig_trs': alignment_result['text_orig_trs'],
-        'fmri_orig_trs': alignment_result['fmri_orig_trs'],
+        "n_trs": alignment_result["n_trs"],
+        "video_trs_aligned": alignment_result["video"].shape[0],
+        "audio_trs_aligned": alignment_result["audio"].shape[0],
+        "text_trs_aligned": alignment_result["text"].shape[0],
+        "fmri_trs_aligned": alignment_result["fmri"].shape[0],
+        "video_features": alignment_result["video"].shape[1],
+        "audio_features": alignment_result["audio"].shape[1],
+        "text_features": alignment_result["text"].shape[1],
+        "fmri_features": alignment_result["fmri"].shape[1],
+        "video_orig_trs": alignment_result["video_orig_trs"],
+        "audio_orig_trs": alignment_result["audio_orig_trs"],
+        "text_orig_trs": alignment_result["text_orig_trs"],
+        "fmri_orig_trs": alignment_result["fmri_orig_trs"],
     }

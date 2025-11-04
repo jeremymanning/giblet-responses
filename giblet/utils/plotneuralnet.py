@@ -39,7 +39,7 @@ def generate_multimodal_architecture_latex(
     bottleneck_dim: int = 8000,
     video_features: int = 1024,
     audio_features: int = 256,
-    text_features: int = 256
+    text_features: int = 256,
 ) -> str:
     """
     Generate LaTeX code for multimodal autoencoder architecture visualization.
@@ -103,13 +103,16 @@ def generate_multimodal_architecture_latex(
 
     # Build LaTeX document
     # Use relative path to layers directory (will be copied to same directory as .tex file)
-    latex_code = r"""\documentclass[border=8pt, multi, tikz]{standalone}
+    latex_code = (
+        r"""\documentclass[border=8pt, multi, tikz]{standalone}
 \usepackage{import}
 \subimport{layers/}{init}
 \usetikzlibrary{positioning}
 \usetikzlibrary{3d}
 
-""" + colors + r"""
+"""
+        + colors
+        + r"""
 
 \newcommand{\copymidarrow}{\tikz \draw[-Stealth,line width=0.8mm,draw={rgb:blue,4;red,1;green,1;black,3}] (-0.3,0) -- ++(0.3,0);}
 
@@ -127,7 +130,9 @@ def generate_multimodal_architecture_latex(
         name=input_video,
         caption=Video Input,
         xlabel={{" "}},
-        zlabel=""" + str(video_input_dim) + r""",
+        zlabel="""
+        + str(video_input_dim)
+        + r""",
         fill=\ConvColor,
         height=35,
         width=2,
@@ -141,7 +146,9 @@ def generate_multimodal_architecture_latex(
         name=input_audio,
         caption=Audio Input,
         xlabel={{" "}},
-        zlabel=""" + str(audio_mels) + r""",
+        zlabel="""
+        + str(audio_mels)
+        + r""",
         fill=\ConvColor,
         height=25,
         width=2,
@@ -155,7 +162,9 @@ def generate_multimodal_architecture_latex(
         name=input_text,
         caption=Text Input,
         xlabel={{" "}},
-        zlabel=""" + str(text_dim) + r""",
+        zlabel="""
+        + str(text_dim)
+        + r""",
         fill=\TextColor,
         height=20,
         width=2,
@@ -169,7 +178,9 @@ def generate_multimodal_architecture_latex(
         name=video_conv,
         caption=Layer 2A,
         xlabel={{" "}},
-        zlabel=""" + str(video_features) + r""",
+        zlabel="""
+        + str(video_features)
+        + r""",
         fill=\ConvReluColor,
         height=30,
         width=3,
@@ -184,7 +195,9 @@ def generate_multimodal_architecture_latex(
         name=audio_conv,
         caption=Layer 2B,
         xlabel={{" "}},
-        zlabel=""" + str(audio_features) + r""",
+        zlabel="""
+        + str(audio_features)
+        + r""",
         fill=\ConvReluColor,
         height=18,
         width=3,
@@ -199,7 +212,9 @@ def generate_multimodal_architecture_latex(
         name=text_linear,
         caption=Layer 2C,
         xlabel={{" "}},
-        zlabel=""" + str(text_features) + r""",
+        zlabel="""
+        + str(text_features)
+        + r""",
         fill=\FcReluColor,
         height=16,
         width=3,
@@ -214,7 +229,9 @@ def generate_multimodal_architecture_latex(
         name=pool_concat,
         caption=Layer 3,
         xlabel={{" "}},
-        zlabel=""" + str(pooled_dim) + r""",
+        zlabel="""
+        + str(pooled_dim)
+        + r""",
         fill=\PoolColor,
         height=28,
         width=2,
@@ -232,7 +249,9 @@ def generate_multimodal_architecture_latex(
         name=feature_conv,
         caption=Layer 4,
         xlabel={{" "}},
-        zlabel=""" + str(pooled_dim) + r""",
+        zlabel="""
+        + str(pooled_dim)
+        + r""",
         fill=\ConvReluColor,
         height=28,
         width=3,
@@ -247,7 +266,9 @@ def generate_multimodal_architecture_latex(
         name=to_voxels,
         caption=Layer 5,
         xlabel={{" "}},
-        zlabel=""" + str(n_voxels) + r""",
+        zlabel="""
+        + str(n_voxels)
+        + r""",
         fill=\FcColor,
         height=38,
         width=2,
@@ -262,7 +283,9 @@ def generate_multimodal_architecture_latex(
         name=bottleneck,
         caption=Layer 6,
         xlabel={{" "}},
-        zlabel=""" + str(bottleneck_dim) + r""",
+        zlabel="""
+        + str(bottleneck_dim)
+        + r""",
         fill=\BottleneckColor,
         height=22,
         width=4,
@@ -327,7 +350,9 @@ def generate_multimodal_architecture_latex(
         name=video_decoder,
         caption=Layer 10A,
         xlabel={{" "}},
-        zlabel=""" + str(video_features) + r""",
+        zlabel="""
+        + str(video_features)
+        + r""",
         fill=\UnpoolColor,
         height=30,
         width=3,
@@ -343,7 +368,9 @@ def generate_multimodal_architecture_latex(
         name=audio_decoder,
         caption=Layer 10B,
         xlabel={{" "}},
-        zlabel=""" + str(audio_features) + r""",
+        zlabel="""
+        + str(audio_features)
+        + r""",
         fill=\UnpoolColor,
         height=18,
         width=3,
@@ -359,7 +386,9 @@ def generate_multimodal_architecture_latex(
         name=text_decoder,
         caption=Layer 10C,
         xlabel={{" "}},
-        zlabel=""" + str(text_features) + r""",
+        zlabel="""
+        + str(text_features)
+        + r""",
         fill=\FcReluColor,
         height=16,
         width=3,
@@ -375,7 +404,9 @@ def generate_multimodal_architecture_latex(
         name=output_video,
         caption=Video Output,
         xlabel={{" "}},
-        zlabel=""" + str(video_input_dim) + r""",
+        zlabel="""
+        + str(video_input_dim)
+        + r""",
         fill=\ConvColor,
         height=35,
         width=2,
@@ -390,7 +421,9 @@ def generate_multimodal_architecture_latex(
         name=output_audio,
         caption=Audio Output,
         xlabel={{" "}},
-        zlabel=""" + str(audio_mels) + r""",
+        zlabel="""
+        + str(audio_mels)
+        + r""",
         fill=\ConvColor,
         height=25,
         width=2,
@@ -405,7 +438,9 @@ def generate_multimodal_architecture_latex(
         name=output_text,
         caption=Text Output,
         xlabel={{" "}},
-        zlabel=""" + str(text_dim) + r""",
+        zlabel="""
+        + str(text_dim)
+        + r""",
         fill=\TextColor,
         height=20,
         width=2,
@@ -417,21 +452,20 @@ def generate_multimodal_architecture_latex(
 \end{tikzpicture}
 \end{document}
 """
+    )
 
     # Write to file
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         f.write(latex_code)
 
     return str(output_path)
 
 
 def compile_latex_to_pdf(
-    tex_path: str,
-    output_dir: Optional[str] = None,
-    cleanup: bool = True
+    tex_path: str, output_dir: Optional[str] = None, cleanup: bool = True
 ) -> Optional[str]:
     """
     Compile LaTeX file to PDF using pdflatex.
@@ -462,11 +496,7 @@ def compile_latex_to_pdf(
 
     # Check if pdflatex is available
     try:
-        subprocess.run(
-            ['pdflatex', '--version'],
-            capture_output=True,
-            check=True
-        )
+        subprocess.run(["pdflatex", "--version"], capture_output=True, check=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
         print("WARNING: pdflatex not found. PDF compilation skipped.")
         print("Install LaTeX:")
@@ -486,6 +516,7 @@ def compile_latex_to_pdf(
     target_layers = output_dir / "layers"
     if plotneuralnet_layers.exists() and not target_layers.exists():
         import shutil
+
         shutil.copytree(plotneuralnet_layers, target_layers)
 
     # Compile LaTeX (run twice for proper references)
@@ -493,14 +524,15 @@ def compile_latex_to_pdf(
         for _ in range(2):
             result = subprocess.run(
                 [
-                    'pdflatex',
-                    '-interaction=nonstopmode',
-                    '-output-directory', str(output_dir),
-                    str(tex_path)
+                    "pdflatex",
+                    "-interaction=nonstopmode",
+                    "-output-directory",
+                    str(output_dir),
+                    str(tex_path),
                 ],
                 capture_output=True,
                 text=True,
-                cwd=str(tex_path.parent)
+                cwd=str(tex_path.parent),
             )
 
             if result.returncode != 0:
@@ -509,11 +541,11 @@ def compile_latex_to_pdf(
                 print(result.stderr)
                 return None
 
-        pdf_path = output_dir / (tex_path.stem + '.pdf')
+        pdf_path = output_dir / (tex_path.stem + ".pdf")
 
         # Cleanup intermediate files
         if cleanup:
-            for ext in ['.aux', '.log', '.out']:
+            for ext in [".aux", ".log", ".out"]:
                 aux_file = output_dir / (tex_path.stem + ext)
                 if aux_file.exists():
                     aux_file.unlink()
@@ -531,7 +563,7 @@ def compile_latex_to_pdf(
 def generate_network_diagram(
     output_pdf_path: str,
     architecture_params: Optional[Dict[str, Any]] = None,
-    keep_tex: bool = True
+    keep_tex: bool = True,
 ) -> Dict[str, Optional[str]]:
     """
     Generate complete network diagram (LaTeX + PDF).
@@ -570,27 +602,24 @@ def generate_network_diagram(
 
     # Generate .tex file
     output_pdf_path = Path(output_pdf_path)
-    tex_path = output_pdf_path.with_suffix('.tex')
+    tex_path = output_pdf_path.with_suffix(".tex")
 
     print(f"Generating LaTeX code...")
     tex_file = generate_multimodal_architecture_latex(
-        output_path=str(tex_path),
-        **architecture_params
+        output_path=str(tex_path), **architecture_params
     )
     print(f"LaTeX saved to: {tex_file}")
 
     # Compile to PDF
     print(f"Compiling PDF...")
     pdf_path = compile_latex_to_pdf(
-        tex_path=tex_file,
-        output_dir=str(output_pdf_path.parent),
-        cleanup=True
+        tex_path=tex_file, output_dir=str(output_pdf_path.parent), cleanup=True
     )
 
     result = {
-        'tex_path': str(tex_path) if keep_tex else None,
-        'pdf_path': pdf_path,
-        'success': pdf_path is not None
+        "tex_path": str(tex_path) if keep_tex else None,
+        "pdf_path": pdf_path,
+        "success": pdf_path is not None,
     }
 
     if pdf_path:
@@ -602,7 +631,7 @@ def generate_network_diagram(
     # Clean up .tex if requested
     if not keep_tex and Path(tex_file).exists():
         Path(tex_file).unlink()
-        result['tex_path'] = None
+        result["tex_path"] = None
 
     return result
 
