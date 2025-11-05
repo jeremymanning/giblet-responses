@@ -4,7 +4,7 @@
 
 # Optimizer parameters
 learning_rate: 1.0e-4
-batch_size: 2  # Per GPU (minimum for BatchNorm), so 16 total across 8 GPUs
+batch_size: 2  # Per GPU (minimum for BatchNorm), so 12 total across 6 GPUs
 num_epochs: 500  # Full production run
 weight_decay: 1.0e-5
 
@@ -75,6 +75,6 @@ model:
 distributed:
   enabled: true
   backend: 'nccl'
-  world_size: 8
+  world_size: 6  # Reduced from 8 to fit in 503GB RAM (6 × 75GB = 450GB)
   master_addr: 'localhost'
   master_port: '12355'
