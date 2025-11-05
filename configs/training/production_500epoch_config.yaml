@@ -60,7 +60,7 @@ model:
   video_width: 160
   audio_mels: 2048
   text_dim: 3072
-  n_voxels: 77347
+  n_voxels: 85810  # Fixed: actual fMRI voxel count from data
   bottleneck_dim: 2048
   video_features: 1024
   audio_features: 256
