@@ -184,9 +184,9 @@ def test_nccl_configurations():
         results[config["name"]] = success
 
         if success:
-            print(f"\n✓ FOUND WORKING CONFIGURATION!")
+            print("\n✓ FOUND WORKING CONFIGURATION!")
             print(f"Config name: {config['name']}")
-            print(f"\nRecommended environment variables:")
+            print("\nRecommended environment variables:")
             for key, value in config["env"].items():
                 print(f"export {key}={value}")
             break  # Stop testing once we find a working config
@@ -242,9 +242,9 @@ def main():
         results[config["name"]] = success
 
         if success:
-            print(f"\n✓ FOUND WORKING CONFIGURATION!")
+            print("\n✓ FOUND WORKING CONFIGURATION!")
             print(f"Config name: {config['name']}")
-            print(f"\nRecommended environment variables:")
+            print("\nRecommended environment variables:")
             for key, value in config["env"].items():
                 print(f"export {key}={value}")
             break  # Stop testing once we find a working config

@@ -42,15 +42,15 @@ def main():
 
     # Architecture parameters (matching the actual model)
     architecture_params = {
-        'video_height': 90,
-        'video_width': 160,
-        'audio_mels': 2048,
-        'text_dim': 1024,
-        'n_voxels': 85810,
-        'bottleneck_dim': 8000,
-        'video_features': 1024,
-        'audio_features': 256,
-        'text_features': 256
+        "video_height": 90,
+        "video_width": 160,
+        "audio_mels": 2048,
+        "text_dim": 1024,
+        "n_voxels": 85810,
+        "bottleneck_dim": 8000,
+        "video_features": 1024,
+        "audio_features": 256,
+        "text_features": 256,
     }
 
     print("Architecture parameters:")
@@ -62,7 +62,7 @@ def main():
     result = generate_network_diagram(
         output_pdf_path=str(output_path),
         architecture_params=architecture_params,
-        keep_tex=True
+        keep_tex=True,
     )
 
     print()
@@ -74,7 +74,7 @@ def main():
     print(f"PDF file: {result['pdf_path']}")
     print()
 
-    if result['success']:
+    if result["success"]:
         print("Network diagram generated successfully!")
         print()
         print("The diagram shows:")
@@ -95,8 +95,8 @@ def main():
 
     print("=" * 70)
 
-    return 0 if result['success'] else 1
+    return 0 if result["success"] else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

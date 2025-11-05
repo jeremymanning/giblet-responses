@@ -14,7 +14,7 @@ import torch
 # Add giblet to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from giblet.data.audio import AudioProcessor
+from giblet.data.audio import AudioProcessor  # noqa: E402
 
 
 def debug_encodec_extraction():
@@ -57,11 +57,11 @@ def debug_encodec_extraction():
             )
 
             # Check metadata
-            print(f"\n   Metadata sample:")
+            print("\n   Metadata sample:")
             print(metadata.head())
 
             # Verify each TR individually
-            print(f"\n   Individual TR shapes:")
+            print("\n   Individual TR shapes:")
             for i in range(min(3, max_trs)):
                 print(f"      TR {i}: {features[i].shape}")
 
@@ -111,14 +111,14 @@ def debug_encodec_extraction():
                 print(f"\n   Raw EnCodec output shape: {codes.shape}")
                 print(f"   Number of codebooks: {codes.shape[0]}")
                 print(f"   Total frames: {codes.shape[1]}")
-                print(f"   Frame rate: ~75 Hz (EnCodec default)")
+                print("   Frame rate: ~75 Hz (EnCodec default)")
 
                 # Calculate expected dimensions
                 tr_length = processor.tr
                 encodec_frame_rate = 75.0
                 frames_per_tr = int(encodec_frame_rate * tr_length)
 
-                print(f"\n   Expected dimensions per TR:")
+                print("\n   Expected dimensions per TR:")
                 print(f"      TR length: {tr_length}s")
                 print(f"      Frames per TR: {frames_per_tr}")
                 print(
@@ -127,7 +127,7 @@ def debug_encodec_extraction():
                 print(f"      Expected flattened size: {8 * frames_per_tr}")
 
                 # Try extracting first few TRs manually
-                print(f"\n   Manual TR extraction test:")
+                print("\n   Manual TR extraction test:")
                 for tr_idx in range(min(3, max_trs)):
                     start_time = tr_idx * tr_length
                     end_time = start_time + tr_length
@@ -188,7 +188,7 @@ def test_minimal_reproduction():
         n_available = min(actual_codebooks, expected_codebooks)
         normalized_codes[:n_available, :] = tr_codes[:n_available, :]
 
-        print(f"✓ Dimension normalization successful!")
+        print("✓ Dimension normalization successful!")
         print(f"  Result shape: {normalized_codes.shape}")
 
     except Exception as e:

@@ -12,15 +12,20 @@ Key requirements:
 4. Configurable TR length
 """
 
-import pytest
+import shutil
+import sys
+import tempfile
+from pathlib import Path
+
 import numpy as np
+import pytest
+import soundfile as sf
 import torch
 
 from giblet.data.audio import AudioProcessor, ENCODEC_AVAILABLE
 
 # Audio I/O
 import librosa
-import soundfile as sf
 
 
 @pytest.fixture
@@ -32,9 +37,9 @@ def sample_audio_5s(tmp_path):
 
     # Complex signal with varying content
     signal = (
-        np.sin(2 * np.pi * 440 * t) +  # A4 note
-        0.5 * np.sin(2 * np.pi * 880 * t) +  # Harmonic
-        0.3 * np.random.randn(len(t))  # Noise
+        np.sin(2 * np.pi * 440 * t)
+        + 0.5 * np.sin(2 * np.pi * 880 * t)  # A4 note
+        + 0.3 * np.random.randn(len(t))  # Harmonic  # Noise
     )
     signal = signal / np.max(np.abs(signal)) * 0.9
 
@@ -72,8 +77,7 @@ class TestDimensionConsistency:
         audio_path, sr, duration = sample_audio_5s
 
         features, metadata = audio_processor.audio_to_features(
-            audio_path,
-            from_video=False
+            audio_path, from_video=False
         )
 
         # Check all TRs have same shape
@@ -84,7 +88,7 @@ class TestDimensionConsistency:
             tr_shape = features[tr_idx].shape
             assert tr_shape == expected_shape, (
                 f"TR {tr_idx} has shape {tr_shape}, expected {expected_shape}. "
-                f"This would cause: RuntimeError: stack expects each tensor to be equal size"
+                "This would cause: RuntimeError: stack expects each tensor to be equal size"
             )
 
         print(f"\n✓ All {n_trs} TRs have consistent shape: {expected_shape}")
@@ -94,17 +98,16 @@ class TestDimensionConsistency:
         audio_path, sr, duration = sample_audio_5s
 
         features, metadata = audio_processor.audio_to_features(
-            audio_path,
-            from_video=False
+            audio_path, from_video=False
         )
 
         # Features are flattened: (n_trs, n_codebooks * frames_per_tr)
         # Verify all metadata has same n_codebooks
-        codebook_counts = metadata['n_codebooks'].unique()
+        codebook_counts = metadata["n_codebooks"].unique()
 
         assert len(codebook_counts) == 1, (
             f"Variable codebook counts detected: {codebook_counts}. "
-            f"This causes the dimension mismatch error."
+            "This causes the dimension mismatch error."
         )
 
         n_codebooks = codebook_counts[0]
@@ -118,8 +121,7 @@ class TestDimensionConsistency:
 
         # Note: Using default audio_processor with TR=1.5s and bandwidth=3.0 kbps
         features, metadata = audio_processor.audio_to_features(
-            audio_path,
-            from_video=False
+            audio_path, from_video=False
         )
 
         # Check shape
@@ -141,15 +143,16 @@ class TestDimensionConsistency:
         )
 
         print(f"\n✓ Shape: {features.shape}")
-        print(f"  {n_trs} TRs × {flat_dim} codes ({n_codebooks} codebooks × {frames_per_tr} frames)")
+        print(
+            f"  {n_trs} TRs × {flat_dim} codes ({n_codebooks} codebooks × {frames_per_tr} frames)"
+        )
 
     def test_torch_stack_compatibility(self, audio_processor, sample_audio_5s):
         """Test that features can be stacked with torch.stack() (training requirement)."""
         audio_path, sr, duration = sample_audio_5s
 
         features, metadata = audio_processor.audio_to_features(
-            audio_path,
-            from_video=False
+            audio_path, from_video=False
         )
 
         # Convert to list of tensors (simulates batch processing)
@@ -167,8 +170,7 @@ class TestDimensionConsistency:
         audio_path, sr, duration = sample_audio_5s
 
         features, metadata = audio_processor.audio_to_features(
-            audio_path,
-            from_video=False
+            audio_path, from_video=False
         )
 
         assert features.dtype == np.int64, f"Expected int64, got {features.dtype}"
@@ -191,22 +193,18 @@ class TestConfigurableTR:
         audio_path, sr, duration = sample_audio_long
 
         processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=tr_length
+            use_encodec=True, encodec_bandwidth=3.0, tr=tr_length
         )
 
         features, metadata = processor.audio_to_features(
-            audio_path,
-            from_video=False,
-            tr_length=tr_length
+            audio_path, from_video=False, tr_length=tr_length
         )
 
         # Check TR count
         expected_n_trs = int(duration / tr_length)
-        assert features.shape[0] == expected_n_trs, (
-            f"Expected {expected_n_trs} TRs for TR={tr_length}s, got {features.shape[0]}"
-        )
+        assert (
+            features.shape[0] == expected_n_trs
+        ), f"Expected {expected_n_trs} TRs for TR={tr_length}s, got {features.shape[0]}"
 
         # Check flat dimension
         encodec_fps = 75
@@ -214,9 +212,9 @@ class TestConfigurableTR:
         n_codebooks = 8
         expected_flat_dim = n_codebooks * frames_per_tr
 
-        assert features.shape[1] == expected_flat_dim, (
-            f"Expected flat_dim={expected_flat_dim} for TR={tr_length}s, got {features.shape[1]}"
-        )
+        assert (
+            features.shape[1] == expected_flat_dim
+        ), f"Expected flat_dim={expected_flat_dim} for TR={tr_length}s, got {features.shape[1]}"
 
         print(f"\n✓ TR={tr_length}s: shape={features.shape}")
 
@@ -225,24 +223,18 @@ class TestConfigurableTR:
         audio_path, sr, duration = sample_audio_5s
 
         # Initialize with TR=1.5s
-        processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=3.0,
-            tr=1.5
-        )
+        processor = AudioProcessor(use_encodec=True, encodec_bandwidth=3.0, tr=1.5)
 
         # Extract with TR=2.0s (override)
         features, metadata = processor.audio_to_features(
-            audio_path,
-            from_video=False,
-            tr_length=2.0
+            audio_path, from_video=False, tr_length=2.0
         )
 
         # Should use 2.0s, not 1.5s
         expected_n_trs = int(duration / 2.0)
-        assert features.shape[0] == expected_n_trs, (
-            f"tr_length parameter did not override self.tr"
-        )
+        assert (
+            features.shape[0] == expected_n_trs
+        ), "tr_length parameter did not override self.tr"
 
         print(f"\n✓ TR override works: {features.shape[0]} TRs @ 2.0s")
 
@@ -257,8 +249,7 @@ class TestRoundTrip:
 
         # Encode (flattened)
         features, metadata = audio_processor.audio_to_features(
-            audio_path,
-            from_video=False
+            audio_path, from_video=False
         )
 
         assert features.ndim == 2, "Features should be flattened"
@@ -283,17 +274,18 @@ class TestRoundTrip:
         correlation = np.corrcoef(original, reconstructed)[0, 1]
         assert correlation > 0.7, f"Low correlation: {correlation:.3f}"
 
-        print(f"\n✓ Round-trip reconstruction successful")
+        print("\n✓ Round-trip reconstruction successful")
         print(f"  Correlation: {correlation:.3f}")
 
-    def test_legacy_3d_format_still_works(self, audio_processor, sample_audio_5s, tmp_path):
+    def test_legacy_3d_format_still_works(
+        self, audio_processor, sample_audio_5s, tmp_path
+    ):
         """Test backwards compatibility: legacy 3D format still works."""
         audio_path, sr, duration = sample_audio_5s
 
         # Get flattened features
         features_flat, metadata = audio_processor.audio_to_features(
-            audio_path,
-            from_video=False
+            audio_path, from_video=False
         )
 
         # Manually reshape to legacy 3D format
@@ -308,7 +300,7 @@ class TestRoundTrip:
 
         assert output_path.exists()
 
-        print(f"\n✓ Legacy 3D format still works")
+        print("\n✓ Legacy 3D format still works")
 
 
 @pytest.mark.skipif(not ENCODEC_AVAILABLE, reason="EnCodec not available")
@@ -320,8 +312,7 @@ class TestEdgeCases:
         audio_path, sr, duration = sample_audio_5s
 
         features, metadata = audio_processor.audio_to_features(
-            audio_path,
-            from_video=False
+            audio_path, from_video=False
         )
 
         first_shape = features[0].shape
@@ -329,7 +320,7 @@ class TestEdgeCases:
 
         assert first_shape == last_shape, (
             f"First TR shape {first_shape} != last TR shape {last_shape}. "
-            f"This is the exact error from training: [1, 4, 106697] vs [1, 0, 106705]"
+            "This is the exact error from training: [1, 4, 106697] vs [1, 0, 106705]"
         )
 
         print(f"\n✓ First TR == Last TR: {first_shape}")
@@ -346,8 +337,7 @@ class TestEdgeCases:
         sf.write(str(audio_path), signal, sample_rate)
 
         features, metadata = audio_processor.audio_to_features(
-            audio_path,
-            from_video=False
+            audio_path, from_video=False
         )
 
         # Should get 0 TRs (audio too short)
@@ -361,14 +351,12 @@ class TestEdgeCases:
 
         max_trs = 2
         features, metadata = audio_processor.audio_to_features(
-            audio_path,
-            from_video=False,
-            max_trs=max_trs
+            audio_path, from_video=False, max_trs=max_trs
         )
 
-        assert features.shape[0] == max_trs, (
-            f"Expected {max_trs} TRs, got {features.shape[0]}"
-        )
+        assert (
+            features.shape[0] == max_trs
+        ), f"Expected {max_trs} TRs, got {features.shape[0]}"
 
         # All TRs should still have consistent shape
         for i in range(max_trs):
@@ -381,11 +369,14 @@ class TestEdgeCases:
 class TestBandwidthSettings:
     """Test different bandwidth settings produce consistent codebook counts."""
 
-    @pytest.mark.parametrize("bandwidth,expected_codebooks", [
-        (1.5, 2),
-        (3.0, 8),
-        (6.0, 16),
-    ])
+    @pytest.mark.parametrize(
+        "bandwidth,expected_codebooks",
+        [
+            (1.5, 2),
+            (3.0, 8),
+            (6.0, 16),
+        ],
+    )
     def test_bandwidth_codebook_mapping(
         self, sample_audio_5s, bandwidth, expected_codebooks
     ):
@@ -396,19 +387,15 @@ class TestBandwidthSettings:
         audio_path, sr, duration = sample_audio_5s
 
         from giblet.data.audio import AudioProcessor
+
         processor = AudioProcessor(
-            use_encodec=True,
-            encodec_bandwidth=bandwidth,
-            tr=1.5
+            use_encodec=True, encodec_bandwidth=bandwidth, tr=1.5
         )
 
-        features, metadata = processor.audio_to_features(
-            audio_path,
-            from_video=False
-        )
+        features, metadata = processor.audio_to_features(audio_path, from_video=False)
 
         # Check metadata
-        n_codebooks = metadata['n_codebooks'].iloc[0]
+        n_codebooks = metadata["n_codebooks"].iloc[0]
         assert n_codebooks == expected_codebooks, (
             f"Bandwidth {bandwidth} kbps should produce {expected_codebooks} codebooks, "
             f"got {n_codebooks}"
@@ -419,16 +406,15 @@ class TestBandwidthSettings:
         frames_per_tr = int(encodec_fps * 1.5)
         expected_flat_dim = expected_codebooks * frames_per_tr
 
-        assert features.shape[1] == expected_flat_dim, (
-            f"Expected flat_dim={expected_flat_dim}, got {features.shape[1]}"
-        )
+        assert (
+            features.shape[1] == expected_flat_dim
+        ), f"Expected flat_dim={expected_flat_dim}, got {features.shape[1]}"
 
         print(f"\n✓ Bandwidth {bandwidth} kbps → {expected_codebooks} codebooks")
 
 
 if __name__ == "__main__":
     # Run tests manually
-    import sys
 
     print("=" * 80)
     print("Audio Temporal Concatenation Tests (Issue #26, Task 1.2)")

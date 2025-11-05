@@ -56,7 +56,7 @@ print("VERIFICATION RESULTS:")
 print("=" * 80)
 
 # Import and test encoder
-from giblet.models.encoder import MultimodalEncoder
+from giblet.models.encoder import MultimodalEncoder  # noqa: E402
 
 encoder = MultimodalEncoder()
 
@@ -76,7 +76,7 @@ layer5_out_dim = encoder.layer5[0].out_features
 layer6_out_dim = encoder.layer6[0].out_features
 layer7_out_dim = encoder.layer7_bottleneck[0].out_features
 
-print(f"\nLayer dimensions:")
+print("\nLayer dimensions:")
 print(f"  Layer 5 output: {layer5_out_dim}")
 print(f"  Layer 6 output: {layer6_out_dim}")
 print(f"  Layer 7 output: {layer7_out_dim}")

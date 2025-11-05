@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Detect project root directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
+
 #===============================================================================
 # check_remote_status.sh - Monitor remote cluster training status
 #===============================================================================
@@ -121,7 +125,7 @@ command -v jq >/dev/null 2>&1 || {
 }
 
 # Load credentials
-CRED_FILE="cluster_config/${CLUSTER}_credentials.json"
+CRED_FILE="$PROJECT_ROOT/cluster_config/${CLUSTER}_credentials.json"
 
 if [ ! -f "$CRED_FILE" ]; then
     print_error "Error: Credentials file not found: $CRED_FILE"

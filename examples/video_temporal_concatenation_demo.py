@@ -20,6 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np
+
 from giblet.data.video import VideoProcessor
 
 
@@ -51,10 +52,7 @@ def main():
 
         # Create processor
         processor = VideoProcessor(
-            target_height=90,
-            target_width=160,
-            tr=tr,
-            normalize=True
+            target_height=90, target_width=160, tr=tr, normalize=True
         )
 
         # Get video info
@@ -74,15 +72,19 @@ def main():
         print(f"  Features per TR: {features.shape[1]:,}")
 
         # Calculate breakdown
-        frames_per_tr = metadata.iloc[0]['frames_per_tr']
+        frames_per_tr = metadata.iloc[0]["frames_per_tr"]
         features_per_frame = 90 * 160 * 3
         print(f"\nDimension breakdown:")
         print(f"  Frames per TR: {frames_per_tr}")
         print(f"  Features per frame: {features_per_frame:,} (90 × 160 × 3)")
-        print(f"  Total features: {frames_per_tr} × {features_per_frame:,} = {features.shape[1]:,}")
+        print(
+            f"  Total features: {frames_per_tr} × {features_per_frame:,} = {features.shape[1]:,}"
+        )
 
         # Verify consistency
-        all_same = all(features[i].shape[0] == features[0].shape[0] for i in range(len(features)))
+        all_same = all(
+            features[i].shape[0] == features[0].shape[0] for i in range(len(features))
+        )
         print(f"\nDimension consistency: {'✓ PASS' if all_same else '✗ FAIL'}")
 
         # Show metadata for first few TRs

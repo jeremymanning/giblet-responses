@@ -13,11 +13,11 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from typing import Tuple, Optional, Union, List, Dict
-from tqdm import tqdm
 
 # Embedding model
 try:
     from sentence_transformers import SentenceTransformer
+
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
@@ -65,14 +65,14 @@ class TextProcessor:
 
     def __init__(
         self,
-        model_name: str = 'BAAI/bge-large-en-v1.5',
+        model_name: str = "BAAI/bge-large-en-v1.5",
         tr: float = 1.5,
-        aggregation: str = 'mean',
-        gap_fill: str = 'forward_fill',
+        aggregation: str = "mean",
+        gap_fill: str = "forward_fill",
         device: Optional[str] = None,
-        temporal_mode: str = 'concatenate',
+        temporal_mode: str = "concatenate",
         max_annotations_per_tr: int = 3,
-        temporal_window: float = 1.0
+        temporal_window: float = 1.0,
     ):
         if not SENTENCE_TRANSFORMERS_AVAILABLE:
             raise ImportError(
@@ -91,7 +91,7 @@ class TextProcessor:
         self.n_features = 1024  # BGE-large-en-v1.5 embedding dimension
 
         # Calculate effective feature dimension based on mode
-        if temporal_mode == 'concatenate':
+        if temporal_mode == "concatenate":
             self.effective_dim = self.n_features * max_annotations_per_tr
         else:
             self.effective_dim = self.n_features
@@ -107,10 +107,7 @@ class TextProcessor:
             self._model = SentenceTransformer(self.model_name, device=self.device)
             print(f"Model loaded (embedding dim: {self.n_features})")
 
-    def load_annotations(
-        self,
-        xlsx_path: Union[str, Path]
-    ) -> pd.DataFrame:
+    def load_annotations(self, xlsx_path: Union[str, Path]) -> pd.DataFrame:
         """
         Load annotations from Excel file.
 
@@ -135,7 +132,7 @@ class TextProcessor:
         df.columns = df.columns.str.strip()
 
         # Verify required columns exist
-        required_cols = ['Start Time (s)', 'End Time (s)']
+        required_cols = ["Start Time (s)", "End Time (s)"]
         missing_cols = [col for col in required_cols if col not in df.columns]
         if missing_cols:
             raise ValueError(f"Missing required columns: {missing_cols}")
@@ -146,7 +143,7 @@ class TextProcessor:
         self,
         annotations: pd.DataFrame,
         text_columns: Optional[List[str]] = None,
-        separator: str = '; '
+        separator: str = "; ",
     ) -> pd.Series:
         """
         Combine multiple text columns into single text per segment.
@@ -168,7 +165,7 @@ class TextProcessor:
         """
         if text_columns is None:
             # Default columns with rich descriptive information
-            text_columns = ['Scene Details - A Level', 'Name - All', 'Location']
+            text_columns = ["Scene Details - A Level", "Name - All", "Location"]
 
         # Verify columns exist
         available_cols = [col for col in text_columns if col in annotations.columns]
@@ -176,22 +173,18 @@ class TextProcessor:
             raise ValueError(f"None of the text columns found: {text_columns}")
 
         # Combine columns, handling NaN values
-        combined = annotations[available_cols].fillna('').astype(str)
+        combined = annotations[available_cols].fillna("").astype(str)
         combined_text = combined.apply(
-            lambda row: separator.join([x for x in row if x]),
-            axis=1
+            lambda row: separator.join([x for x in row if x]), axis=1
         )
 
         # Remove entries that are empty after combination
-        combined_text = combined_text.replace('', np.nan)
+        combined_text = combined_text.replace("", np.nan)
 
         return combined_text
 
     def align_to_trs(
-        self,
-        annotations: pd.DataFrame,
-        embeddings: np.ndarray,
-        n_trs: int
+        self, annotations: pd.DataFrame, embeddings: np.ndarray, n_trs: int
     ) -> Tuple[np.ndarray, pd.DataFrame]:
         """
         Align segment embeddings to TR grid.
@@ -224,16 +217,13 @@ class TextProcessor:
         - In 'average' mode: averages embeddings (legacy behavior)
         """
         # Choose alignment mode
-        if self.temporal_mode == 'concatenate':
+        if self.temporal_mode == "concatenate":
             return self._align_to_trs_concatenate(annotations, embeddings, n_trs)
         else:
             return self._align_to_trs_average(annotations, embeddings, n_trs)
 
     def _align_to_trs_average(
-        self,
-        annotations: pd.DataFrame,
-        embeddings: np.ndarray,
-        n_trs: int
+        self, annotations: pd.DataFrame, embeddings: np.ndarray, n_trs: int
     ) -> Tuple[np.ndarray, pd.DataFrame]:
         """Legacy averaging mode for backward compatibility."""
         tr_embeddings = np.zeros((n_trs, self.n_features), dtype=np.float32)
@@ -244,8 +234,8 @@ class TextProcessor:
 
         # Map segments to TRs
         for seg_idx, row in annotations.iterrows():
-            start_time = row['Start Time (s)']
-            end_time = row['End Time (s)']
+            start_time = row["Start Time (s)"]
+            end_time = row["End Time (s)"]
 
             # Find TRs that overlap with this segment
             # TR i covers time [i * TR, (i+1) * TR)
@@ -272,24 +262,26 @@ class TextProcessor:
                 contributing_embeddings = embeddings[contributing_segments]
 
                 # Aggregate based on strategy
-                if self.aggregation == 'mean':
+                if self.aggregation == "mean":
                     tr_embeddings[tr_idx] = np.mean(contributing_embeddings, axis=0)
-                elif self.aggregation == 'first':
+                elif self.aggregation == "first":
                     tr_embeddings[tr_idx] = contributing_embeddings[0]
-                elif self.aggregation == 'last':
+                elif self.aggregation == "last":
                     tr_embeddings[tr_idx] = contributing_embeddings[-1]
-                elif self.aggregation == 'max':
+                elif self.aggregation == "max":
                     tr_embeddings[tr_idx] = np.max(contributing_embeddings, axis=0)
                 else:
                     raise ValueError(f"Unknown aggregation: {self.aggregation}")
 
-            tr_metadata.append({
-                'tr_index': tr_idx,
-                'start_time': start_time,
-                'end_time': end_time,
-                'n_segments_contributing': len(contributing_segments),
-                'segment_indices': contributing_segments
-            })
+            tr_metadata.append(
+                {
+                    "tr_index": tr_idx,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "n_segments_contributing": len(contributing_segments),
+                    "segment_indices": contributing_segments,
+                }
+            )
 
         # Fill gaps
         tr_embeddings = self._fill_gaps(tr_embeddings, tr_metadata)
@@ -299,10 +291,7 @@ class TextProcessor:
         return tr_embeddings, metadata_df
 
     def _align_to_trs_concatenate(
-        self,
-        annotations: pd.DataFrame,
-        embeddings: np.ndarray,
-        n_trs: int
+        self, annotations: pd.DataFrame, embeddings: np.ndarray, n_trs: int
     ) -> Tuple[np.ndarray, pd.DataFrame]:
         """
         Concatenate embeddings from temporal window [t-TR, t].
@@ -321,9 +310,8 @@ class TextProcessor:
             tr_start = max(0, tr_start)  # Clamp to non-negative time
 
             # Find annotations overlapping this temporal window
-            overlapping_mask = (
-                (annotations['Start Time (s)'] < tr_end) &
-                (annotations['End Time (s)'] > tr_start)
+            overlapping_mask = (annotations["Start Time (s)"] < tr_end) & (
+                annotations["End Time (s)"] > tr_start
             )
             overlapping_indices = annotations[overlapping_mask].index.tolist()
 
@@ -332,7 +320,7 @@ class TextProcessor:
 
             if n_overlapping > 0:
                 # Take up to max_annotations_per_tr embeddings
-                selected_indices = overlapping_indices[:self.max_annotations_per_tr]
+                selected_indices = overlapping_indices[: self.max_annotations_per_tr]
                 selected_embeddings = embeddings[selected_indices]
 
                 # Concatenate embeddings
@@ -342,23 +330,25 @@ class TextProcessor:
                 if len(concat_embedding) < self.effective_dim:
                     # Pad with zeros
                     padded = np.zeros(self.effective_dim, dtype=np.float32)
-                    padded[:len(concat_embedding)] = concat_embedding
+                    padded[: len(concat_embedding)] = concat_embedding
                     tr_embeddings[tr_idx] = padded
                 elif len(concat_embedding) > self.effective_dim:
                     # Truncate (shouldn't happen if max_annotations_per_tr is correct)
-                    tr_embeddings[tr_idx] = concat_embedding[:self.effective_dim]
+                    tr_embeddings[tr_idx] = concat_embedding[: self.effective_dim]
                 else:
                     # Exact match
                     tr_embeddings[tr_idx] = concat_embedding
 
             # Store metadata
-            tr_metadata.append({
-                'tr_index': tr_idx,
-                'start_time': tr_start,
-                'end_time': tr_end,
-                'n_segments_contributing': n_overlapping,
-                'segment_indices': overlapping_indices
-            })
+            tr_metadata.append(
+                {
+                    "tr_index": tr_idx,
+                    "start_time": tr_start,
+                    "end_time": tr_end,
+                    "n_segments_contributing": n_overlapping,
+                    "segment_indices": overlapping_indices,
+                }
+            )
 
         # Fill gaps (for TRs with no annotations)
         tr_embeddings = self._fill_gaps_concatenate(tr_embeddings, tr_metadata)
@@ -368,9 +358,7 @@ class TextProcessor:
         return tr_embeddings, metadata_df
 
     def _fill_gaps(
-        self,
-        tr_embeddings: np.ndarray,
-        tr_metadata: List[Dict]
+        self, tr_embeddings: np.ndarray, tr_metadata: List[Dict]
     ) -> np.ndarray:
         """
         Fill gaps where no segments contributed (average mode).
@@ -391,41 +379,52 @@ class TextProcessor:
         n_trs = len(tr_metadata)
 
         # Find gaps (TRs with no contributing segments)
-        gaps = [i for i, meta in enumerate(tr_metadata)
-                if meta['n_segments_contributing'] == 0]
+        gaps = [
+            i
+            for i, meta in enumerate(tr_metadata)
+            if meta["n_segments_contributing"] == 0
+        ]
 
         if len(gaps) == 0:
             return filled
 
-        if self.gap_fill == 'forward_fill':
+        if self.gap_fill == "forward_fill":
             # Forward fill from last valid value
             last_valid = None
             for tr_idx in range(n_trs):
-                if tr_metadata[tr_idx]['n_segments_contributing'] > 0:
+                if tr_metadata[tr_idx]["n_segments_contributing"] > 0:
                     last_valid = filled[tr_idx].copy()
                 elif last_valid is not None:
                     filled[tr_idx] = last_valid
 
-        elif self.gap_fill == 'zero':
+        elif self.gap_fill == "zero":
             # Gaps remain zero (already initialized to zero)
             pass
 
-        elif self.gap_fill == 'interpolate':
+        elif self.gap_fill == "interpolate":
             # Linear interpolation between valid values
             for gap_idx in gaps:
                 # Find previous and next valid TRs
                 prev_idx = gap_idx - 1
-                while prev_idx >= 0 and tr_metadata[prev_idx]['n_segments_contributing'] == 0:
+                while (
+                    prev_idx >= 0
+                    and tr_metadata[prev_idx]["n_segments_contributing"] == 0
+                ):
                     prev_idx -= 1
 
                 next_idx = gap_idx + 1
-                while next_idx < n_trs and tr_metadata[next_idx]['n_segments_contributing'] == 0:
+                while (
+                    next_idx < n_trs
+                    and tr_metadata[next_idx]["n_segments_contributing"] == 0
+                ):
                     next_idx += 1
 
                 if prev_idx >= 0 and next_idx < n_trs:
                     # Interpolate between prev and next
                     alpha = (gap_idx - prev_idx) / (next_idx - prev_idx)
-                    filled[gap_idx] = (1 - alpha) * filled[prev_idx] + alpha * filled[next_idx]
+                    filled[gap_idx] = (1 - alpha) * filled[prev_idx] + alpha * filled[
+                        next_idx
+                    ]
                 elif prev_idx >= 0:
                     # Only previous valid, forward fill
                     filled[gap_idx] = filled[prev_idx]
@@ -439,9 +438,7 @@ class TextProcessor:
         return filled
 
     def _fill_gaps_concatenate(
-        self,
-        tr_embeddings: np.ndarray,
-        tr_metadata: List[Dict]
+        self, tr_embeddings: np.ndarray, tr_metadata: List[Dict]
     ) -> np.ndarray:
         """
         Fill gaps where no segments contributed (concatenate mode).
@@ -462,41 +459,52 @@ class TextProcessor:
         n_trs = len(tr_metadata)
 
         # Find gaps (TRs with no contributing segments)
-        gaps = [i for i, meta in enumerate(tr_metadata)
-                if meta['n_segments_contributing'] == 0]
+        gaps = [
+            i
+            for i, meta in enumerate(tr_metadata)
+            if meta["n_segments_contributing"] == 0
+        ]
 
         if len(gaps) == 0:
             return filled
 
-        if self.gap_fill == 'forward_fill':
+        if self.gap_fill == "forward_fill":
             # Forward fill from last valid value
             last_valid = None
             for tr_idx in range(n_trs):
-                if tr_metadata[tr_idx]['n_segments_contributing'] > 0:
+                if tr_metadata[tr_idx]["n_segments_contributing"] > 0:
                     last_valid = filled[tr_idx].copy()
                 elif last_valid is not None:
                     filled[tr_idx] = last_valid
 
-        elif self.gap_fill == 'zero':
+        elif self.gap_fill == "zero":
             # Gaps remain zero (already initialized to zero)
             pass
 
-        elif self.gap_fill == 'interpolate':
+        elif self.gap_fill == "interpolate":
             # Linear interpolation between valid values (works for concatenated embeddings too)
             for gap_idx in gaps:
                 # Find previous and next valid TRs
                 prev_idx = gap_idx - 1
-                while prev_idx >= 0 and tr_metadata[prev_idx]['n_segments_contributing'] == 0:
+                while (
+                    prev_idx >= 0
+                    and tr_metadata[prev_idx]["n_segments_contributing"] == 0
+                ):
                     prev_idx -= 1
 
                 next_idx = gap_idx + 1
-                while next_idx < n_trs and tr_metadata[next_idx]['n_segments_contributing'] == 0:
+                while (
+                    next_idx < n_trs
+                    and tr_metadata[next_idx]["n_segments_contributing"] == 0
+                ):
                     next_idx += 1
 
                 if prev_idx >= 0 and next_idx < n_trs:
                     # Interpolate between prev and next
                     alpha = (gap_idx - prev_idx) / (next_idx - prev_idx)
-                    filled[gap_idx] = (1 - alpha) * filled[prev_idx] + alpha * filled[next_idx]
+                    filled[gap_idx] = (1 - alpha) * filled[prev_idx] + alpha * filled[
+                        next_idx
+                    ]
                 elif prev_idx >= 0:
                     # Only previous valid, forward fill
                     filled[gap_idx] = filled[prev_idx]
@@ -514,7 +522,7 @@ class TextProcessor:
         xlsx_path: Union[str, Path],
         n_trs: int,
         text_columns: Optional[List[str]] = None,
-        cache_annotations: bool = True
+        cache_annotations: bool = True,
     ) -> Tuple[np.ndarray, pd.DataFrame]:
         """
         Convert annotations to embeddings aligned to TR grid.
@@ -574,20 +582,18 @@ class TextProcessor:
             valid_text,
             show_progress_bar=True,
             convert_to_numpy=True,
-            normalize_embeddings=True  # Normalize for cosine similarity
+            normalize_embeddings=True,  # Normalize for cosine similarity
         )
 
         # Align to TR grid
         print("Aligning embeddings to TR grid...")
         tr_embeddings, metadata = self.align_to_trs(
-            valid_annotations,
-            segment_embeddings,
-            n_trs
+            valid_annotations, segment_embeddings, n_trs
         )
 
         # Store segment embeddings and text for later retrieval
-        metadata['segment_embeddings'] = [segment_embeddings] * len(metadata)
-        metadata['segment_texts'] = [valid_text] * len(metadata)
+        metadata["segment_embeddings"] = [segment_embeddings] * len(metadata)
+        metadata["segment_texts"] = [valid_text] * len(metadata)
 
         return tr_embeddings, metadata
 
@@ -595,8 +601,8 @@ class TextProcessor:
         self,
         embeddings: np.ndarray,
         metadata: Optional[pd.DataFrame] = None,
-        method: str = 'nearest_neighbor',
-        top_k: int = 1
+        method: str = "nearest_neighbor",
+        top_k: int = 1,
     ) -> Union[List[str], List[List[str]]]:
         """
         Recover text from embeddings using nearest-neighbor search.
@@ -635,17 +641,17 @@ class TextProcessor:
                 "Provide metadata from annotations_to_embeddings()"
             )
 
-        if 'segment_embeddings' not in metadata.columns:
+        if "segment_embeddings" not in metadata.columns:
             raise ValueError(
                 "metadata missing segment_embeddings. "
                 "Ensure metadata is from annotations_to_embeddings()"
             )
 
         # Extract reference embeddings and texts
-        segment_embeddings = metadata['segment_embeddings'].iloc[0]
-        segment_texts = metadata['segment_texts'].iloc[0]
+        segment_embeddings = metadata["segment_embeddings"].iloc[0]
+        segment_texts = metadata["segment_texts"].iloc[0]
 
-        if method == 'nearest_neighbor':
+        if method == "nearest_neighbor":
             # Compute cosine similarity between each TR and all segments
             similarities = cosine_similarity(embeddings, segment_embeddings)
 
@@ -678,14 +684,14 @@ class TextProcessor:
         self._load_model()
 
         return {
-            'model_name': self.model_name,
-            'embedding_dim': self.n_features,
-            'effective_dim': self.effective_dim,
-            'device': str(self._model.device),
-            'tr': self.tr,
-            'temporal_mode': self.temporal_mode,
-            'max_annotations_per_tr': self.max_annotations_per_tr,
-            'temporal_window': self.temporal_window,
-            'aggregation': self.aggregation,
-            'gap_fill': self.gap_fill
+            "model_name": self.model_name,
+            "embedding_dim": self.n_features,
+            "effective_dim": self.effective_dim,
+            "device": str(self._model.device),
+            "tr": self.tr,
+            "temporal_mode": self.temporal_mode,
+            "max_annotations_per_tr": self.max_annotations_per_tr,
+            "temporal_window": self.temporal_window,
+            "aggregation": self.aggregation,
+            "gap_fill": self.gap_fill,
         }

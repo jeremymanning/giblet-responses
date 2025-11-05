@@ -14,11 +14,11 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from typing import Tuple, Optional, Union
-from tqdm import tqdm
 
 # PyTorch is optional for future neural vocoder support
 try:
     import torch
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
@@ -26,6 +26,7 @@ except ImportError:
 # EnCodec neural audio codec (optional)
 try:
     from transformers import EncodecModel, AutoProcessor
+
     ENCODEC_AVAILABLE = True
 except ImportError:
     ENCODEC_AVAILABLE = False
@@ -74,11 +75,11 @@ class AudioProcessor:
         use_encodec: bool = True,
         encodec_bandwidth: float = 3.0,
         sample_rate: int = 22050,  # Standard for speech/music
-        n_mels: int = 2048,        # Very high resolution for detail preservation
-        n_fft: int = 4096,         # Larger FFT for frequency resolution
-        hop_length: int = 512,     # Frame advance
+        n_mels: int = 2048,  # Very high resolution for detail preservation
+        n_fft: int = 4096,  # Larger FFT for frequency resolution
+        hop_length: int = 512,  # Frame advance
         tr: float = 1.5,
-        device: str = 'cpu'
+        device: str = "cpu",
     ):
         self.use_encodec = use_encodec and ENCODEC_AVAILABLE
         self.encodec_bandwidth = encodec_bandwidth
@@ -93,13 +94,19 @@ class AudioProcessor:
         # Initialize EnCodec model if requested
         if self.use_encodec:
             if not ENCODEC_AVAILABLE:
-                print("Warning: EnCodec requested but transformers not available. "
-                      "Falling back to mel spectrogram mode.")
+                print(
+                    "Warning: EnCodec requested but transformers not available. "
+                    "Falling back to mel spectrogram mode."
+                )
                 self.use_encodec = False
             else:
                 print(f"Loading EnCodec model (24kHz, {encodec_bandwidth} kbps)...")
-                self.encodec_model = EncodecModel.from_pretrained("facebook/encodec_24khz").to(device)
-                self.encodec_processor = AutoProcessor.from_pretrained("facebook/encodec_24khz")
+                self.encodec_model = EncodecModel.from_pretrained(
+                    "facebook/encodec_24khz"
+                ).to(device)
+                self.encodec_processor = AutoProcessor.from_pretrained(
+                    "facebook/encodec_24khz"
+                )
                 self.encodec_sample_rate = 24000  # EnCodec requires 24kHz
                 print("EnCodec model loaded successfully.")
 
@@ -108,7 +115,7 @@ class AudioProcessor:
         audio_source: Union[str, Path],
         max_trs: Optional[int] = None,
         from_video: bool = True,
-        tr_length: Optional[float] = None
+        tr_length: Optional[float] = None,
     ) -> Tuple[np.ndarray, pd.DataFrame]:
         """
         Convert audio to features (EnCodec codes or mel spectrogram) aligned to fMRI TRs.
@@ -163,7 +170,9 @@ class AudioProcessor:
         audio_source = Path(audio_source)
 
         if self.use_encodec:
-            return self._audio_to_features_encodec(audio_source, max_trs, from_video, tr_length)
+            return self._audio_to_features_encodec(
+                audio_source, max_trs, from_video, tr_length
+            )
         else:
             return self._audio_to_features_mel(audio_source, max_trs, from_video)
 
@@ -172,7 +181,7 @@ class AudioProcessor:
         audio_source: Union[str, Path],
         max_trs: Optional[int] = None,
         from_video: bool = True,
-        tr_length: Optional[float] = None
+        tr_length: Optional[float] = None,
     ) -> Tuple[np.ndarray, pd.DataFrame]:
         """
         EnCodec-based audio encoding with temporal concatenation.
@@ -225,7 +234,9 @@ class AudioProcessor:
 
         # Load audio
         if from_video:
-            y, sr = librosa.load(str(audio_source), sr=self.encodec_sample_rate, mono=False)
+            y, sr = librosa.load(
+                str(audio_source), sr=self.encodec_sample_rate, mono=False
+            )
             if y.ndim > 1:
                 y = np.mean(y, axis=0)
         else:
@@ -245,31 +256,31 @@ class AudioProcessor:
 
         # EnCodec encoding with explicit bandwidth setting
         # This ensures consistent codebook count across all frames
-        inputs = self.encodec_processor(raw_audio=y, sampling_rate=sr, return_tensors="pt")
+        inputs = self.encodec_processor(
+            raw_audio=y, sampling_rate=sr, return_tensors="pt"
+        )
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         with torch.no_grad():
             encoded = self.encodec_model.encode(
                 inputs["input_values"],
                 inputs["padding_mask"],
-                bandwidth=self.encodec_bandwidth
+                bandwidth=self.encodec_bandwidth,
             )
 
         # Extract codes: encoded.audio_codes is a list with shape [batch=1, n_codebooks, n_frames]
         # We need to remove BOTH the list index [0] AND the batch dimension [0]
-        codes = encoded.audio_codes[0][0].cpu()  # [n_codebooks, n_frames] - squeeze batch dim
+        codes = encoded.audio_codes[0][
+            0
+        ].cpu()  # [n_codebooks, n_frames] - squeeze batch dim
 
         # Determine expected codebook count based on bandwidth
         # EnCodec 24kHz model: 3.0 kbps → 8 codebooks
         # See: https://github.com/facebookresearch/encodec
-        bandwidth_to_codebooks = {
-            1.5: 2,
-            3.0: 8,
-            6.0: 16,
-            12.0: 32,
-            24.0: 32
-        }
-        expected_codebooks = bandwidth_to_codebooks.get(self.encodec_bandwidth, codes.shape[0])
+        bandwidth_to_codebooks = {1.5: 2, 3.0: 8, 6.0: 16, 12.0: 32, 24.0: 32}
+        expected_codebooks = bandwidth_to_codebooks.get(
+            self.encodec_bandwidth, codes.shape[0]
+        )
 
         # EnCodec frame rate is 75 Hz (fixed)
         encodec_frame_rate = 75.0
@@ -296,7 +307,9 @@ class AudioProcessor:
                 tr_codes = codes[:, start_frame:]
                 padding_needed = frames_per_tr - tr_codes.shape[1]
                 if padding_needed > 0:
-                    tr_codes = torch.nn.functional.pad(tr_codes, (0, padding_needed), value=0)
+                    tr_codes = torch.nn.functional.pad(
+                        tr_codes, (0, padding_needed), value=0
+                    )
 
             # Ensure consistent temporal dimension FIRST
             if tr_codes.shape[1] > frames_per_tr:
@@ -313,7 +326,9 @@ class AudioProcessor:
                 # Create properly shaped tensor with KNOWN correct temporal dimension
                 # Use frames_per_tr directly, NOT tr_codes.shape[1], because tr_codes
                 # was already normalized to frames_per_tr in the previous step (lines 300-305)
-                normalized_codes = torch.zeros(expected_codebooks, frames_per_tr, dtype=tr_codes.dtype)
+                normalized_codes = torch.zeros(
+                    expected_codebooks, frames_per_tr, dtype=tr_codes.dtype
+                )
                 # Copy available codebooks (pad with zeros if fewer, crop if more)
                 n_available = min(tr_codes.shape[0], expected_codebooks)
                 # Both tensors now have matching temporal dimension (frames_per_tr)
@@ -326,14 +341,16 @@ class AudioProcessor:
 
             features.append(tr_codes_flat)
 
-            tr_metadata.append({
-                'tr_index': tr_idx,
-                'start_time': start_time,
-                'end_time': end_time,
-                'n_frames': frames_per_tr,
-                'n_codebooks': expected_codebooks,
-                'encoding_mode': 'encodec'
-            })
+            tr_metadata.append(
+                {
+                    "tr_index": tr_idx,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "n_frames": frames_per_tr,
+                    "n_codebooks": expected_codebooks,
+                    "encoding_mode": "encodec",
+                }
+            )
 
         # Stack: (n_trs, n_codebooks * frames_per_tr)
         # All TRs now have identical shape
@@ -346,7 +363,7 @@ class AudioProcessor:
         self,
         audio_source: Union[str, Path],
         max_trs: Optional[int] = None,
-        from_video: bool = True
+        from_video: bool = True,
     ) -> Tuple[np.ndarray, pd.DataFrame]:
         """Mel spectrogram-based audio encoding (legacy mode)."""
         # Load audio
@@ -368,11 +385,7 @@ class AudioProcessor:
 
         # Compute full mel spectrogram
         mel_spec = librosa.feature.melspectrogram(
-            y=y,
-            sr=sr,
-            n_mels=self.n_mels,
-            n_fft=self.n_fft,
-            hop_length=self.hop_length
+            y=y, sr=sr, n_mels=self.n_mels, n_fft=self.n_fft, hop_length=self.hop_length
         )
 
         # Convert to dB scale
@@ -404,27 +417,34 @@ class AudioProcessor:
             if end_frame > start_frame:
                 tr_frames = mel_spec_db[:, start_frame:end_frame]  # (n_mels, n_frames)
             else:
-                tr_frames = mel_spec_db[:, start_frame:start_frame+1]
+                tr_frames = mel_spec_db[:, start_frame : start_frame + 1]
 
             # Pad or crop to max_frames_per_tr
             n_frames = tr_frames.shape[1]
             if n_frames < max_frames_per_tr:
                 # Pad with zeros
                 padding = max_frames_per_tr - n_frames
-                tr_frames = np.pad(tr_frames, ((0, 0), (0, padding)), mode='constant', constant_values=-80.0)
+                tr_frames = np.pad(
+                    tr_frames,
+                    ((0, 0), (0, padding)),
+                    mode="constant",
+                    constant_values=-80.0,
+                )
             elif n_frames > max_frames_per_tr:
                 # Crop to max_frames_per_tr
                 tr_frames = tr_frames[:, :max_frames_per_tr]
 
             features[tr_idx] = tr_frames  # (n_mels, max_frames_per_tr)
 
-            tr_metadata.append({
-                'tr_index': tr_idx,
-                'start_time': start_time,
-                'end_time': end_time,
-                'n_frames': n_frames,
-                'encoding_mode': 'mel_spectrogram'
-            })
+            tr_metadata.append(
+                {
+                    "tr_index": tr_idx,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "n_frames": n_frames,
+                    "encoding_mode": "mel_spectrogram",
+                }
+            )
 
         metadata_df = pd.DataFrame(tr_metadata)
 
@@ -435,7 +455,7 @@ class AudioProcessor:
         features: np.ndarray,
         output_path: Union[str, Path],
         n_codebooks: Optional[int] = None,
-        frames_per_tr: Optional[int] = None
+        frames_per_tr: Optional[int] = None,
     ) -> None:
         """
         Reconstruct audio from features (EnCodec codes or mel spectrogram).
@@ -479,7 +499,9 @@ class AudioProcessor:
         # Auto-detect format based on dtype and shape
         if features.dtype in [np.int32, np.int64]:
             # EnCodec codes (integer)
-            self._features_to_audio_encodec(features, output_path, n_codebooks, frames_per_tr)
+            self._features_to_audio_encodec(
+                features, output_path, n_codebooks, frames_per_tr
+            )
         else:
             # Mel spectrogram (float)
             self._features_to_audio_mel(features, output_path)
@@ -489,7 +511,7 @@ class AudioProcessor:
         features: np.ndarray,
         output_path: Union[str, Path],
         n_codebooks: Optional[int] = None,
-        frames_per_tr: Optional[int] = None
+        frames_per_tr: Optional[int] = None,
     ) -> None:
         """
         Decode EnCodec codes to audio.
@@ -509,7 +531,9 @@ class AudioProcessor:
             Frames per TR (for 2D format). If not provided, calculated from self.tr.
         """
         if not self.use_encodec:
-            raise ValueError("EnCodec decoder not available. Use use_encodec=True when initializing AudioProcessor.")
+            raise ValueError(
+                "EnCodec decoder not available. Use use_encodec=True when initializing AudioProcessor."
+            )
 
         # Detect format: 2D (flattened) or 3D (legacy)
         if features.ndim == 2:
@@ -518,13 +542,7 @@ class AudioProcessor:
 
             # Infer n_codebooks if not provided
             if n_codebooks is None:
-                bandwidth_to_codebooks = {
-                    1.5: 2,
-                    3.0: 8,
-                    6.0: 16,
-                    12.0: 32,
-                    24.0: 32
-                }
+                bandwidth_to_codebooks = {1.5: 2, 3.0: 8, 6.0: 16, 12.0: 32, 24.0: 32}
                 n_codebooks = bandwidth_to_codebooks.get(self.encodec_bandwidth, 8)
 
             # Infer frames_per_tr if not provided
@@ -577,9 +595,7 @@ class AudioProcessor:
         sf.write(str(output_path), audio, self.encodec_sample_rate)
 
     def _features_to_audio_mel(
-        self,
-        features: np.ndarray,
-        output_path: Union[str, Path]
+        self, features: np.ndarray, output_path: Union[str, Path]
     ) -> None:
         """Decode mel spectrogram to audio using Griffin-Lim."""
         # Handle both 2D (old format) and 3D (new format) features
@@ -591,9 +607,11 @@ class AudioProcessor:
             frames_per_tr = samples_per_tr // self.hop_length
 
             # Repeat features across frames (old behavior)
-            features_3d = np.zeros((n_trs, self.n_mels, frames_per_tr), dtype=np.float32)
+            features_3d = np.zeros(
+                (n_trs, self.n_mels, frames_per_tr), dtype=np.float32
+            )
             for tr_idx in range(n_trs):
-                features_3d[tr_idx] = features[tr_idx:tr_idx+1].T  # Broadcast
+                features_3d[tr_idx] = features[tr_idx : tr_idx + 1].T  # Broadcast
             features = features_3d
 
         # Now features is 3D: (n_trs, n_mels, frames_per_tr)
@@ -608,19 +626,14 @@ class AudioProcessor:
 
         # Invert mel spectrogram to audio using Griffin-Lim
         y = librosa.feature.inverse.mel_to_audio(
-            mel_spec,
-            sr=self.sample_rate,
-            n_fft=self.n_fft,
-            hop_length=self.hop_length
+            mel_spec, sr=self.sample_rate, n_fft=self.n_fft, hop_length=self.hop_length
         )
 
         # Save audio
         sf.write(str(output_path), y, self.sample_rate)
 
     def get_audio_info(
-        self,
-        audio_source: Union[str, Path],
-        from_video: bool = True
+        self, audio_source: Union[str, Path], from_video: bool = True
     ) -> dict:
         """
         Get audio metadata.
@@ -648,8 +661,8 @@ class AudioProcessor:
         n_trs = int(np.floor(duration / self.tr))
 
         return {
-            'sample_rate': sr,
-            'duration': duration,
-            'samples': len(y),
-            'n_trs': n_trs
+            "sample_rate": sr,
+            "duration": duration,
+            "samples": len(y),
+            "n_trs": n_trs,
         }

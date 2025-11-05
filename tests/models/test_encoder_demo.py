@@ -10,7 +10,7 @@ Run with: python tests/models/test_encoder_demo.py
 
 import torch
 
-from giblet.models.encoder import MultimodalEncoder, create_encoder
+from giblet.models.encoder import MultimodalEncoder
 
 
 def format_bytes(num_bytes):
@@ -30,11 +30,11 @@ def main():
 
     # Create encoder with example dataset dimensions (Sherlock)
     print("Initializing encoder with example dataset dimensions:")
-    print(f"  - Video: 160×90×3 (RGB frames)")
-    print(f"  - Audio: 2048 mel frequency bins")
-    print(f"  - Text: 1024-dim embeddings (BAAI/bge-large-en-v1.5)")
-    print(f"  - Brain: 85,810 voxels")
-    print(f"  - Bottleneck: 2,048 dimensions (Layer 7: smallest layer)")
+    print("  - Video: 160×90×3 (RGB frames)")
+    print("  - Audio: 2048 mel frequency bins")
+    print("  - Text: 1024-dim embeddings (BAAI/bge-large-en-v1.5)")
+    print("  - Brain: 85,810 voxels")
+    print("  - Bottleneck: 2,048 dimensions (Layer 7: smallest layer)")
     print()
 
     encoder = MultimodalEncoder(
@@ -181,18 +181,18 @@ def main():
     print("Hardware recommendation:")
     total_gb = total_memory / (1024**3)
     if total_gb < 16:
-        print(f"  ✓ Fits on consumer GPU (RTX 3080/4080 with 16-24 GB)")
+        print("  ✓ Fits on consumer GPU (RTX 3080/4080 with 16-24 GB)")
     elif total_gb < 24:
-        print(f"  ✓ Requires high-end GPU (RTX 3090/4090 with 24 GB)")
+        print("  ✓ Requires high-end GPU (RTX 3090/4090 with 24 GB)")
     elif total_gb < 48:
-        print(f"  ✓ Requires professional GPU (A6000 with 48 GB)")
+        print("  ✓ Requires professional GPU (A6000 with 48 GB)")
     else:
-        print(f"  ✗ Requires data parallelism across multiple GPUs")
+        print("  ✗ Requires data parallelism across multiple GPUs")
 
     print()
-    print(f"Your hardware: 8× A6000 (48 GB each)")
-    print(f"  ✓ Excellent! Can train with larger batch sizes (64-128)")
-    print(f"  ✓ Can use data parallelism for 8× speedup")
+    print("Your hardware: 8× A6000 (48 GB each)")
+    print("  ✓ Excellent! Can train with larger batch sizes (64-128)")
+    print("  ✓ Can use data parallelism for 8× speedup")
     print()
 
     # Architecture summary

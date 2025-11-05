@@ -12,8 +12,8 @@ from pathlib import Path
 # Add project to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from giblet.models.autoencoder import create_autoencoder
 from giblet.data.dataset import MultimodalDataset
+from giblet.models.autoencoder import create_autoencoder
 from giblet.training import Trainer, TrainingConfig
 
 
@@ -34,7 +34,7 @@ def main():
         n_voxels=85810,
         bottleneck_dim=8000,
         reconstruction_weight=1.0,
-        fmri_weight=1.0
+        fmri_weight=1.0,
     )
 
     param_count = model.get_parameter_count()
@@ -44,7 +44,7 @@ def main():
 
     # 2. Load datasets
     print("\nLoading datasets...")
-    data_dir = Path('data/')
+    data_dir = Path("data/")
 
     if not data_dir.exists():
         print(f"Error: Data directory not found at {data_dir}")
@@ -55,21 +55,21 @@ def main():
         # Load training data
         train_dataset = MultimodalDataset(
             data_dir=data_dir,
-            subjects='all',  # All 17 subjects
-            split='train',   # 80% of data
+            subjects="all",  # All 17 subjects
+            split="train",  # 80% of data
             apply_hrf=True,  # Convolve stimuli with HRF
-            mode='per_subject',
-            preprocess=True
+            mode="per_subject",
+            preprocess=True,
         )
 
         # Load validation data
         val_dataset = MultimodalDataset(
             data_dir=data_dir,
-            subjects='all',
-            split='val',  # 20% of data
+            subjects="all",
+            split="val",  # 20% of data
             apply_hrf=True,
-            mode='per_subject',
-            preprocess=True
+            mode="per_subject",
+            preprocess=True,
         )
 
         print(f"Train samples: {len(train_dataset)}")
@@ -80,8 +80,8 @@ def main():
         print("Using dummy datasets for demonstration...")
 
         # Create dummy datasets for testing
-        from torch.utils.data import Dataset
         import torch
+        from torch.utils.data import Dataset
 
         class DummyDataset(Dataset):
             def __init__(self, n_samples):
@@ -92,17 +92,19 @@ def main():
 
             def __getitem__(self, idx):
                 return {
-                    'video': torch.randn(3, 90, 160),
-                    'audio': torch.randn(128),
-                    'text': torch.randn(1024),
-                    'fmri': torch.randn(85810),
-                    'subject_id': 1,
-                    'tr_index': idx
+                    "video": torch.randn(3, 90, 160),
+                    "audio": torch.randn(128),
+                    "text": torch.randn(1024),
+                    "fmri": torch.randn(85810),
+                    "subject_id": 1,
+                    "tr_index": idx,
                 }
 
         train_dataset = DummyDataset(n_samples=100)
         val_dataset = DummyDataset(n_samples=20)
-        print(f"Created dummy datasets: train={len(train_dataset)}, val={len(val_dataset)}")
+        print(
+            f"Created dummy datasets: train={len(train_dataset)}, val={len(val_dataset)}"
+        )
 
     # 3. Configure training
     print("\nConfiguring training...")
@@ -112,35 +114,30 @@ def main():
         batch_size=32,  # Adjust based on GPU memory
         num_epochs=10,  # Small number for demo
         weight_decay=1e-5,
-
         # Loss weights
         reconstruction_weight=1.0,
         fmri_weight=1.0,
         video_weight=1.0,
         audio_weight=1.0,
         text_weight=1.0,
-        fmri_loss_type='mse',
-
+        fmri_loss_type="mse",
         # Scheduling
-        scheduler_type='cosine',
+        scheduler_type="cosine",
         warmup_epochs=2,
         min_lr=1e-6,
-
         # Training settings
         gradient_clip_val=1.0,
         use_mixed_precision=True,  # Use FP16 for efficiency
         num_workers=4,
         pin_memory=True,
-
         # Checkpointing
-        checkpoint_dir='checkpoints',
-        log_dir='logs',
+        checkpoint_dir="checkpoints",
+        log_dir="logs",
         save_every=2,
         validate_every=1,
-
         # Early stopping
         early_stopping_patience=5,
-        early_stopping_delta=1e-4
+        early_stopping_delta=1e-4,
     )
 
     print(f"  Learning rate: {config.learning_rate}")
@@ -157,7 +154,7 @@ def main():
         config=config,
         distributed=False,  # Set True for multi-GPU
         local_rank=0,
-        world_size=1
+        world_size=1,
     )
 
     print(f"Trainer initialized on device: {trainer.device}")
@@ -180,8 +177,10 @@ def main():
         print(f"  Final train loss: {history['train_history'][-1]['total_loss']:.6f}")
         print(f"  Final val loss: {history['val_history'][-1]['total_loss']:.6f}")
 
-        if 'fmri_correlation' in history['val_history'][-1]:
-            print(f"  Final fMRI correlation: {history['val_history'][-1]['fmri_correlation']:.4f}")
+        if "fmri_correlation" in history["val_history"][-1]:
+            print(
+                f"  Final fMRI correlation: {history['val_history'][-1]['fmri_correlation']:.4f}"
+            )
 
         print(f"\nCheckpoints saved to: {config.checkpoint_dir}")
         print(f"Logs saved to: {config.log_dir}")
@@ -194,9 +193,10 @@ def main():
     except Exception as e:
         print(f"\n\nError during training: {e}")
         import traceback
+
         traceback.print_exc()
         raise
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

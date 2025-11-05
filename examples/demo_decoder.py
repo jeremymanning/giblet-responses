@@ -9,8 +9,9 @@ Shows:
 5. Parameter counts for each layer
 """
 
-import torch
 import numpy as np
+import torch
+
 from giblet.models.decoder import MultimodalDecoder
 
 
@@ -28,10 +29,10 @@ def main():
     decoder = MultimodalDecoder(
         bottleneck_dim=bottleneck_dim,
         video_dim=43200,  # 160×90×3
-        audio_dim=128,    # 128 mels
-        text_dim=1024,    # 1024 embeddings
+        audio_dim=128,  # 128 mels
+        text_dim=1024,  # 1024 embeddings
         hidden_dim=2048,
-        dropout=0.3
+        dropout=0.3,
     )
 
     print(f"Bottleneck dimension: {bottleneck_dim}")
@@ -86,7 +87,9 @@ def main():
     video_frames = video.reshape(batch_size, 90, 160, 3)
     print(f"Video frames: {video_frames.shape}")
     print(f"  {batch_size} frames, each 90×160 with 3 color channels")
-    print(f"  Value range: [{video_frames.min().item():.3f}, {video_frames.max().item():.3f}]")
+    print(
+        f"  Value range: [{video_frames.min().item():.3f}, {video_frames.max().item():.3f}]"
+    )
     print()
 
     # Audio is already in correct format (mel spectrograms)
@@ -150,10 +153,7 @@ def main():
     voxel_counts = [2000, 5000, 8000, 10000]
 
     for n_voxels in voxel_counts:
-        test_decoder = MultimodalDecoder(
-            bottleneck_dim=n_voxels,
-            hidden_dim=1024
-        )
+        test_decoder = MultimodalDecoder(bottleneck_dim=n_voxels, hidden_dim=1024)
         test_decoder.eval()
 
         test_input = torch.randn(16, n_voxels)
@@ -191,5 +191,5 @@ def main():
     print("=" * 80)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -9,6 +9,7 @@ Shows how to:
 """
 
 import numpy as np
+
 from giblet.alignment.sync import align_all_modalities, get_alignment_info
 
 
@@ -58,7 +59,7 @@ def main():
         text_features=text_features,
         fmri_features=fmri_features,
         apply_hrf_conv=False,
-        tr=1.5
+        tr=1.5,
     )
 
     print("\n   Alignment result (no HRF):")
@@ -69,17 +70,17 @@ def main():
     print(f"   - Target: {result_no_hrf['n_trs']} TRs")
 
     # Verify all outputs have 920 TRs
-    assert result_no_hrf['video'].shape[0] == 920, "Video TRs mismatch"
-    assert result_no_hrf['audio'].shape[0] == 920, "Audio TRs mismatch"
-    assert result_no_hrf['text'].shape[0] == 920, "Text TRs mismatch"
-    assert result_no_hrf['fmri'].shape[0] == 920, "fMRI TRs mismatch"
+    assert result_no_hrf["video"].shape[0] == 920, "Video TRs mismatch"
+    assert result_no_hrf["audio"].shape[0] == 920, "Audio TRs mismatch"
+    assert result_no_hrf["text"].shape[0] == 920, "Text TRs mismatch"
+    assert result_no_hrf["fmri"].shape[0] == 920, "fMRI TRs mismatch"
     print("\n   ✓ All modalities aligned to 920 TRs")
 
     # Verify feature dimensions are preserved
-    assert result_no_hrf['video'].shape[1] == 43200, "Video features changed"
-    assert result_no_hrf['audio'].shape[1] == 128, "Audio features changed"
-    assert result_no_hrf['text'].shape[1] == 1024, "Text features changed"
-    assert result_no_hrf['fmri'].shape[1] == 85810, "fMRI features changed"
+    assert result_no_hrf["video"].shape[1] == 43200, "Video features changed"
+    assert result_no_hrf["audio"].shape[1] == 128, "Audio features changed"
+    assert result_no_hrf["text"].shape[1] == 1024, "Text features changed"
+    assert result_no_hrf["fmri"].shape[1] == 85810, "fMRI features changed"
     print("   ✓ Feature dimensions preserved")
 
     # Align all modalities WITH HRF convolution
@@ -92,7 +93,7 @@ def main():
         text_features=text_features,
         fmri_features=fmri_features,
         apply_hrf_conv=True,
-        tr=1.5
+        tr=1.5,
     )
 
     print("\n   Alignment result (with HRF):")
@@ -103,30 +104,33 @@ def main():
     print(f"   - Target: {result_with_hrf['n_trs']} TRs")
 
     # Verify all outputs have 920 TRs
-    assert result_with_hrf['video'].shape[0] == 920, "Video TRs mismatch (HRF)"
-    assert result_with_hrf['audio'].shape[0] == 920, "Audio TRs mismatch (HRF)"
-    assert result_with_hrf['text'].shape[0] == 920, "Text TRs mismatch (HRF)"
-    assert result_with_hrf['fmri'].shape[0] == 920, "fMRI TRs mismatch (HRF)"
+    assert result_with_hrf["video"].shape[0] == 920, "Video TRs mismatch (HRF)"
+    assert result_with_hrf["audio"].shape[0] == 920, "Audio TRs mismatch (HRF)"
+    assert result_with_hrf["text"].shape[0] == 920, "Text TRs mismatch (HRF)"
+    assert result_with_hrf["fmri"].shape[0] == 920, "fMRI TRs mismatch (HRF)"
     print("\n   ✓ All modalities aligned to 920 TRs")
 
     # Verify feature dimensions are preserved
-    assert result_with_hrf['video'].shape[1] == 43200, "Video features changed (HRF)"
-    assert result_with_hrf['audio'].shape[1] == 128, "Audio features changed (HRF)"
-    assert result_with_hrf['text'].shape[1] == 1024, "Text features changed (HRF)"
-    assert result_with_hrf['fmri'].shape[1] == 85810, "fMRI features changed (HRF)"
+    assert result_with_hrf["video"].shape[1] == 43200, "Video features changed (HRF)"
+    assert result_with_hrf["audio"].shape[1] == 128, "Audio features changed (HRF)"
+    assert result_with_hrf["text"].shape[1] == 1024, "Text features changed (HRF)"
+    assert result_with_hrf["fmri"].shape[1] == 85810, "fMRI features changed (HRF)"
     print("   ✓ Feature dimensions preserved")
 
     # Verify HRF changed stimulus features
-    assert not np.allclose(result_no_hrf['video'], result_with_hrf['video']), \
-        "HRF didn't change video"
-    assert not np.allclose(result_no_hrf['audio'], result_with_hrf['audio']), \
-        "HRF didn't change audio"
-    assert not np.allclose(result_no_hrf['text'], result_with_hrf['text']), \
-        "HRF didn't change text"
+    assert not np.allclose(
+        result_no_hrf["video"], result_with_hrf["video"]
+    ), "HRF didn't change video"
+    assert not np.allclose(
+        result_no_hrf["audio"], result_with_hrf["audio"]
+    ), "HRF didn't change audio"
+    assert not np.allclose(
+        result_no_hrf["text"], result_with_hrf["text"]
+    ), "HRF didn't change text"
     print("   ✓ HRF convolution modified stimulus features")
 
     # Verify fMRI is identical (not convolved)
-    np.testing.assert_array_equal(result_no_hrf['fmri'], result_with_hrf['fmri'])
+    np.testing.assert_array_equal(result_no_hrf["fmri"], result_with_hrf["fmri"])
     print("   ✓ fMRI unchanged (as expected)")
 
     # Get alignment info
@@ -155,7 +159,7 @@ def main():
     print("\n5. Data quality checks...")
     print("-" * 70)
 
-    for modality in ['video', 'audio', 'text', 'fmri']:
+    for modality in ["video", "audio", "text", "fmri"]:
         data = result_with_hrf[modality]
         has_nan = np.isnan(data).any()
         has_inf = np.isinf(data).any()
@@ -168,14 +172,20 @@ def main():
     print("=" * 70)
 
     print("\nKey results:")
-    print(f"  - Video, audio, text, and fMRI are all aligned to {result_with_hrf['n_trs']} TRs")
-    print(f"  - Duration: {result_with_hrf['n_trs'] * 1.5:.0f} seconds (~{result_with_hrf['n_trs'] * 1.5 / 60:.1f} minutes)")
+    print(
+        f"  - Video, audio, text, and fMRI are all aligned to {result_with_hrf['n_trs']} TRs"
+    )
+    print(
+        f"  - Duration: {result_with_hrf['n_trs'] * 1.5:.0f} seconds (~{result_with_hrf['n_trs'] * 1.5 / 60:.1f} minutes)"
+    )
     print(f"  - HRF convolution applied to stimulus features")
     print(f"  - All output shapes: (920, n_features)")
     print(f"\nUsage:")
     print(f"  from giblet.alignment.sync import align_all_modalities")
-    print(f"  result = align_all_modalities(video, audio, text, fmri, apply_hrf_conv=True)")
+    print(
+        f"  result = align_all_modalities(video, audio, text, fmri, apply_hrf_conv=True)"
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

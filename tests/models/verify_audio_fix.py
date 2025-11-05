@@ -6,7 +6,6 @@ This script verifies the fix WITHOUT loading EnCodec model,
 demonstrating the core logic changes.
 """
 
-from pathlib import Path
 
 import numpy as np
 import torch
@@ -41,7 +40,7 @@ try:
     stacked_old = torch.stack(old_tr_codes)
     print("  ✗ UNEXPECTED: torch.stack() succeeded (should fail)")
 except RuntimeError as e:
-    print(f"  ✓ EXPECTED ERROR:")
+    print("  ✓ EXPECTED ERROR:")
     print(f"    {str(e)[:120]}...")
 
 # Test 2: New behavior (fix applied)
@@ -90,7 +89,7 @@ for i, codes in enumerate(fixed_tr_codes):
 print("\nAttempting torch.stack()...")
 try:
     stacked_new = torch.stack(fixed_tr_codes)
-    print(f"  ✓ SUCCESS: torch.stack() worked!")
+    print("  ✓ SUCCESS: torch.stack() worked!")
     print(f"    Output shape: {stacked_new.shape}")
     print(f"    Dtype: {stacked_new.dtype}")
 except RuntimeError as e:
@@ -144,7 +143,7 @@ for sample_idx in range(batch_size):
 print("\nCreating batch from samples...")
 try:
     batch = torch.stack(batches)  # (4, 5, 896)
-    print(f"  ✓ Batch created successfully!")
+    print("  ✓ Batch created successfully!")
     print(f"    Shape: {batch.shape} (batch_size, n_trs, flat_dim)")
     print(f"    Dtype: {batch.dtype}")
 except RuntimeError as e:

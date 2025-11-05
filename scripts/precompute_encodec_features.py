@@ -22,13 +22,12 @@ import time
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from giblet.data.audio import AudioProcessor
+from giblet.data.audio import AudioProcessor  # noqa: E402
 
 
 def main():
@@ -97,8 +96,8 @@ def main():
     print(f"Video:        {video_path}")
     print(f"Sample rate:  {args.sample_rate} Hz")
     print(f"Bandwidth:    {args.bandwidth} kbps")
-    print(f"TR:           1.5 seconds")
-    print(f"Max TRs:      {args.max_trs if args.max_trs else 'all (~920)'}")
+    print("TR:           1.5 seconds")
+    print("Max TRs:      {}".format(args.max_trs if args.max_trs else "all (~920)"))
     print(f"Cache path:   {cache_path}")
     print("=" * 70)
 
@@ -188,9 +187,9 @@ def main():
     print("\n" + "=" * 70)
     print("✓ Precomputation Complete!")
     print("=" * 70)
-    print(f"\nEnCodec features ready for training.")
+    print("\nEnCodec features ready for training.")
     print(f"Cache location: {cache_path}")
-    print(f"\nDataset will automatically load from cache during training.")
+    print("\nDataset will automatically load from cache during training.")
 
 
 if __name__ == "__main__":

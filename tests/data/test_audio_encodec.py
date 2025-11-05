@@ -21,6 +21,7 @@ from giblet.data.audio import AudioProcessor, ENCODEC_AVAILABLE
 # Audio quality metrics
 try:
     from pystoi import stoi
+
     STOI_AVAILABLE = True
 except ImportError:
     STOI_AVAILABLE = False
@@ -63,7 +64,9 @@ def sample_audio(test_audio_dir):
 
 
 @pytest.mark.unit
-@pytest.mark.skipif(not ENCODEC_AVAILABLE, reason="EnCodec not available (transformers not installed)")
+@pytest.mark.skipif(
+    not ENCODEC_AVAILABLE, reason="EnCodec not available (transformers not installed)"
+)
 class TestEnCodecIntegration:
     """Test EnCodec integration in AudioProcessor."""
 
@@ -72,8 +75,8 @@ class TestEnCodecIntegration:
         processor = audio_processor
 
         assert processor.use_encodec is True
-        assert hasattr(processor, 'encodec_model')
-        assert hasattr(processor, 'encodec_processor')
+        assert hasattr(processor, "encodec_model")
+        assert hasattr(processor, "encodec_processor")
         assert processor.encodec_sample_rate == 24000
         assert processor.encodec_bandwidth == 3.0
 
@@ -84,29 +87,32 @@ class TestEnCodecIntegration:
         processor = AudioProcessor(use_encodec=True, encodec_bandwidth=3.0, tr=1.5)
 
         # Encode
-        features, metadata = processor.audio_to_features(
-            audio_path,
-            from_video=False
-        )
+        features, metadata = processor.audio_to_features(audio_path, from_video=False)
 
         # Check dimensions
         n_trs = int(np.floor(duration / 1.5))
         encodec_frame_rate = 75  # EnCodec fixed frame rate
         frames_per_tr = int(encodec_frame_rate * 1.5)
 
-        assert features.shape[0] == n_trs, f"Expected {n_trs} TRs, got {features.shape[0]}"
-        assert features.shape[1] == 1, f"Expected 1 codebook (mono), got {features.shape[1]}"
-        assert features.shape[2] == frames_per_tr, f"Expected {frames_per_tr} frames/TR, got {features.shape[2]}"
+        assert (
+            features.shape[0] == n_trs
+        ), f"Expected {n_trs} TRs, got {features.shape[0]}"
+        assert (
+            features.shape[1] == 1
+        ), f"Expected 1 codebook (mono), got {features.shape[1]}"
+        assert (
+            features.shape[2] == frames_per_tr
+        ), f"Expected {frames_per_tr} frames/TR, got {features.shape[2]}"
 
         # Check dtype
         assert features.dtype == np.int64, f"Expected int64, got {features.dtype}"
 
         # Check metadata
         assert len(metadata) == n_trs
-        assert 'encoding_mode' in metadata.columns
-        assert metadata['encoding_mode'].iloc[0] == 'encodec'
+        assert "encoding_mode" in metadata.columns
+        assert metadata["encoding_mode"].iloc[0] == "encodec"
 
-        print(f"\nEnCodec encoding test passed:")
+        print("\nEnCodec encoding test passed:")
         print(f"  Shape: {features.shape}")
         print(f"  Dtype: {features.dtype}")
         print(f"  TRs: {n_trs}")
@@ -119,10 +125,7 @@ class TestEnCodecIntegration:
         processor = AudioProcessor(use_encodec=True, encodec_bandwidth=3.0, tr=1.5)
 
         # Encode
-        features, metadata = processor.audio_to_features(
-            audio_path,
-            from_video=False
-        )
+        features, metadata = processor.audio_to_features(audio_path, from_video=False)
 
         # Decode
         output_path = test_audio_dir / "roundtrip_encodec.wav"
@@ -147,7 +150,7 @@ class TestEnCodecIntegration:
         correlation = np.corrcoef(original, reconstructed)[0, 1]
         assert correlation > 0.7, f"Low correlation: {correlation:.3f}"
 
-        print(f"\nRound-trip test passed:")
+        print("\nRound-trip test passed:")
         print(f"  Original length: {len(original)} samples")
         print(f"  Reconstructed length: {len(reconstructed)} samples")
         print(f"  Correlation: {correlation:.3f}")
@@ -182,9 +185,9 @@ class TestEnCodecIntegration:
         # Accept anything >= 0.6 to allow for test signal differences
         assert stoi_score >= 0.6, f"STOI too low: {stoi_score:.3f}"
 
-        print(f"\nQuality metrics:")
+        print("\nQuality metrics:")
         print(f"  STOI: {stoi_score:.3f}")
-        print(f"  Expected: ~0.74 (based on Batch 1 results)")
+        print("  Expected: ~0.74 (based on Batch 1 results)")
 
         return stoi_score
 
@@ -195,24 +198,23 @@ class TestEnCodecIntegration:
         processor = AudioProcessor(use_encodec=True, encodec_bandwidth=3.0, tr=1.5)
 
         # Encode
-        features, metadata = processor.audio_to_features(
-            audio_path,
-            from_video=False
-        )
+        features, metadata = processor.audio_to_features(audio_path, from_video=False)
 
         # Check metadata
         for idx, row in metadata.iterrows():
             expected_start = idx * 1.5
             expected_end = (idx + 1) * 1.5
 
-            assert np.isclose(row['start_time'], expected_start), \
-                f"TR {idx}: start_time mismatch"
-            assert np.isclose(row['end_time'], expected_end), \
-                f"TR {idx}: end_time mismatch"
+            assert np.isclose(
+                row["start_time"], expected_start
+            ), f"TR {idx}: start_time mismatch"
+            assert np.isclose(
+                row["end_time"], expected_end
+            ), f"TR {idx}: end_time mismatch"
 
-        print(f"\nTR alignment test passed:")
+        print("\nTR alignment test passed:")
         print(f"  TRs: {len(metadata)}")
-        print(f"  TR duration: 1.5s")
+        print("  TR duration: 1.5s")
 
     def test_encodec_max_trs(self, sample_audio):
         """Test max_trs parameter with EnCodec."""
@@ -223,15 +225,13 @@ class TestEnCodecIntegration:
         # Encode with max_trs
         max_trs = 2
         features, metadata = processor.audio_to_features(
-            audio_path,
-            max_trs=max_trs,
-            from_video=False
+            audio_path, max_trs=max_trs, from_video=False
         )
 
         assert features.shape[0] == max_trs
         assert len(metadata) == max_trs
 
-        print(f"\nmax_trs test passed:")
+        print("\nmax_trs test passed:")
         print(f"  Requested: {max_trs} TRs")
         print(f"  Got: {features.shape[0]} TRs")
 
@@ -247,10 +247,7 @@ class TestBackwardsCompatibility:
         processor = AudioProcessor(use_encodec=False, tr=1.5)
 
         # Encode
-        features, metadata = processor.audio_to_features(
-            audio_path,
-            from_video=False
-        )
+        features, metadata = processor.audio_to_features(audio_path, from_video=False)
 
         # Check dimensions
         n_trs = int(np.floor(duration / 1.5))
@@ -261,9 +258,9 @@ class TestBackwardsCompatibility:
         assert features.dtype == np.float32
 
         # Check metadata
-        assert metadata['encoding_mode'].iloc[0] == 'mel_spectrogram'
+        assert metadata["encoding_mode"].iloc[0] == "mel_spectrogram"
 
-        print(f"\nMel spectrogram fallback test passed:")
+        print("\nMel spectrogram fallback test passed:")
         print(f"  Shape: {features.shape}")
         print(f"  Dtype: {features.dtype}")
 
@@ -274,7 +271,9 @@ class TestBackwardsCompatibility:
 
         # Test EnCodec format (integer)
         processor_encodec = AudioProcessor(use_encodec=True, tr=1.5)
-        features_encodec, _ = processor_encodec.audio_to_features(audio_path, from_video=False)
+        features_encodec, _ = processor_encodec.audio_to_features(
+            audio_path, from_video=False
+        )
 
         output_encodec = test_audio_dir / "auto_detect_encodec.wav"
         processor_encodec.features_to_audio(features_encodec, output_encodec)
@@ -288,7 +287,7 @@ class TestBackwardsCompatibility:
         processor_mel.features_to_audio(features_mel, output_mel)
         assert output_mel.exists()
 
-        print(f"\nAuto-detection test passed:")
+        print("\nAuto-detection test passed:")
         print(f"  EnCodec features dtype: {features_encodec.dtype}")
         print(f"  Mel features dtype: {features_mel.dtype}")
 
@@ -303,7 +302,9 @@ class TestEnCodecBandwidths:
         """Test EnCodec with different bandwidth settings."""
         audio_path, sample_rate, duration = sample_audio
 
-        processor = AudioProcessor(use_encodec=True, encodec_bandwidth=bandwidth, tr=1.5)
+        processor = AudioProcessor(
+            use_encodec=True, encodec_bandwidth=bandwidth, tr=1.5
+        )
 
         # Encode
         features, _ = processor.audio_to_features(audio_path, from_video=False)
@@ -354,11 +355,15 @@ if __name__ == "__main__":
         test_class.test_encodec_encoding_dimensions((audio_path, sample_rate, duration))
 
         print("\n3. Testing round-trip...")
-        test_class.test_encodec_round_trip((audio_path, sample_rate, duration), test_dir)
+        test_class.test_encodec_round_trip(
+            (audio_path, sample_rate, duration), test_dir
+        )
 
         if STOI_AVAILABLE:
             print("\n4. Testing quality metrics...")
-            test_class.test_encodec_quality_metrics((audio_path, sample_rate, duration), test_dir)
+            test_class.test_encodec_quality_metrics(
+                (audio_path, sample_rate, duration), test_dir
+            )
         else:
             print("\n4. Skipping quality metrics (pystoi not available)")
 

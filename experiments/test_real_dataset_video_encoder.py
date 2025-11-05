@@ -3,21 +3,18 @@ Test Linear VideoEncoder with REAL Sherlock dataset.
 NO MOCKS - uses actual stimuli_Sherlock.m4v data.
 """
 import torch
+
 from giblet.data.dataset import MultimodalDataset
 from giblet.models.autoencoder import MultimodalAutoencoder
 
-print("="*80)
+print("=" * 80)
 print("REAL DATASET INTEGRATION TEST")
-print("="*80)
+print("=" * 80)
 
 # Test 1: Load REAL Sherlock dataset
 print("\n1. Loading REAL Sherlock dataset (subject 1, 10 TRs)...")
 dataset = MultimodalDataset(
-    'data',
-    subjects=[1],
-    max_trs=10,
-    use_encodec=True,
-    encodec_bandwidth=3.0
+    "data", subjects=[1], max_trs=10, use_encodec=True, encodec_bandwidth=3.0
 )
 
 print(f"✓ Dataset loaded: {len(dataset)} samples")
@@ -37,7 +34,7 @@ model = MultimodalAutoencoder(
     n_voxels=85810,
     bottleneck_dim=2048,
     use_encodec=True,
-    audio_frames_per_tr=112
+    audio_frames_per_tr=112,
 )
 
 total_params = sum(p.numel() for p in model.parameters())
@@ -57,10 +54,7 @@ print(f"    fMRI: {batch['fmri'].shape}")
 model.eval()
 with torch.no_grad():
     outputs = model(
-        batch['video'],
-        batch['audio'],
-        batch['text'],
-        fmri_target=batch['fmri']
+        batch["video"], batch["audio"], batch["text"], fmri_target=batch["fmri"]
     )
 
 print(f"\n✓ Forward pass SUCCESSFUL!")
@@ -73,9 +67,9 @@ for key, value in outputs.items():
 
 # Test 4: Verify output shapes
 print(f"\n4. Verifying output shapes...")
-assert outputs['bottleneck'].shape == (2, 2048), f"Bottleneck shape mismatch"
-assert outputs['predicted_fmri'].shape == (2, 85810), f"fMRI pred shape mismatch"
-assert outputs['video_recon'].shape == (2, 1641600), f"Video recon shape mismatch"
+assert outputs["bottleneck"].shape == (2, 2048), f"Bottleneck shape mismatch"
+assert outputs["predicted_fmri"].shape == (2, 85810), f"fMRI pred shape mismatch"
+assert outputs["video_recon"].shape == (2, 1641600), f"Video recon shape mismatch"
 print(f"✓ All output shapes correct!")
 
 # Test 5: Verify no NaN/Inf
@@ -86,7 +80,7 @@ for key, value in outputs.items():
         assert not torch.isinf(value).any(), f"Inf in {key}!"
 print(f"✓ All outputs valid (no NaN/Inf)")
 
-print("\n" + "="*80)
+print("\n" + "=" * 80)
 print("✓ REAL DATASET TEST PASSED!")
-print("="*80)
+print("=" * 80)
 print("\nReady for cluster deployment and training test.")

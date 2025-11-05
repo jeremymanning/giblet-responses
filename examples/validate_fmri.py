@@ -13,11 +13,12 @@ Performs comprehensive round-trip validation:
 All tests use REAL data - NO MOCKS.
 """
 
-import numpy as np
-import nibabel as nib
-import matplotlib.pyplot as plt
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import nibabel as nib
+import numpy as np
 from scipy.stats import pearsonr
 
 # Add project root to path
@@ -26,7 +27,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from giblet.data.fmri import FMRIProcessor
 
 
-def calculate_voxel_correlation(original: np.ndarray, reconstructed: np.ndarray) -> float:
+def calculate_voxel_correlation(
+    original: np.ndarray, reconstructed: np.ndarray
+) -> float:
     """
     Calculate correlation between original and reconstructed voxel timeseries.
 
@@ -47,7 +50,10 @@ def calculate_voxel_correlation(original: np.ndarray, reconstructed: np.ndarray)
     # Calculate correlation for each voxel
     correlations = []
     for voxel_idx in range(n_voxels):
-        if np.std(original[:, voxel_idx]) > 0 and np.std(reconstructed[:, voxel_idx]) > 0:
+        if (
+            np.std(original[:, voxel_idx]) > 0
+            and np.std(reconstructed[:, voxel_idx]) > 0
+        ):
             corr, _ = pearsonr(original[:, voxel_idx], reconstructed[:, voxel_idx])
             if not np.isnan(corr):
                 correlations.append(corr)
@@ -55,8 +61,13 @@ def calculate_voxel_correlation(original: np.ndarray, reconstructed: np.ndarray)
     return np.mean(correlations) if correlations else 0.0
 
 
-def plot_voxel_timeseries(original: np.ndarray, reconstructed: np.ndarray,
-                         voxel_indices: list, subject_id: str, output_path: Path):
+def plot_voxel_timeseries(
+    original: np.ndarray,
+    reconstructed: np.ndarray,
+    voxel_indices: list,
+    subject_id: str,
+    output_path: Path,
+):
     """
     Plot timeseries comparison for sample voxels.
 
@@ -74,7 +85,7 @@ def plot_voxel_timeseries(original: np.ndarray, reconstructed: np.ndarray,
         Path to save plot
     """
     n_voxels = len(voxel_indices)
-    fig, axes = plt.subplots(n_voxels, 1, figsize=(15, 3*n_voxels))
+    fig, axes = plt.subplots(n_voxels, 1, figsize=(15, 3 * n_voxels))
 
     if n_voxels == 1:
         axes = [axes]
@@ -83,12 +94,19 @@ def plot_voxel_timeseries(original: np.ndarray, reconstructed: np.ndarray,
         time = np.arange(len(original)) * 1.5  # TR = 1.5s
 
         # Original
-        axes[i].plot(time, original[:, voxel_idx], label='Original',
-                    alpha=0.7, linewidth=1)
+        axes[i].plot(
+            time, original[:, voxel_idx], label="Original", alpha=0.7, linewidth=1
+        )
 
         # Reconstructed
-        axes[i].plot(time, reconstructed[:, voxel_idx], label='Reconstructed',
-                    alpha=0.7, linewidth=1, linestyle='--')
+        axes[i].plot(
+            time,
+            reconstructed[:, voxel_idx],
+            label="Reconstructed",
+            alpha=0.7,
+            linewidth=1,
+            linestyle="--",
+        )
 
         # Calculate correlation for this voxel
         if np.std(original[:, voxel_idx]) > 0:
@@ -96,22 +114,27 @@ def plot_voxel_timeseries(original: np.ndarray, reconstructed: np.ndarray,
         else:
             corr = 0.0
 
-        axes[i].set_title(f'Voxel {voxel_idx} - Correlation: {corr:.4f}', fontsize=12)
-        axes[i].set_xlabel('Time (s)')
-        axes[i].set_ylabel('BOLD Signal')
+        axes[i].set_title(f"Voxel {voxel_idx} - Correlation: {corr:.4f}", fontsize=12)
+        axes[i].set_xlabel("Time (s)")
+        axes[i].set_ylabel("BOLD Signal")
         axes[i].legend()
         axes[i].grid(True, alpha=0.3)
 
-    plt.suptitle(f'Subject {subject_id} - Sample Voxel Timeseries', fontsize=14)
+    plt.suptitle(f"Subject {subject_id} - Sample Voxel Timeseries", fontsize=14)
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close()
 
     print(f"  Saved timeseries plot to {output_path.name}")
 
 
-def plot_brain_slices(nii_img: nib.Nifti1Image, mask_img: nib.Nifti1Image,
-                     subject_id: str, output_path: Path, time_idx: int = 0):
+def plot_brain_slices(
+    nii_img: nib.Nifti1Image,
+    mask_img: nib.Nifti1Image,
+    subject_id: str,
+    output_path: Path,
+    time_idx: int = 0,
+):
     """
     Plot brain slices with mask overlay.
 
@@ -140,45 +163,46 @@ def plot_brain_slices(nii_img: nib.Nifti1Image, mask_img: nib.Nifti1Image,
     fig, axes = plt.subplots(2, 3, figsize=(15, 10))
 
     # Sagittal slice (x)
-    axes[0, 0].imshow(brain_data[x_mid, :, :].T, cmap='gray', origin='lower')
-    axes[0, 0].set_title(f'Sagittal (x={x_mid})', fontsize=12)
-    axes[0, 0].axis('off')
+    axes[0, 0].imshow(brain_data[x_mid, :, :].T, cmap="gray", origin="lower")
+    axes[0, 0].set_title(f"Sagittal (x={x_mid})", fontsize=12)
+    axes[0, 0].axis("off")
 
-    axes[1, 0].imshow(brain_data[x_mid, :, :].T, cmap='gray', origin='lower', alpha=0.5)
-    axes[1, 0].imshow(mask_data[x_mid, :, :].T, cmap='Reds', origin='lower', alpha=0.5)
-    axes[1, 0].set_title(f'Sagittal with Mask', fontsize=12)
-    axes[1, 0].axis('off')
+    axes[1, 0].imshow(brain_data[x_mid, :, :].T, cmap="gray", origin="lower", alpha=0.5)
+    axes[1, 0].imshow(mask_data[x_mid, :, :].T, cmap="Reds", origin="lower", alpha=0.5)
+    axes[1, 0].set_title(f"Sagittal with Mask", fontsize=12)
+    axes[1, 0].axis("off")
 
     # Coronal slice (y)
-    axes[0, 1].imshow(brain_data[:, y_mid, :].T, cmap='gray', origin='lower')
-    axes[0, 1].set_title(f'Coronal (y={y_mid})', fontsize=12)
-    axes[0, 1].axis('off')
+    axes[0, 1].imshow(brain_data[:, y_mid, :].T, cmap="gray", origin="lower")
+    axes[0, 1].set_title(f"Coronal (y={y_mid})", fontsize=12)
+    axes[0, 1].axis("off")
 
-    axes[1, 1].imshow(brain_data[:, y_mid, :].T, cmap='gray', origin='lower', alpha=0.5)
-    axes[1, 1].imshow(mask_data[:, y_mid, :].T, cmap='Reds', origin='lower', alpha=0.5)
-    axes[1, 1].set_title(f'Coronal with Mask', fontsize=12)
-    axes[1, 1].axis('off')
+    axes[1, 1].imshow(brain_data[:, y_mid, :].T, cmap="gray", origin="lower", alpha=0.5)
+    axes[1, 1].imshow(mask_data[:, y_mid, :].T, cmap="Reds", origin="lower", alpha=0.5)
+    axes[1, 1].set_title(f"Coronal with Mask", fontsize=12)
+    axes[1, 1].axis("off")
 
     # Axial slice (z)
-    axes[0, 2].imshow(brain_data[:, :, z_mid].T, cmap='gray', origin='lower')
-    axes[0, 2].set_title(f'Axial (z={z_mid})', fontsize=12)
-    axes[0, 2].axis('off')
+    axes[0, 2].imshow(brain_data[:, :, z_mid].T, cmap="gray", origin="lower")
+    axes[0, 2].set_title(f"Axial (z={z_mid})", fontsize=12)
+    axes[0, 2].axis("off")
 
-    axes[1, 2].imshow(brain_data[:, :, z_mid].T, cmap='gray', origin='lower', alpha=0.5)
-    axes[1, 2].imshow(mask_data[:, :, z_mid].T, cmap='Reds', origin='lower', alpha=0.5)
-    axes[1, 2].set_title(f'Axial with Mask', fontsize=12)
-    axes[1, 2].axis('off')
+    axes[1, 2].imshow(brain_data[:, :, z_mid].T, cmap="gray", origin="lower", alpha=0.5)
+    axes[1, 2].imshow(mask_data[:, :, z_mid].T, cmap="Reds", origin="lower", alpha=0.5)
+    axes[1, 2].set_title(f"Axial with Mask", fontsize=12)
+    axes[1, 2].axis("off")
 
-    plt.suptitle(f'Subject {subject_id} - Brain Slices (TR {time_idx})', fontsize=14)
+    plt.suptitle(f"Subject {subject_id} - Brain Slices (TR {time_idx})", fontsize=14)
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close()
 
     print(f"  Saved brain slices to {output_path.name}")
 
 
-def validate_subject(processor: FMRIProcessor, nii_path: Path,
-                    subject_id: str, output_dir: Path) -> dict:
+def validate_subject(
+    processor: FMRIProcessor, nii_path: Path, subject_id: str, output_dir: Path
+) -> dict:
     """
     Validate fMRI processing for a single subject.
 
@@ -198,9 +222,9 @@ def validate_subject(processor: FMRIProcessor, nii_path: Path,
     metrics : dict
         Validation metrics
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print(f"VALIDATING SUBJECT {subject_id}")
-    print("="*80)
+    print("=" * 80)
 
     # Extract features
     print(f"\n1. Extracting features from NIfTI file...")
@@ -217,11 +241,9 @@ def validate_subject(processor: FMRIProcessor, nii_path: Path,
 
     # Reconstruct NIfTI
     print(f"\n2. Reconstructing NIfTI from features...")
-    reconstructed_path = output_dir / f'fmri_reconstructed_{subject_id}.nii.gz'
+    reconstructed_path = output_dir / f"fmri_reconstructed_{subject_id}.nii.gz"
     reconstructed_img = processor.features_to_nii(
-        features,
-        coordinates,
-        reconstructed_path
+        features, coordinates, reconstructed_path
     )
 
     # Re-extract features from reconstructed NIfTI
@@ -231,8 +253,9 @@ def validate_subject(processor: FMRIProcessor, nii_path: Path,
     print(f"   Reconstructed features shape: {reconstructed_features.shape}")
 
     # Verify shapes match
-    assert original_features.shape == reconstructed_features.shape, \
-        f"Shape mismatch: {original_features.shape} vs {reconstructed_features.shape}"
+    assert (
+        original_features.shape == reconstructed_features.shape
+    ), f"Shape mismatch: {original_features.shape} vs {reconstructed_features.shape}"
 
     # Calculate metrics
     print(f"\n4. Calculating validation metrics...")
@@ -269,18 +292,18 @@ def validate_subject(processor: FMRIProcessor, nii_path: Path,
     voxel_vars = np.var(original_features, axis=0)
     high_var_indices = np.argsort(voxel_vars)[-5:]  # Top 5 highest variance
 
-    timeseries_path = output_dir / f'fmri_timeseries_{subject_id}.png'
+    timeseries_path = output_dir / f"fmri_timeseries_{subject_id}.png"
     plot_voxel_timeseries(
         original_features,
         reconstructed_features,
         high_var_indices.tolist(),
         subject_id,
-        timeseries_path
+        timeseries_path,
     )
 
     # Plot brain slices with mask
     print(f"\n6. Plotting brain slices with mask...")
-    slices_path = output_dir / f'fmri_brain_slices_{subject_id}.png'
+    slices_path = output_dir / f"fmri_brain_slices_{subject_id}.png"
 
     # Load original image for visualization
     original_img = nib.load(str(nii_path))
@@ -290,7 +313,7 @@ def validate_subject(processor: FMRIProcessor, nii_path: Path,
         processor._shared_mask_img,
         subject_id,
         slices_path,
-        time_idx=100  # Middle of timeseries
+        time_idx=100,  # Middle of timeseries
     )
 
     # Quality assessment
@@ -312,14 +335,14 @@ def validate_subject(processor: FMRIProcessor, nii_path: Path,
         print(f"   ⚠ WARNING: Lower correlation")
 
     return {
-        'subject_id': subject_id,
-        'n_voxels': features.shape[1],
-        'n_trs': features.shape[0],
-        'exact_match': exact_match,
-        'mean_abs_diff': abs_diff.mean(),
-        'max_abs_diff': abs_diff.max(),
-        'mean_voxel_corr': mean_corr,
-        'mse': mse
+        "subject_id": subject_id,
+        "n_voxels": features.shape[1],
+        "n_trs": features.shape[0],
+        "exact_match": exact_match,
+        "mean_abs_diff": abs_diff.mean(),
+        "max_abs_diff": abs_diff.max(),
+        "mean_voxel_corr": mean_corr,
+        "mse": mse,
     }
 
 
@@ -327,14 +350,14 @@ def validate_fmri_modality():
     """
     Main validation function for fMRI modality.
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("fMRI MODALITY VALIDATION")
-    print("="*80)
+    print("=" * 80)
 
     # Setup paths
     project_root = Path(__file__).parent.parent
-    data_dir = project_root / 'data' / 'sherlock_nii'
-    output_dir = project_root / 'validation_outputs'
+    data_dir = project_root / "data" / "sherlock_nii"
+    output_dir = project_root / "validation_outputs"
     output_dir.mkdir(exist_ok=True)
 
     if not data_dir.exists():
@@ -347,21 +370,21 @@ def validate_fmri_modality():
 
     # Initialize processor
     processor = FMRIProcessor(
-        tr=1.5,
-        max_trs=920,  # Full Sherlock movie
-        mask_threshold=0.5
+        tr=1.5, max_trs=920, mask_threshold=0.5  # Full Sherlock movie
     )
 
     # Find available subjects
-    nii_files = sorted(data_dir.glob('sherlock_movie_s*.nii.gz'),
-                      key=lambda f: int(f.name.split('_')[-1].split('.')[0][1:]))
+    nii_files = sorted(
+        data_dir.glob("sherlock_movie_s*.nii.gz"),
+        key=lambda f: int(f.name.split("_")[-1].split(".")[0][1:]),
+    )
 
     print(f"\nFound {len(nii_files)} subject files")
 
     # Create shared mask
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("CREATING SHARED MASK")
-    print("="*80)
+    print("=" * 80)
 
     # Use first 3 subjects for mask creation (for speed in validation)
     # In production, use all subjects
@@ -373,7 +396,7 @@ def validate_fmri_modality():
     mask_array, mask_img = processor.create_shared_mask(mask_files)
 
     # Save mask
-    mask_path = output_dir / 'shared_brain_mask.nii.gz'
+    mask_path = output_dir / "shared_brain_mask.nii.gz"
     processor.save_mask(mask_path)
 
     # Get mask info
@@ -385,16 +408,12 @@ def validate_fmri_modality():
     print(f"  Mask shape: {mask_info['mask_shape']}")
 
     # Validate each subject
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("SUBJECT VALIDATION")
-    print("="*80)
+    print("=" * 80)
 
     # Test on subjects 1, 2, 3
-    test_subjects = [
-        (nii_files[0], 's1'),
-        (nii_files[1], 's2'),
-        (nii_files[2], 's3')
-    ]
+    test_subjects = [(nii_files[0], "s1"), (nii_files[1], "s2"), (nii_files[2], "s3")]
 
     all_metrics = []
 
@@ -403,28 +422,32 @@ def validate_fmri_modality():
         all_metrics.append(metrics)
 
     # Summary
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("VALIDATION SUMMARY")
-    print("="*80)
+    print("=" * 80)
 
     print("\nMetrics by subject:")
-    print(f"{'Subject':<10} {'Voxels':>10} {'TRs':>6} {'Exact Match':>12} "
-          f"{'Mean Diff':>12} {'Max Diff':>12} {'Correlation':>12}")
+    print(
+        f"{'Subject':<10} {'Voxels':>10} {'TRs':>6} {'Exact Match':>12} "
+        f"{'Mean Diff':>12} {'Max Diff':>12} {'Correlation':>12}"
+    )
     print("-" * 90)
 
     for m in all_metrics:
-        print(f"{m['subject_id']:<10} "
-              f"{m['n_voxels']:>10,} "
-              f"{m['n_trs']:>6} "
-              f"{'Yes' if m['exact_match'] else 'No':>12} "
-              f"{m['mean_abs_diff']:>12.6e} "
-              f"{m['max_abs_diff']:>12.6e} "
-              f"{m['mean_voxel_corr']:>12.6f}")
+        print(
+            f"{m['subject_id']:<10} "
+            f"{m['n_voxels']:>10,} "
+            f"{m['n_trs']:>6} "
+            f"{'Yes' if m['exact_match'] else 'No':>12} "
+            f"{m['mean_abs_diff']:>12.6e} "
+            f"{m['max_abs_diff']:>12.6e} "
+            f"{m['mean_voxel_corr']:>12.6f}"
+        )
 
     # Overall statistics
-    n_exact = sum(1 for m in all_metrics if m['exact_match'])
-    avg_corr = np.mean([m['mean_voxel_corr'] for m in all_metrics])
-    avg_max_diff = np.mean([m['max_abs_diff'] for m in all_metrics])
+    n_exact = sum(1 for m in all_metrics if m["exact_match"])
+    avg_corr = np.mean([m["mean_voxel_corr"] for m in all_metrics])
+    avg_max_diff = np.mean([m["max_abs_diff"] for m in all_metrics])
 
     print(f"\nOverall statistics:")
     print(f"  Exact matches: {n_exact}/{len(all_metrics)}")
@@ -432,16 +455,17 @@ def validate_fmri_modality():
     print(f"  Average max difference: {avg_max_diff:.6e}")
 
     print(f"\nGenerated outputs:")
-    output_files = sorted(output_dir.glob('fmri_*'))
+    output_files = sorted(output_dir.glob("fmri_*"))
     for f in output_files:
         size_mb = f.stat().st_size / (1024 * 1024)
         print(f"  {f.name:60s} ({size_mb:.2f} MB)")
 
     # Technical notes
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("TECHNICAL NOTES")
-    print("="*80)
-    print("""
+    print("=" * 80)
+    print(
+        """
 Round-trip validation methodology:
 1. Load original .nii.gz file (4D array: x, y, z, time)
 2. Apply shared brain mask to extract only brain voxels
@@ -460,10 +484,11 @@ Any differences larger than 1e-3 indicate potential issues in:
 - Mask application
 - NIfTI file I/O
 - Affine transformation handling
-    """)
+    """
+    )
 
     # Final verdict
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     if n_exact == len(all_metrics):
         print("✅ fMRI VALIDATION PASSED - PERFECT RECONSTRUCTION")
     elif avg_corr > 0.99 and avg_max_diff < 1e-3:
@@ -472,21 +497,22 @@ Any differences larger than 1e-3 indicate potential issues in:
         print("✅ fMRI VALIDATION PASSED - GOOD RECONSTRUCTION")
     else:
         print("⚠ fMRI VALIDATION WARNING - QUALITY BELOW EXPECTED")
-    print("="*80)
+    print("=" * 80)
 
     return all_metrics
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         metrics = validate_fmri_modality()
-        avg_corr = np.mean([m['mean_voxel_corr'] for m in metrics])
-        n_exact = sum(1 for m in metrics if m['exact_match'])
+        avg_corr = np.mean([m["mean_voxel_corr"] for m in metrics])
+        n_exact = sum(1 for m in metrics if m["exact_match"])
         print(f"\n✓ fMRI validation complete.")
         print(f"  Exact matches: {n_exact}/{len(metrics)}")
         print(f"  Average correlation: {avg_corr:.6f}")
     except Exception as e:
         print(f"\n❌ Error during validation: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

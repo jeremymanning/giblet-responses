@@ -18,9 +18,7 @@ Requires:
 - LaTeX installation with pdflatex (optional for PDF compilation)
 """
 
-import os
 import subprocess
-import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -603,14 +601,14 @@ def generate_network_diagram(
     output_pdf_path = Path(output_pdf_path)
     tex_path = output_pdf_path.with_suffix(".tex")
 
-    print(f"Generating LaTeX code...")
+    print("Generating LaTeX code...")
     tex_file = generate_multimodal_architecture_latex(
         output_path=str(tex_path), **architecture_params
     )
     print(f"LaTeX saved to: {tex_file}")
 
     # Compile to PDF
-    print(f"Compiling PDF...")
+    print("Compiling PDF...")
     pdf_path = compile_latex_to_pdf(
         tex_path=tex_file, output_dir=str(output_pdf_path.parent), cleanup=True
     )

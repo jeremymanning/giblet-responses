@@ -5,7 +5,6 @@ Tests the new EnCodec discrete code prediction path and backwards
 compatibility with mel spectrograms.
 """
 
-import numpy as np
 import pytest
 import torch
 

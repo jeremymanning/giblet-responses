@@ -30,7 +30,7 @@ SUCCESS CRITERIA:
 import time
 import tracemalloc
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict
 
 import librosa
 import numpy as np
@@ -42,10 +42,8 @@ import torch.nn as nn
 # Quality metrics
 from pesq import pesq
 from pystoi import stoi
-from tqdm import tqdm
 
 # Import project modules using absolute imports
-from giblet.data.audio import AudioProcessor
 from giblet.models.decoder import MultimodalDecoder
 from giblet.models.encoder import AudioEncoder
 
@@ -96,7 +94,7 @@ def calculate_snr(reference: np.ndarray, degraded: np.ndarray) -> float:
     noise_power = np.sum((reference - degraded) ** 2)
 
     if noise_power == 0:
-        return float("inf")
+        return float("in")
 
     snr = 10 * np.log10(signal_power / noise_power)
     return snr
@@ -215,7 +213,7 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
     print("=" * 80)
     print("EnCodec End-to-End Pipeline Test")
     print("=" * 80)
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(
         f"  Sampling rate: {CONFIG['target_sample_rate']} Hz (downsampled from 24kHz)"
     )
@@ -622,7 +620,7 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
     print("Test Complete!")
     print("=" * 80)
     print()
-    print(f"Memory usage:")
+    print("Memory usage:")
     print(f"  Current: {current / 1024 / 1024:.1f} MB")
     print(f"  Peak:    {peak / 1024 / 1024:.1f} MB")
     print()
@@ -637,6 +635,6 @@ def test_encodec_e2e_pipeline(data_dir, output_dir, audio_processor):
     print()
     print("Metrics and spectrograms:")
     print(f"  • {metrics_path.name}")
-    print(f"  • spectrograms_comparison.png")
+    print("  • spectrograms_comparison.png")
     print()
     print("=" * 80)

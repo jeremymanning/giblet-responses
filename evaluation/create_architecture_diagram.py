@@ -26,24 +26,25 @@ Examples:
     python create_architecture_diagram.py --format svg
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import torch
+
 from giblet.models import create_autoencoder
 
 
 def create_diagram_torchview(
     model,
     output_path: str,
-    format: str = 'pdf',
+    format: str = "pdf",
     horizontal: bool = True,
     depth: int = 3,
-    expand_nested: bool = True
+    expand_nested: bool = True,
 ):
     """
     Create architecture diagram using torchview (recommended).
@@ -83,33 +84,27 @@ def create_diagram_torchview(
     text = torch.randn(1, 1024)
 
     # Generate graph
-    graph_dir = 'LR' if horizontal else 'TB'
+    graph_dir = "LR" if horizontal else "TB"
 
     model_graph = draw_graph(
         model,
         input_data=[video, audio, text],
         expand_nested=expand_nested,
         depth=depth,
-        device='cpu',
-        graph_dir=graph_dir
+        device="cpu",
+        graph_dir=graph_dir,
     )
 
     # Render
     output_file = model_graph.visual_graph.render(
-        output_path,
-        format=format,
-        cleanup=True
+        output_path, format=format, cleanup=True
     )
 
     print(f"✓ Diagram saved to: {output_file}")
     return output_file
 
 
-def create_diagram_custom(
-    model,
-    output_path: str,
-    format: str = 'pdf'
-):
+def create_diagram_custom(model, output_path: str, format: str = "pdf"):
     """
     Create architecture diagram using custom matplotlib (alternative).
 
@@ -129,18 +124,18 @@ def create_diagram_custom(
     print(f"  Note: Vertical layout only (no parallel branch visualization)")
 
     # Add extension if not present
-    if not output_path.endswith(f'.{format}'):
-        output_path = f'{output_path}.{format}'
+    if not output_path.endswith(f".{format}"):
+        output_path = f"{output_path}.{format}"
 
     create_network_diagram(
         model,
         output_path=output_path,
         legend=True,
-        sizing_mode='logarithmic',
+        sizing_mode="logarithmic",
         show_dimension=True,
         title="Giblet Multimodal Autoencoder",
         figsize=(16, 24),
-        dpi=300
+        dpi=300,
     )
 
     print(f"✓ Diagram saved to: {output_path}")
@@ -149,7 +144,7 @@ def create_diagram_custom(
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate architecture diagrams for giblet autoencoder',
+        description="Generate architecture diagrams for giblet autoencoder",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -158,47 +153,44 @@ Examples:
   %(prog)s --vertical --format svg            # SVG with vertical layout
   %(prog)s --output my_diagram --format pdf   # Custom output name
   %(prog)s --method custom                    # Use custom matplotlib
-        """
+        """,
     )
 
     parser.add_argument(
-        '--output', '-o',
-        default='giblet_architecture',
-        help='Output filename without extension (default: giblet_architecture)'
+        "--output",
+        "-o",
+        default="giblet_architecture",
+        help="Output filename without extension (default: giblet_architecture)",
     )
 
     parser.add_argument(
-        '--format', '-f',
-        choices=['pdf', 'png', 'svg'],
-        default='pdf',
-        help='Output format (default: pdf)'
+        "--format",
+        "-f",
+        choices=["pdf", "png", "svg"],
+        default="pdf",
+        help="Output format (default: pdf)",
     )
 
     parser.add_argument(
-        '--horizontal',
-        action='store_true',
+        "--horizontal",
+        action="store_true",
         default=True,
-        help='Use horizontal (left-to-right) layout (default)'
+        help="Use horizontal (left-to-right) layout (default)",
     )
 
     parser.add_argument(
-        '--vertical',
-        action='store_true',
-        help='Use vertical (top-to-bottom) layout'
+        "--vertical", action="store_true", help="Use vertical (top-to-bottom) layout"
     )
 
     parser.add_argument(
-        '--depth',
-        type=int,
-        default=3,
-        help='Visualization depth (default: 3)'
+        "--depth", type=int, default=3, help="Visualization depth (default: 3)"
     )
 
     parser.add_argument(
-        '--method',
-        choices=['torchview', 'custom'],
-        default='torchview',
-        help='Visualization method (default: torchview)'
+        "--method",
+        choices=["torchview", "custom"],
+        default="torchview",
+        help="Visualization method (default: torchview)",
     )
 
     args = parser.parse_args()
@@ -210,9 +202,9 @@ Examples:
         horizontal = True
 
     # Create model
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Giblet Autoencoder Architecture Diagram Generator")
-    print("="*70)
+    print("=" * 70)
 
     print("\nCreating autoencoder model...")
     model = create_autoencoder()
@@ -230,28 +222,24 @@ Examples:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Generate diagram
-    if args.method == 'torchview':
+    if args.method == "torchview":
         output_file = create_diagram_torchview(
             model,
             str(output_path),
             format=args.format,
             horizontal=horizontal,
-            depth=args.depth
+            depth=args.depth,
         )
     else:  # custom
         if horizontal:
             print("\nWarning: Custom matplotlib only supports vertical layout")
-        output_file = create_diagram_custom(
-            model,
-            str(output_path),
-            format=args.format
-        )
+        output_file = create_diagram_custom(model, str(output_path), format=args.format)
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("✓ Diagram generation complete!")
     print(f"  Output: {output_file}")
-    print("="*70)
+    print("=" * 70)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

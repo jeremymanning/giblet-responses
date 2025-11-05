@@ -26,53 +26,42 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from giblet.models.autoencoder import MultimodalAutoencoder
-from giblet.utils.visualization import create_network_diagram, create_model_summary
+from giblet.utils.visualization import create_model_summary, create_network_diagram
 
 
 def main():
     """Main function to create network diagrams."""
     parser = argparse.ArgumentParser(
-        description='Create network architecture diagram for MultimodalAutoencoder'
+        description="Create network architecture diagram for MultimodalAutoencoder"
     )
     parser.add_argument(
-        '--output',
+        "--output",
         type=str,
-        default='papers/figs/source/network.pdf',
-        help='Output path for network diagram (default: papers/figs/source/network.pdf)'
+        default="papers/figs/source/network.pdf",
+        help="Output path for network diagram (default: papers/figs/source/network.pdf)",
     )
     parser.add_argument(
-        '--sizing-mode',
+        "--sizing-mode",
         type=str,
-        choices=['logarithmic', 'linear'],
-        default='logarithmic',
-        help='Layer sizing mode (default: logarithmic)'
+        choices=["logarithmic", "linear"],
+        default="logarithmic",
+        help="Layer sizing mode (default: logarithmic)",
+    )
+    parser.add_argument("--no-legend", action="store_true", help="Disable legend")
+    parser.add_argument(
+        "--no-dimensions", action="store_true", help="Disable dimension labels"
     )
     parser.add_argument(
-        '--no-legend',
-        action='store_true',
-        help='Disable legend'
-    )
-    parser.add_argument(
-        '--no-dimensions',
-        action='store_true',
-        help='Disable dimension labels'
-    )
-    parser.add_argument(
-        '--title',
+        "--title",
         type=str,
-        default='Multimodal fMRI Autoencoder Architecture',
-        help='Diagram title'
+        default="Multimodal fMRI Autoencoder Architecture",
+        help="Diagram title",
     )
     parser.add_argument(
-        '--summary',
-        type=str,
-        help='Optional path to save text summary'
+        "--summary", type=str, help="Optional path to save text summary"
     )
     parser.add_argument(
-        '--dpi',
-        type=int,
-        default=300,
-        help='DPI for output image (default: 300)'
+        "--dpi", type=int, default=300, help="DPI for output image (default: 300)"
     )
 
     args = parser.parse_args()
@@ -105,7 +94,7 @@ def main():
         sizing_mode=args.sizing_mode,
         show_dimension=not args.no_dimensions,
         title=args.title,
-        dpi=args.dpi
+        dpi=args.dpi,
     )
 
     print(f"Network diagram saved to: {output_path}")
@@ -121,5 +110,5 @@ def main():
     print("\nDone!")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Detect project root directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
+
 # remote_train.sh - Remote training script for giblet-responses project
 # Manages training jobs on tensor01/tensor02 clusters via screen sessions
 #
@@ -138,7 +142,7 @@ echo -e "Dry Run:       ${GREEN}$DRY_RUN${NC}"
 echo ""
 
 # Load credentials
-CRED_FILE="cluster_config/${CLUSTER}_credentials.json"
+CRED_FILE="$PROJECT_ROOT/cluster_config/${CLUSTER}_credentials.json"
 if [[ ! -f "$CRED_FILE" ]]; then
     echo -e "${RED}Error: Credential file not found: $CRED_FILE${NC}"
     exit 1

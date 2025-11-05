@@ -1,7 +1,5 @@
 """Check all layer sizes in the architecture to verify bottleneck is smallest."""
 
-import torch
-
 from giblet.models.autoencoder import MultimodalAutoencoder
 
 model = MultimodalAutoencoder(

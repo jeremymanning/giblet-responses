@@ -4,8 +4,6 @@ Quick test of EnCodec fix with real Sherlock data.
 Tests progressively larger numbers of TRs to verify the fix works.
 """
 
-from pathlib import Path
-
 import pytest
 
 from giblet.data.audio import AudioProcessor
@@ -30,7 +28,7 @@ def test_sherlock_extraction(data_dir):
     processor = AudioProcessor(
         use_encodec=True, encodec_bandwidth=3.0, tr=1.5, device="cpu"
     )
-    print(f"   EnCodec enabled")
+    print("   EnCodec enabled")
 
     # Test with increasing numbers of TRs
     test_trs = [5, 10, 20, 50, 100]
@@ -45,7 +43,7 @@ def test_sherlock_extraction(data_dir):
                 str(video_path), max_trs=max_trs, from_video=True
             )
 
-            print(f"   SUCCESS!")
+            print("   SUCCESS!")
             print(f"      Shape: {features.shape}")
             print(f"      dtype: {features.dtype}")
 
@@ -58,16 +56,16 @@ def test_sherlock_extraction(data_dir):
                 print(
                     f"      Wrong shape! Expected {expected_shape}, got {features.shape}"
                 )
-                results.append((max_trs, False, f"Shape mismatch"))
+                results.append((max_trs, False, "Shape mismatch"))
 
             # Verify all TRs have consistent dimensions
             all_consistent = all(
                 features[i].shape == features[0].shape for i in range(len(features))
             )
             if all_consistent:
-                print(f"      All TRs consistent")
+                print("      All TRs consistent")
             else:
-                print(f"      Inconsistent TR shapes")
+                print("      Inconsistent TR shapes")
                 results.append((max_trs, False, "Inconsistent shapes"))
 
             # Check metadata

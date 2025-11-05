@@ -5,12 +5,12 @@ import sys
 
 sys.path.insert(0, ".")
 
-import traceback
+import traceback  # noqa: E402
 
-import numpy as np
-import torch
+import numpy as np  # noqa: E402
+import torch  # noqa: E402
 
-from giblet.data.audio import AudioProcessor
+from giblet.data.audio import AudioProcessor  # noqa: E402
 
 print("=" * 80)
 print("EnCodec Bug Reproduction with Real Sherlock Audio")
@@ -27,11 +27,11 @@ try:
     )
     print(f"✓ Success! Shape: {features.shape}")
     print(f"✓ Dtype: {features.dtype}")
-    print(f"\nMetadata:")
+    print("\nMetadata:")
     print(metadata)
 
     # Check consistency
-    print(f"\n2. Checking shape consistency across TRs...")
+    print("\n2. Checking shape consistency across TRs...")
     shapes = [features[i].shape for i in range(len(features))]
     unique_shapes = set(shapes)
     print(f"Unique shapes: {unique_shapes}")
@@ -39,7 +39,7 @@ try:
     if len(unique_shapes) == 1:
         print(f"✓ All TRs have consistent shape: {unique_shapes.pop()}")
     else:
-        print(f"✗ INCONSISTENT SHAPES DETECTED!")
+        print("✗ INCONSISTENT SHAPES DETECTED!")
         for i, shape in enumerate(shapes):
             print(f"  TR {i}: {shape}")
 
@@ -88,20 +88,20 @@ except Exception as e:
         frames_per_tr = int(encodec_frame_rate * tr_length)
         expected_codebooks = 8  # for 3.0 kbps
 
-        print(f"\nExpected values:")
+        print("\nExpected values:")
         print(f"  Codebooks: {expected_codebooks}")
         print(f"  Frames per TR: {frames_per_tr}")
         print(f"  Expected flattened dim per TR: {expected_codebooks * frames_per_tr}")
 
-        print(f"\nActual values:")
+        print("\nActual values:")
         print(f"  Codebooks: {codes.shape[0]}")
         print(f"  Total frames: {codes.shape[1]}")
 
         if codes.shape[0] != expected_codebooks:
-            print(f"\n⚠ WARNING: Codebook count mismatch!")
+            print("\n⚠ WARNING: Codebook count mismatch!")
             print(f"  Expected: {expected_codebooks}")
             print(f"  Actual: {codes.shape[0]}")
-            print(f"  This is the source of the dimension error!")
+            print("  This is the source of the dimension error!")
 
         # Try to reproduce the exact error
         print("\n3. Attempting to reproduce the error...")
@@ -116,7 +116,7 @@ except Exception as e:
         )
         print(f"Normalized target shape: {normalized_codes.shape}")
 
-        print(f"\nAttempting assignment: normalized_codes[:4, :] = tr_codes[:4, :]")
+        print("\nAttempting assignment: normalized_codes[:4, :] = tr_codes[:4, :]")
         print(f"  LHS shape: {normalized_codes[:4, :].shape}")
         print(f"  RHS shape: {tr_codes[:4, :].shape}")
 

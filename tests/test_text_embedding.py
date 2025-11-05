@@ -9,11 +9,9 @@ This script:
 5. Saves results for manual review
 """
 
-from pathlib import Path
 from time import time
 
 import numpy as np
-import pandas as pd
 import pytest
 
 from giblet.data.text import TextProcessor
@@ -22,7 +20,7 @@ from giblet.data.text import TextProcessor
 @pytest.mark.slow
 @pytest.mark.integration
 @pytest.mark.data
-def test_text_embedding_reconstruction(data_dir, tmp_path):
+def test_text_embedding_reconstruction(data_dir, tmp_path):  # noqa: C901
     """Run embedding and recovery test."""
 
     # Setup paths
@@ -96,7 +94,6 @@ def test_text_embedding_reconstruction(data_dir, tmp_path):
 
     # Map annotations to TRs (first 30 only)
     print("Mapping annotations to TRs (first 30)...")
-    tr_times = []
     segment_to_trs = {}  # Which TRs each segment contributes to
 
     for seg_idx, (_, row) in enumerate(valid_annotations.iterrows()):
@@ -119,7 +116,7 @@ def test_text_embedding_reconstruction(data_dir, tmp_path):
             if tr_idx in tr_list:
                 tr_to_segments[tr_idx].append(seg_idx)
 
-    print(f"TR mapping complete")
+    print("TR mapping complete")
     print()
 
     # Compute TR embeddings for first 30 TRs
@@ -143,7 +140,7 @@ def test_text_embedding_reconstruction(data_dir, tmp_path):
     recovered_indices = np.argmax(similarities, axis=1)
     recovered_texts = [valid_text[idx] for idx in recovered_indices]
 
-    print(f"Text recovery complete")
+    print("Text recovery complete")
     print()
 
     # Compute match statistics
@@ -181,7 +178,7 @@ def test_text_embedding_reconstruction(data_dir, tmp_path):
         f.write(f"TR duration: {processor.tr}s\n")
         f.write(f"Aggregation: {processor.aggregation}\n")
         f.write(f"Total segments: {len(valid_text)}\n")
-        f.write(f"TRs tested: 30 (0-29)\n\n")
+        f.write("TRs tested: 30 (0-29)\n\n")
 
         f.write("SUMMARY\n")
         f.write("-" * 70 + "\n")
@@ -214,7 +211,7 @@ def test_text_embedding_reconstruction(data_dir, tmp_path):
             if len(original_texts) == 1:
                 f.write(f"ORIGINAL: {original_texts[0]}\n")
             else:
-                f.write(f"ORIGINAL (multiple segments):\n")
+                f.write("ORIGINAL (multiple segments):\n")
                 for i, text in enumerate(original_texts):
                     f.write(f"  [{i}] {text}\n")
 
@@ -225,20 +222,17 @@ def test_text_embedding_reconstruction(data_dir, tmp_path):
             # Check match status
             if recovered in original_texts:
                 status = "EXACT MATCH"
-                matches_found = True
             elif any(recovered[:50] == orig[:50] for orig in original_texts):
                 status = "PARTIAL MATCH"
-                matches_found = True
             else:
                 status = "NO MATCH"
-                matches_found = False
 
             f.write(f"STATUS: {status}\n")
 
             # Show similarity scores
             sim_scores = similarities[tr_idx]
             top_3_indices = np.argsort(sim_scores)[-3:][::-1]
-            f.write(f"TOP 3 SIMILARITIES:\n")
+            f.write("TOP 3 SIMILARITIES:\n")
             for rank, idx in enumerate(top_3_indices, 1):
                 f.write(
                     f"  [{rank}] {sim_scores[idx]:.4f} - {valid_text[idx][:60]}...\n"

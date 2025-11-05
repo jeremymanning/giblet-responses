@@ -23,7 +23,7 @@ N_TRS_TARGET = 950  # Target for ~23 minute stimulus at TR=1.5s
 @pytest.fixture
 def annotations_path(data_dir):
     """Return path to annotations file."""
-    path = data_dir / 'annotations.xlsx'
+    path = data_dir / "annotations.xlsx"
     if not path.exists():
         pytest.skip(f"Annotations file not found at {path}")
     return path
@@ -40,19 +40,23 @@ class TestTextProcessor:
 
         # Verify structure
         assert isinstance(annotations, pd.DataFrame)
-        assert len(annotations) == 1000, f"Expected 1000 segments, got {len(annotations)}"
+        assert (
+            len(annotations) == 1000
+        ), f"Expected 1000 segments, got {len(annotations)}"
 
         # Verify required columns
-        assert 'Start Time (s)' in annotations.columns
-        assert 'End Time (s)' in annotations.columns
+        assert "Start Time (s)" in annotations.columns
+        assert "End Time (s)" in annotations.columns
 
         # Verify timing bounds
-        assert annotations['Start Time (s)'].min() >= 0
-        assert annotations['End Time (s)'].max() > 0
+        assert annotations["Start Time (s)"].min() >= 0
+        assert annotations["End Time (s)"].max() > 0
 
         print(f"\n✓ Loaded {len(annotations)} annotation segments")
-        print(f"  Duration: {annotations['Start Time (s)'].min():.1f}s to "
-              f"{annotations['End Time (s)'].max():.1f}s")
+        print(
+            f"  Duration: {annotations['Start Time (s)'].min():.1f}s to "
+            f"{annotations['End Time (s)'].max():.1f}s"
+        )
 
     def test_combine_text_columns(self, text_processor, annotations_path):
         """Test combining multiple text columns."""
@@ -68,7 +72,7 @@ class TestTextProcessor:
         n_valid = combined.notna().sum()
         assert n_valid > 0, "No valid text entries found"
 
-        print(f"\n✓ Combined text from columns")
+        print("\n✓ Combined text from columns")
         print(f"  Valid segments with text: {n_valid}/{len(annotations)}")
 
         # Show sample
@@ -79,29 +83,29 @@ class TestTextProcessor:
         """Test embedding generation produces correct shape."""
         # Generate embeddings
         embeddings, metadata = text_processor.annotations_to_embeddings(
-            annotations_path,
-            n_trs=N_TRS_TARGET
+            annotations_path, n_trs=N_TRS_TARGET
         )
 
         # Verify shape
-        assert embeddings.shape == (N_TRS_TARGET, 1024), \
-            f"Expected shape ({N_TRS_TARGET}, 1024), got {embeddings.shape}"
+        assert embeddings.shape == (
+            N_TRS_TARGET,
+            1024,
+        ), f"Expected shape ({N_TRS_TARGET}, 1024), got {embeddings.shape}"
 
         # Verify metadata
         assert isinstance(metadata, pd.DataFrame)
         assert len(metadata) == N_TRS_TARGET
-        assert 'tr_index' in metadata.columns
-        assert 'start_time' in metadata.columns
-        assert 'end_time' in metadata.columns
-        assert 'n_segments_contributing' in metadata.columns
+        assert "tr_index" in metadata.columns
+        assert "start_time" in metadata.columns
+        assert "end_time" in metadata.columns
+        assert "n_segments_contributing" in metadata.columns
 
         print(f"\n✓ Generated embeddings with shape {embeddings.shape}")
 
     def test_annotations_to_embeddings_values(self, text_processor, annotations_path):
         """Test embedding generation produces valid values."""
         embeddings, metadata = text_processor.annotations_to_embeddings(
-            annotations_path,
-            n_trs=N_TRS_TARGET
+            annotations_path, n_trs=N_TRS_TARGET
         )
 
         # Verify no NaN values
@@ -114,25 +118,24 @@ class TestTextProcessor:
         # Verify embeddings have variance (not all zeros)
         assert embeddings.std() > 0.01, "Embeddings have no variance"
 
-        print(f"\n✓ Embeddings have valid values")
+        print("\n✓ Embeddings have valid values")
         print(f"  Range: [{embeddings.min():.3f}, {embeddings.max():.3f}]")
         print(f"  Mean: {embeddings.mean():.3f}, Std: {embeddings.std():.3f}")
 
     def test_tr_alignment_coverage(self, text_processor, annotations_path):
         """Test that TR alignment covers expected range."""
         embeddings, metadata = text_processor.annotations_to_embeddings(
-            annotations_path,
-            n_trs=N_TRS_TARGET
+            annotations_path, n_trs=N_TRS_TARGET
         )
 
         # Check segment contribution
-        n_contributing = (metadata['n_segments_contributing'] > 0).sum()
+        n_contributing = (metadata["n_segments_contributing"] > 0).sum()
         coverage_pct = 100 * n_contributing / N_TRS_TARGET
 
         assert coverage_pct > 50, f"Low coverage: {coverage_pct:.1f}%"
 
         # Check for gaps
-        gaps = metadata['n_segments_contributing'] == 0
+        gaps = metadata["n_segments_contributing"] == 0
         n_gaps = gaps.sum()
 
         print(f"\n✓ TR alignment coverage: {coverage_pct:.1f}%")
@@ -141,24 +144,23 @@ class TestTextProcessor:
 
         # Show gap distribution
         if n_gaps > 0:
-            gap_indices = metadata[gaps]['tr_index'].values
-            print(f"  Gap TRs: {gap_indices[:10]}..." if len(gap_indices) > 10
-                  else f"  Gap TRs: {gap_indices}")
+            gap_indices = metadata[gaps]["tr_index"].values
+            print(
+                f"  Gap TRs: {gap_indices[:10]}..."
+                if len(gap_indices) > 10
+                else f"  Gap TRs: {gap_indices}"
+            )
 
     def test_embeddings_to_text_recovery(self, text_processor, annotations_path):
         """Test nearest-neighbor text recovery."""
         # Generate embeddings
         embeddings, metadata = text_processor.annotations_to_embeddings(
-            annotations_path,
-            n_trs=N_TRS_TARGET
+            annotations_path, n_trs=N_TRS_TARGET
         )
 
         # Recover text using nearest neighbor
         recovered_texts = text_processor.embeddings_to_text(
-            embeddings,
-            metadata,
-            method='nearest_neighbor',
-            top_k=1
+            embeddings, metadata, method="nearest_neighbor", top_k=1
         )
 
         # Verify output
@@ -179,16 +181,12 @@ class TestTextProcessor:
     def test_embeddings_to_text_top_k(self, text_processor, annotations_path):
         """Test top-k nearest neighbor recovery."""
         embeddings, metadata = text_processor.annotations_to_embeddings(
-            annotations_path,
-            n_trs=100  # Use subset for faster testing
+            annotations_path, n_trs=100  # Use subset for faster testing
         )
 
         # Recover top-3 nearest neighbors
         top_k_texts = text_processor.embeddings_to_text(
-            embeddings,
-            metadata,
-            method='nearest_neighbor',
-            top_k=3
+            embeddings, metadata, method="nearest_neighbor", top_k=3
         )
 
         # Verify output
@@ -200,7 +198,7 @@ class TestTextProcessor:
         print(f"\n✓ Recovered top-3 texts for {len(top_k_texts)} TRs")
 
         # Show sample
-        print(f"\nSample top-3 for TR 50:")
+        print("\nSample top-3 for TR 50:")
         for i, text in enumerate(top_k_texts[50], 1):
             print(f"  {i}. {text[:60]}...")
 
@@ -211,53 +209,51 @@ class TestTextProcessor:
 
         overlaps = []
         for i in range(len(annotations) - 1):
-            if annotations.iloc[i]['End Time (s)'] > annotations.iloc[i+1]['Start Time (s)']:
+            if (
+                annotations.iloc[i]["End Time (s)"]
+                > annotations.iloc[i + 1]["Start Time (s)"]
+            ):
                 overlaps.append(i)
 
-        print(f"\n✓ Checked for overlapping segments")
+        print("\n✓ Checked for overlapping segments")
         print(f"  Found {len(overlaps)} overlaps in {len(annotations)} segments")
 
         if overlaps:
             # Test that processor handles overlaps
             embeddings, metadata = text_processor.annotations_to_embeddings(
-                annotations_path,
-                n_trs=100
+                annotations_path, n_trs=100
             )
 
             # Check that overlapping TRs have multiple contributors
-            multi_contributor_trs = (metadata['n_segments_contributing'] > 1).sum()
+            multi_contributor_trs = (metadata["n_segments_contributing"] > 1).sum()
             print(f"  TRs with multiple segments: {multi_contributor_trs}/100")
 
-            assert multi_contributor_trs > 0, "No TRs with multiple contributors despite overlaps"
+            assert (
+                multi_contributor_trs > 0
+            ), "No TRs with multiple contributors despite overlaps"
 
     def test_different_text_columns(self, text_processor, annotations_path):
         """Test embedding with different text column combinations."""
         # Test with Scene Details only
         embeddings_scene, _ = text_processor.annotations_to_embeddings(
-            annotations_path,
-            n_trs=100,
-            text_columns=['Scene Details - A Level']
+            annotations_path, n_trs=100, text_columns=["Scene Details - A Level"]
         )
 
         # Test with Location only
         embeddings_location, _ = text_processor.annotations_to_embeddings(
-            annotations_path,
-            n_trs=100,
-            text_columns=['Location']
+            annotations_path, n_trs=100, text_columns=["Location"]
         )
 
         # Test with Characters only
         embeddings_chars, _ = text_processor.annotations_to_embeddings(
-            annotations_path,
-            n_trs=100,
-            text_columns=['Name - All']
+            annotations_path, n_trs=100, text_columns=["Name - All"]
         )
 
         # Embeddings should be different
         assert not np.allclose(embeddings_scene, embeddings_location)
         assert not np.allclose(embeddings_scene, embeddings_chars)
 
-        print(f"\n✓ Generated different embeddings for different text columns")
+        print("\n✓ Generated different embeddings for different text columns")
         print(f"  Scene Details mean: {embeddings_scene.mean():.3f}")
         print(f"  Location mean: {embeddings_location.mean():.3f}")
         print(f"  Characters mean: {embeddings_chars.mean():.3f}")
@@ -267,30 +263,26 @@ class TestTextProcessor:
 
         Note: This test creates its own processors with specific gap_fill settings.
         """
-        strategies = ['forward_fill', 'zero', 'interpolate']
+        strategies = ["forward_fill", "zero", "interpolate"]
         results = {}
 
         for strategy in strategies:
-            processor = TextProcessor(
-                tr=1.5,
-                aggregation='mean',
-                gap_fill=strategy
-            )
+            processor = TextProcessor(tr=1.5, aggregation="mean", gap_fill=strategy)
 
             embeddings, metadata = processor.annotations_to_embeddings(
-                annotations_path,
-                n_trs=100
+                annotations_path, n_trs=100
             )
 
             results[strategy] = embeddings
 
-        print(f"\n✓ Tested gap fill strategies")
+        print("\n✓ Tested gap fill strategies")
 
         # Check that strategies produce different results where gaps exist
-        gaps_exist = False
         for strategy in strategies:
-            print(f"  {strategy}: mean={results[strategy].mean():.3f}, "
-                  f"std={results[strategy].std():.3f}")
+            print(
+                f"  {strategy}: mean={results[strategy].mean():.3f}, "
+                f"std={results[strategy].std():.3f}"
+            )
 
     @pytest.mark.unit
     def test_get_embedding_info(self, text_processor):
@@ -298,15 +290,15 @@ class TestTextProcessor:
         info = text_processor.get_embedding_info()
 
         assert isinstance(info, dict)
-        assert 'model_name' in info
-        assert 'embedding_dim' in info
-        assert 'tr' in info
+        assert "model_name" in info
+        assert "embedding_dim" in info
+        assert "tr" in info
 
         # Note: text_processor from conftest uses sentence-transformers/all-MiniLM-L6-v2
-        assert 'model_name' in info
-        assert info['embedding_dim'] > 0
+        assert "model_name" in info
+        assert info["embedding_dim"] > 0
 
-        print(f"\n✓ Embedding info:")
+        print("\n✓ Embedding info:")
         for key, value in info.items():
             print(f"  {key}: {value}")
 
@@ -336,27 +328,28 @@ class TestTextProcessor:
             # Ground truth: find all annotations that overlap
             ground_truth_segments = []
             for seg_idx, row in annotations.iterrows():
-                seg_start = row['Start Time (s)']
-                seg_end = row['End Time (s)']
+                seg_start = row["Start Time (s)"]
+                seg_end = row["End Time (s)"]
 
                 # Overlap condition: (seg_start < tr_end) AND (seg_end > tr_start)
                 if seg_start < tr_end and seg_end > tr_start:
                     ground_truth_segments.append(seg_idx)
 
             # Code's result
-            code_segments = metadata.iloc[tr_idx]['segment_indices']
+            code_segments = metadata.iloc[tr_idx]["segment_indices"]
 
             # Verify match
-            assert set(ground_truth_segments) == set(code_segments), \
-                f"TR {tr_idx}: overlap mismatch. Ground truth: {ground_truth_segments}, Code: {code_segments}"
+            assert set(ground_truth_segments) == set(
+                code_segments
+            ), f"TR {tr_idx}: overlap mismatch. Ground truth: {ground_truth_segments}, Code: {code_segments}"
 
-        print(f"  ✓ Verified overlap logic for first 10 TRs")
+        print("  ✓ Verified overlap logic for first 10 TRs")
 
         # Test edge case: annotation exactly at TR boundary
         # Find an annotation that starts or ends at a TR boundary
         boundary_cases = 0
         for idx, row in annotations.head(50).iterrows():
-            if row['Start Time (s)'] % tr == 0 or row['End Time (s)'] % tr == 0:
+            if row["Start Time (s)"] % tr == 0 or row["End Time (s)"] % tr == 0:
                 boundary_cases += 1
 
         if boundary_cases > 0:
@@ -373,19 +366,23 @@ class TestTextProcessor:
         test_embeddings = np.random.randn(n_segments, 1024).astype(np.float32)
 
         # Align to TRs
-        tr_embeddings, metadata = text_processor.align_to_trs(annotations, test_embeddings, N_TRS_TARGET)
+        tr_embeddings, metadata = text_processor.align_to_trs(
+            annotations, test_embeddings, N_TRS_TARGET
+        )
 
         # Find TRs with multiple contributing segments
-        multi_segment_trs = metadata[metadata['n_segments_contributing'] > 1]
+        multi_segment_trs = metadata[metadata["n_segments_contributing"] > 1]
 
-        assert len(multi_segment_trs) > 0, "Expected some TRs with multiple overlapping segments"
+        assert (
+            len(multi_segment_trs) > 0
+        ), "Expected some TRs with multiple overlapping segments"
 
         print(f"\n✓ Found {len(multi_segment_trs)} TRs with multiple segments")
         print(f"  Max segments per TR: {metadata['n_segments_contributing'].max()}")
 
         # Verify that aggregation was applied correctly for a TR with multiple segments
-        test_tr_idx = multi_segment_trs.iloc[0]['tr_index']
-        contributing_indices = metadata.iloc[test_tr_idx]['segment_indices']
+        test_tr_idx = multi_segment_trs.iloc[0]["tr_index"]
+        contributing_indices = metadata.iloc[test_tr_idx]["segment_indices"]
 
         # Get individual embeddings
         individual_embeddings = test_embeddings[contributing_indices]
@@ -397,19 +394,26 @@ class TestTextProcessor:
         actual = tr_embeddings[test_tr_idx]
 
         # Should match (within floating point tolerance)
-        np.testing.assert_allclose(actual, expected, rtol=1e-5, atol=1e-6,
-                                   err_msg=f"Aggregation mismatch for TR {test_tr_idx}")
+        np.testing.assert_allclose(
+            actual,
+            expected,
+            rtol=1e-5,
+            atol=1e-6,
+            err_msg=f"Aggregation mismatch for TR {test_tr_idx}",
+        )
 
-        print(f"  ✓ Verified mean aggregation for TR {test_tr_idx} ({len(contributing_indices)} segments)")
+        print(
+            f"  ✓ Verified mean aggregation for TR {test_tr_idx} ({len(contributing_indices)} segments)"
+        )
 
 
 # Integration test
 @pytest.mark.data
 def test_full_pipeline(annotations_path):
     """Integration test of full annotation → embedding → text pipeline."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("FULL PIPELINE TEST")
-    print("="*60)
+    print("=" * 60)
 
     # Initialize processor
     processor = TextProcessor()
@@ -423,18 +427,17 @@ def test_full_pipeline(annotations_path):
     # Step 2: Generate embeddings
     print("\n2. Generating embeddings...")
     embeddings, metadata = processor.annotations_to_embeddings(
-        annotations_path,
-        n_trs=N_TRS_TARGET
+        annotations_path, n_trs=N_TRS_TARGET
     )
     print(f"   Shape: {embeddings.shape}")
-    print(f"   Coverage: {(metadata['n_segments_contributing'] > 0).sum()}/{N_TRS_TARGET} TRs")
+    print(
+        f"   Coverage: {(metadata['n_segments_contributing'] > 0).sum()}/{N_TRS_TARGET} TRs"
+    )
 
     # Step 3: Recover text
     print("\n3. Recovering text via nearest-neighbor...")
     recovered_texts = processor.embeddings_to_text(
-        embeddings,
-        metadata,
-        method='nearest_neighbor'
+        embeddings, metadata, method="nearest_neighbor"
     )
     print(f"   Recovered {len(recovered_texts)} text annotations")
 
@@ -458,7 +461,7 @@ def test_full_pipeline(annotations_path):
     assert similarity > 0.5, f"Low similarity: {similarity:.3f}"
 
     print("\n✓ Full pipeline test passed!")
-    print("="*60)
+    print("=" * 60)
 
 
 @pytest.mark.data
@@ -472,64 +475,69 @@ class TestTextProcessorConcatenation:
         Note: This test class needs specific processor settings for concatenation mode.
         """
         return TextProcessor(
-            model_name='sentence-transformers/all-MiniLM-L6-v2',
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
             tr=1.5,
-            temporal_mode='concatenate',
+            temporal_mode="concatenate",
             max_annotations_per_tr=3,
             temporal_window=1.0,
-            gap_fill='forward_fill'
+            gap_fill="forward_fill",
         )
 
     @pytest.fixture
     def processor_average(self):
         """Create TextProcessor with average mode (legacy)."""
         return TextProcessor(
-            model_name='sentence-transformers/all-MiniLM-L6-v2',
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
             tr=1.5,
-            temporal_mode='average',
-            aggregation='mean',
-            gap_fill='forward_fill'
+            temporal_mode="average",
+            aggregation="mean",
+            gap_fill="forward_fill",
         )
 
-    def test_concatenate_dimension_consistency(self, processor_concat, annotations_path):
+    def test_concatenate_dimension_consistency(
+        self, processor_concat, annotations_path
+    ):
         """Test that all TRs have consistent dimensions in concatenate mode."""
         # Generate embeddings
         embeddings, metadata = processor_concat.annotations_to_embeddings(
-            annotations_path,
-            n_trs=100
+            annotations_path, n_trs=100
         )
 
         # Verify shape
         expected_dim = 1024 * 3  # 3 annotations × 1024 embedding dim
-        assert embeddings.shape == (100, expected_dim), \
-            f"Expected shape (100, {expected_dim}), got {embeddings.shape}"
+        assert embeddings.shape == (
+            100,
+            expected_dim,
+        ), f"Expected shape (100, {expected_dim}), got {embeddings.shape}"
 
         # Verify all TRs have the same dimension
         for tr_idx in range(100):
-            assert embeddings[tr_idx].shape == (expected_dim,), \
-                f"TR {tr_idx} has wrong shape: {embeddings[tr_idx].shape}"
+            assert embeddings[tr_idx].shape == (
+                expected_dim,
+            ), f"TR {tr_idx} has wrong shape: {embeddings[tr_idx].shape}"
 
         print(f"\n✓ All TRs have consistent dimension: {expected_dim}")
 
-    def test_concatenate_with_varying_annotations(self, processor_concat, annotations_path):
+    def test_concatenate_with_varying_annotations(
+        self, processor_concat, annotations_path
+    ):
         """Test handling of TRs with different numbers of annotations."""
         embeddings, metadata = processor_concat.annotations_to_embeddings(
-            annotations_path,
-            n_trs=100
+            annotations_path, n_trs=100
         )
 
         # Check distribution of annotation counts
-        counts = metadata['n_segments_contributing'].value_counts().sort_index()
+        counts = metadata["n_segments_contributing"].value_counts().sort_index()
 
-        print(f"\n✓ Annotation count distribution:")
+        print("\n✓ Annotation count distribution:")
         for count, freq in counts.items():
             print(f"  {count} annotations: {freq} TRs")
 
         # Verify handling of different cases
-        trs_with_0 = (metadata['n_segments_contributing'] == 0).sum()
-        trs_with_1 = (metadata['n_segments_contributing'] == 1).sum()
-        trs_with_2 = (metadata['n_segments_contributing'] == 2).sum()
-        trs_with_3plus = (metadata['n_segments_contributing'] >= 3).sum()
+        trs_with_0 = (metadata["n_segments_contributing"] == 0).sum()
+        trs_with_1 = (metadata["n_segments_contributing"] == 1).sum()
+        trs_with_2 = (metadata["n_segments_contributing"] == 2).sum()
+        trs_with_3plus = (metadata["n_segments_contributing"] >= 3).sum()
 
         print(f"\n  TRs with 0 annotations: {trs_with_0}")
         print(f"  TRs with 1 annotation: {trs_with_1}")
@@ -542,15 +550,14 @@ class TestTextProcessorConcatenation:
     def test_concatenate_padding(self, processor_concat, annotations_path):
         """Test that padding works correctly for TRs with < max annotations."""
         embeddings, metadata = processor_concat.annotations_to_embeddings(
-            annotations_path,
-            n_trs=100
+            annotations_path, n_trs=100
         )
 
         # Find TRs with fewer than max annotations
-        trs_with_1 = metadata[metadata['n_segments_contributing'] == 1]
+        trs_with_1 = metadata[metadata["n_segments_contributing"] == 1]
 
         if len(trs_with_1) > 0:
-            tr_idx = trs_with_1.iloc[0]['tr_index']
+            tr_idx = trs_with_1.iloc[0]["tr_index"]
             embedding = embeddings[tr_idx]
 
             # Should be padded to full size
@@ -559,8 +566,10 @@ class TestTextProcessorConcatenation:
             # Check that padding region is zeros (last 2048 dims should be 0)
             padding_region = embedding[1024:]
             # Allow for small numerical errors from normalization
-            assert np.allclose(padding_region, 0, atol=1e-3) or np.sum(np.abs(padding_region)) > 0, \
-                "Padding region should be zeros or contain valid data"
+            assert (
+                np.allclose(padding_region, 0, atol=1e-3)
+                or np.sum(np.abs(padding_region)) > 0
+            ), "Padding region should be zeros or contain valid data"
 
             print(f"\n✓ Padding works for TR {tr_idx} with 1 annotation")
             print(f"  First 1024 dims: mean={embedding[:1024].mean():.3f}")
@@ -573,33 +582,35 @@ class TestTextProcessorConcatenation:
         """
         # Create processor with max=2 for easier testing
         processor = TextProcessor(
-            model_name='sentence-transformers/all-MiniLM-L6-v2',
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
             tr=1.5,
-            temporal_mode='concatenate',
+            temporal_mode="concatenate",
             max_annotations_per_tr=2,  # Limit to 2
-            temporal_window=1.0
+            temporal_window=1.0,
         )
 
         embeddings, metadata = processor.annotations_to_embeddings(
-            annotations_path,
-            n_trs=100
+            annotations_path, n_trs=100
         )
 
         # Should be limited to 2 × embedding_dim
         # Note: sentence-transformers/all-MiniLM-L6-v2 has 384-dimensional embeddings
         expected_dim = 2 * 384  # 768
-        assert embeddings.shape[1] == expected_dim, \
-            f"Expected shape (100, {expected_dim}), got {embeddings.shape}"
+        assert (
+            embeddings.shape[1] == expected_dim
+        ), f"Expected shape (100, {expected_dim}), got {embeddings.shape}"
 
         # Find TRs with more than 2 annotations
-        trs_with_3plus = metadata[metadata['n_segments_contributing'] >= 3]
+        trs_with_3plus = metadata[metadata["n_segments_contributing"] >= 3]
 
         if len(trs_with_3plus) > 0:
-            tr_idx = trs_with_3plus.iloc[0]['tr_index']
-            n_actual = trs_with_3plus.iloc[0]['n_segments_contributing']
+            tr_idx = trs_with_3plus.iloc[0]["tr_index"]
+            n_actual = trs_with_3plus.iloc[0]["n_segments_contributing"]
 
             print(f"\n✓ Truncation works for TR {tr_idx} with {n_actual} annotations")
-            print(f"  Output dimension: {embeddings[tr_idx].shape[0]} (limited to 2048)")
+            print(
+                f"  Output dimension: {embeddings[tr_idx].shape[0]} (limited to 2048)"
+            )
 
     def test_concatenate_temporal_window(self, annotations_path):
         """Test that temporal window parameter works correctly.
@@ -609,35 +620,36 @@ class TestTextProcessorConcatenation:
         # Test with different window sizes
         for window_size in [0.5, 1.0, 2.0]:
             processor = TextProcessor(
-                model_name='sentence-transformers/all-MiniLM-L6-v2',
+                model_name="sentence-transformers/all-MiniLM-L6-v2",
                 tr=1.5,
-                temporal_mode='concatenate',
+                temporal_mode="concatenate",
                 max_annotations_per_tr=3,
-                temporal_window=window_size
+                temporal_window=window_size,
             )
 
             embeddings, metadata = processor.annotations_to_embeddings(
-                annotations_path,
-                n_trs=50
+                annotations_path, n_trs=50
             )
 
             # Check that window size affects annotation counts
-            mean_count = metadata['n_segments_contributing'].mean()
+            mean_count = metadata["n_segments_contributing"].mean()
 
-            print(f"\n  Window {window_size:.1f} TRs ({window_size*1.5:.1f}s): "
-                  f"mean {mean_count:.2f} annotations/TR")
+            print(
+                f"\n  Window {window_size:.1f} TRs ({window_size*1.5:.1f}s): "
+                f"mean {mean_count:.2f} annotations/TR"
+            )
 
-    def test_concatenate_vs_average_modes(self, processor_concat, processor_average, annotations_path):
+    def test_concatenate_vs_average_modes(
+        self, processor_concat, processor_average, annotations_path
+    ):
         """Test that concatenate and average modes produce different outputs."""
         # Generate embeddings with both modes
         embeddings_concat, _ = processor_concat.annotations_to_embeddings(
-            annotations_path,
-            n_trs=50
+            annotations_path, n_trs=50
         )
 
         embeddings_avg, _ = processor_average.annotations_to_embeddings(
-            annotations_path,
-            n_trs=50
+            annotations_path, n_trs=50
         )
 
         # Shapes should be different (concat has 3x the dimensions)
@@ -645,32 +657,34 @@ class TestTextProcessorConcatenation:
         assert embeddings_avg.shape[0] == 50
         assert embeddings_concat.shape[1] == 3 * embeddings_avg.shape[1]
 
-        print(f"\n✓ Mode comparison:")
+        print("\n✓ Mode comparison:")
         print(f"  Concatenate mode: {embeddings_concat.shape}")
         print(f"  Average mode: {embeddings_avg.shape}")
 
     def test_concatenate_no_gaps(self, processor_concat, annotations_path):
         """Test that gap filling works in concatenate mode."""
         embeddings, metadata = processor_concat.annotations_to_embeddings(
-            annotations_path,
-            n_trs=100
+            annotations_path, n_trs=100
         )
 
         # Check for gaps
-        n_gaps = (metadata['n_segments_contributing'] == 0).sum()
+        n_gaps = (metadata["n_segments_contributing"] == 0).sum()
 
-        print(f"\n✓ Gap handling:")
+        print("\n✓ Gap handling:")
         print(f"  TRs with gaps: {n_gaps}/100")
 
         if n_gaps > 0:
             # Verify gaps are filled (not all zeros)
-            gap_indices = metadata[metadata['n_segments_contributing'] == 0].index.tolist()
+            gap_indices = metadata[
+                metadata["n_segments_contributing"] == 0
+            ].index.tolist()
             for gap_idx in gap_indices[:5]:  # Check first 5 gaps
                 gap_embedding = embeddings[gap_idx]
                 # Should not be all zeros (forward filled)
-                if processor_concat.gap_fill == 'forward_fill':
-                    assert not np.allclose(gap_embedding, 0), \
-                        f"Gap at TR {gap_idx} not filled"
+                if processor_concat.gap_fill == "forward_fill":
+                    assert not np.allclose(
+                        gap_embedding, 0
+                    ), f"Gap at TR {gap_idx} not filled"
 
             print(f"  ✓ Gaps filled with {processor_concat.gap_fill} strategy")
 
@@ -682,21 +696,19 @@ class TestTextProcessorConcatenation:
         """
         # Test concatenate mode
         processor_concat = TextProcessor(
-            temporal_mode='concatenate',
-            max_annotations_per_tr=3
+            temporal_mode="concatenate", max_annotations_per_tr=3
         )
-        assert processor_concat.effective_dim == 3072, \
-            f"Wrong effective_dim: {processor_concat.effective_dim}"
+        assert (
+            processor_concat.effective_dim == 3072
+        ), f"Wrong effective_dim: {processor_concat.effective_dim}"
 
         # Test average mode
-        processor_avg = TextProcessor(
-            temporal_mode='average',
-            max_annotations_per_tr=3
-        )
-        assert processor_avg.effective_dim == 1024, \
-            f"Wrong effective_dim: {processor_avg.effective_dim}"
+        processor_avg = TextProcessor(temporal_mode="average", max_annotations_per_tr=3)
+        assert (
+            processor_avg.effective_dim == 1024
+        ), f"Wrong effective_dim: {processor_avg.effective_dim}"
 
-        print(f"\n✓ Effective dimension calculations:")
+        print("\n✓ Effective dimension calculations:")
         print(f"  Concatenate (3 annotations): {processor_concat.effective_dim}")
         print(f"  Average: {processor_avg.effective_dim}")
 
@@ -707,23 +719,20 @@ class TestTextProcessorConcatenation:
         """
         for tr_length in [1.0, 1.5, 2.0]:
             processor = TextProcessor(
-                tr=tr_length,
-                temporal_mode='concatenate',
-                max_annotations_per_tr=3
+                tr=tr_length, temporal_mode="concatenate", max_annotations_per_tr=3
             )
 
             embeddings, metadata = processor.annotations_to_embeddings(
-                annotations_path,
-                n_trs=50
+                annotations_path, n_trs=50
             )
 
             # Verify TR timing
             for idx, row in metadata.head(5).iterrows():
-                expected_start = idx * tr_length - tr_length  # Window start
                 expected_end = (idx + 1) * tr_length
                 # Allow some tolerance for window calculations
-                assert row['end_time'] - tr_length <= expected_end + 0.01, \
-                    f"TR timing mismatch at idx {idx}"
+                assert (
+                    row["end_time"] - tr_length <= expected_end + 0.01
+                ), f"TR timing mismatch at idx {idx}"
 
             print(f"\n  TR length {tr_length:.1f}s: ✓")
 
@@ -732,18 +741,18 @@ class TestTextProcessorConcatenation:
         """Test that get_embedding_info includes new parameters."""
         info = processor_concat.get_embedding_info()
 
-        assert 'temporal_mode' in info
-        assert 'max_annotations_per_tr' in info
-        assert 'temporal_window' in info
-        assert 'effective_dim' in info
+        assert "temporal_mode" in info
+        assert "max_annotations_per_tr" in info
+        assert "temporal_window" in info
+        assert "effective_dim" in info
 
-        assert info['temporal_mode'] == 'concatenate'
-        assert info['max_annotations_per_tr'] == 3
-        assert info['temporal_window'] == 1.0
+        assert info["temporal_mode"] == "concatenate"
+        assert info["max_annotations_per_tr"] == 3
+        assert info["temporal_window"] == 1.0
         # Note: effective_dim depends on embedding model
-        assert info['effective_dim'] > 0
+        assert info["effective_dim"] > 0
 
-        print(f"\n✓ Embedding info (concatenate mode):")
+        print("\n✓ Embedding info (concatenate mode):")
         for key, value in info.items():
             print(f"  {key}: {value}")
 
@@ -752,22 +761,19 @@ class TestTextProcessorConcatenation:
 @pytest.mark.data
 def test_concatenation_full_pipeline(annotations_path):
     """Integration test of concatenation mode end-to-end."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("CONCATENATION PIPELINE TEST (Issue #26)")
-    print("="*60)
+    print("=" * 60)
 
     # Initialize processor with concatenation
     processor = TextProcessor(
-        temporal_mode='concatenate',
-        max_annotations_per_tr=3,
-        temporal_window=1.0
+        temporal_mode="concatenate", max_annotations_per_tr=3, temporal_window=1.0
     )
 
     # Step 1: Generate embeddings
     print("\n1. Generating concatenated embeddings...")
     embeddings, metadata = processor.annotations_to_embeddings(
-        annotations_path,
-        n_trs=N_TRS_TARGET
+        annotations_path, n_trs=N_TRS_TARGET
     )
     print(f"   Shape: {embeddings.shape}")
     # Note: embedding_dim depends on the model used
@@ -778,13 +784,12 @@ def test_concatenation_full_pipeline(annotations_path):
     # Step 2: Verify dimension consistency
     print("\n2. Verifying dimension consistency...")
     for tr_idx in range(N_TRS_TARGET):
-        assert embeddings[tr_idx].shape == (3072,), \
-            f"Dimension mismatch at TR {tr_idx}"
+        assert embeddings[tr_idx].shape == (3072,), f"Dimension mismatch at TR {tr_idx}"
     print(f"   ✓ All {N_TRS_TARGET} TRs have consistent shape (3072,)")
 
     # Step 3: Check annotation distribution
     print("\n3. Analyzing annotation distribution...")
-    counts = metadata['n_segments_contributing'].value_counts().sort_index()
+    counts = metadata["n_segments_contributing"].value_counts().sort_index()
     for count, freq in counts.items():
         print(f"   {count} annotations: {freq} TRs ({100*freq/N_TRS_TARGET:.1f}%)")
 
@@ -792,24 +797,23 @@ def test_concatenation_full_pipeline(annotations_path):
     print("\n4. Checking for invalid values...")
     assert not np.isnan(embeddings).any(), "Found NaN values"
     assert not np.isinf(embeddings).any(), "Found Inf values"
-    print(f"   ✓ No NaN or Inf values")
+    print("   ✓ No NaN or Inf values")
     print(f"   Range: [{embeddings.min():.3f}, {embeddings.max():.3f}]")
 
     # Step 5: Compare with average mode
     print("\n5. Comparing with average mode...")
-    processor_avg = TextProcessor(temporal_mode='average')
+    processor_avg = TextProcessor(temporal_mode="average")
     embeddings_avg, _ = processor_avg.annotations_to_embeddings(
-        annotations_path,
-        n_trs=N_TRS_TARGET
+        annotations_path, n_trs=N_TRS_TARGET
     )
     print(f"   Concatenate: {embeddings.shape}")
     print(f"   Average: {embeddings_avg.shape}")
     assert embeddings.shape[1] == 3 * embeddings_avg.shape[1]
 
     print("\n✓ Concatenation pipeline test passed!")
-    print("="*60)
+    print("=" * 60)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run tests with pytest
-    pytest.main([__file__, '-v', '-s'])
+    pytest.main([__file__, "-v", "-s"])

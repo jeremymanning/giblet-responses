@@ -21,6 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import torch
+
 from giblet.models.encoder import AudioEncoder, MultimodalEncoder
 
 
@@ -33,12 +34,12 @@ def demo_encodec_audio_encoder():
     # 1. Create EnCodec-aware audio encoder
     print("\n1. Creating AudioEncoder in EnCodec mode...")
     encoder = AudioEncoder(
-        input_codebooks=8,          # 8 codebooks (3.0 kbps)
-        frames_per_tr=112,          # ~112 frames per TR
-        output_features=256,        # Output feature dimension
-        use_encodec=True,           # Enable EnCodec mode
-        vocab_size=1024,            # Codebook size
-        embed_dim=64                # Embedding dimension for codes
+        input_codebooks=8,  # 8 codebooks (3.0 kbps)
+        frames_per_tr=112,  # ~112 frames per TR
+        output_features=256,  # Output feature dimension
+        use_encodec=True,  # Enable EnCodec mode
+        vocab_size=1024,  # Codebook size
+        embed_dim=64,  # Embedding dimension for codes
     )
     encoder.eval()
 
@@ -58,7 +59,9 @@ def demo_encodec_audio_encoder():
     with torch.no_grad():
         features = encoder(codes)
     print(f"   Output shape: {features.shape}")
-    print(f"   Output stats: mean={features.mean().item():.4f}, std={features.std().item():.4f}")
+    print(
+        f"   Output stats: mean={features.mean().item():.4f}, std={features.std().item():.4f}"
+    )
 
     # 4. Parameter count
     n_params = sum(p.numel() for p in encoder.parameters())
@@ -79,17 +82,11 @@ def demo_mel_vs_encodec():
     # Create encoders in both modes
     print("\n1. Creating encoders in both modes...")
     encoder_mel = AudioEncoder(
-        input_mels=2048,
-        frames_per_tr=65,
-        output_features=256,
-        use_encodec=False
+        input_mels=2048, frames_per_tr=65, output_features=256, use_encodec=False
     )
 
     encoder_encodec = AudioEncoder(
-        input_codebooks=8,
-        frames_per_tr=112,
-        output_features=256,
-        use_encodec=True
+        input_codebooks=8, frames_per_tr=112, output_features=256, use_encodec=True
     )
 
     # Compare architectures
@@ -124,7 +121,9 @@ def demo_mel_vs_encodec():
     print(f"\n4. Output comparison:")
     print(f"   Mel output shape: {mel_features.shape}")
     print(f"   EnCodec output shape: {encodec_features.shape}")
-    print(f"   Both produce same output dimension: {mel_features.shape[1] == encodec_features.shape[1]}")
+    print(
+        f"   Both produce same output dimension: {mel_features.shape[1] == encodec_features.shape[1]}"
+    )
 
     print("\n" + "=" * 70)
 
@@ -143,8 +142,8 @@ def demo_multimodal_encodec():
         audio_codebooks=8,
         audio_frames_per_tr=112,
         text_dim=1024,
-        use_encodec=True,           # Enable EnCodec for audio
-        bottleneck_dim=2048
+        use_encodec=True,  # Enable EnCodec for audio
+        bottleneck_dim=2048,
     )
     encoder.eval()
 
@@ -167,12 +166,14 @@ def demo_multimodal_encodec():
 
     print(f"   Bottleneck shape: {bottleneck.shape}")
     print(f"   Voxel predictions shape: {voxels.shape}")
-    print(f"   Bottleneck stats: mean={bottleneck.mean().item():.4f}, std={bottleneck.std().item():.4f}")
+    print(
+        f"   Bottleneck stats: mean={bottleneck.mean().item():.4f}, std={bottleneck.std().item():.4f}"
+    )
 
     # Parameter breakdown
     print("\n4. Parameter breakdown:")
     param_dict = encoder.get_parameter_count()
-    for key in ['video_encoder', 'audio_encoder', 'text_encoder', 'total']:
+    for key in ["video_encoder", "audio_encoder", "text_encoder", "total"]:
         if key in param_dict:
             print(f"   {key:20s}: {param_dict[key]:>12,} parameters")
 
@@ -188,10 +189,7 @@ def demo_gradient_flow():
     # Create encoder
     print("\n1. Creating trainable encoder...")
     encoder = AudioEncoder(
-        input_codebooks=8,
-        frames_per_tr=112,
-        output_features=256,
-        use_encodec=True
+        input_codebooks=8, frames_per_tr=112, output_features=256, use_encodec=True
     )
     encoder.train()
 
@@ -219,8 +217,12 @@ def demo_gradient_flow():
             n_params_with_grad += 1
 
     print(f"   Parameters with gradients: {n_params_with_grad}/{total_params}")
-    print(f"   Embedding layer gradient shape: {encoder.code_embedding.weight.grad.shape}")
-    print(f"   Embedding gradient norm: {encoder.code_embedding.weight.grad.norm().item():.4f}")
+    print(
+        f"   Embedding layer gradient shape: {encoder.code_embedding.weight.grad.shape}"
+    )
+    print(
+        f"   Embedding gradient norm: {encoder.code_embedding.weight.grad.norm().item():.4f}"
+    )
 
     print("\n   ✓ Gradients flow correctly through embedding and convolutions")
     print("\n" + "=" * 70)

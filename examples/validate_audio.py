@@ -14,12 +14,13 @@ All tests use REAL data - NO MOCKS.
 CRITICAL: Saves .WAV files that can be listened to.
 """
 
-import numpy as np
-import soundfile as sf
+import sys
+from pathlib import Path
+
 import librosa
 import matplotlib.pyplot as plt
-from pathlib import Path
-import sys
+import numpy as np
+import soundfile as sf
 from scipy import signal
 from scipy.stats import pearsonr
 
@@ -54,12 +55,12 @@ def calculate_snr(original: np.ndarray, reconstructed: np.ndarray) -> float:
     noise = original - reconstructed
 
     # Calculate signal power and noise power
-    signal_power = np.mean(original ** 2)
-    noise_power = np.mean(noise ** 2)
+    signal_power = np.mean(original**2)
+    noise_power = np.mean(noise**2)
 
     # Avoid division by zero
     if noise_power < 1e-10:
-        return float('inf')
+        return float("inf")
 
     snr = 10 * np.log10(signal_power / noise_power)
     return snr
@@ -90,8 +91,13 @@ def calculate_correlation(original: np.ndarray, reconstructed: np.ndarray) -> fl
     return correlation
 
 
-def plot_waveform_comparison(original: np.ndarray, reconstructed: np.ndarray,
-                            sample_rate: int, segment_name: str, output_path: Path):
+def plot_waveform_comparison(
+    original: np.ndarray,
+    reconstructed: np.ndarray,
+    sample_rate: int,
+    segment_name: str,
+    output_path: Path,
+):
     """
     Plot waveform comparison between original and reconstructed audio.
 
@@ -121,37 +127,40 @@ def plot_waveform_comparison(original: np.ndarray, reconstructed: np.ndarray,
 
     # Original waveform
     axes[0].plot(time, original, linewidth=0.5)
-    axes[0].set_title(f'Original Audio - {segment_name}', fontsize=14)
-    axes[0].set_ylabel('Amplitude')
+    axes[0].set_title(f"Original Audio - {segment_name}", fontsize=14)
+    axes[0].set_ylabel("Amplitude")
     axes[0].set_xlim(0, time[-1])
     axes[0].grid(True, alpha=0.3)
 
     # Reconstructed waveform
-    axes[1].plot(time, reconstructed, linewidth=0.5, color='orange')
-    axes[1].set_title(f'Reconstructed Audio - {segment_name}', fontsize=14)
-    axes[1].set_ylabel('Amplitude')
+    axes[1].plot(time, reconstructed, linewidth=0.5, color="orange")
+    axes[1].set_title(f"Reconstructed Audio - {segment_name}", fontsize=14)
+    axes[1].set_ylabel("Amplitude")
     axes[1].set_xlim(0, time[-1])
     axes[1].grid(True, alpha=0.3)
 
     # Difference
     difference = original - reconstructed
-    axes[2].plot(time, difference, linewidth=0.5, color='red')
-    axes[2].set_title('Difference (Original - Reconstructed)', fontsize=14)
-    axes[2].set_xlabel('Time (s)')
-    axes[2].set_ylabel('Amplitude')
+    axes[2].plot(time, difference, linewidth=0.5, color="red")
+    axes[2].set_title("Difference (Original - Reconstructed)", fontsize=14)
+    axes[2].set_xlabel("Time (s)")
+    axes[2].set_ylabel("Amplitude")
     axes[2].set_xlim(0, time[-1])
     axes[2].grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close()
 
     print(f"  Saved waveform comparison to {output_path.name}")
 
 
-def plot_spectrogram_comparison(original_features: np.ndarray,
-                               reconstructed_features: np.ndarray,
-                               segment_name: str, output_path: Path):
+def plot_spectrogram_comparison(
+    original_features: np.ndarray,
+    reconstructed_features: np.ndarray,
+    segment_name: str,
+    output_path: Path,
+):
     """
     Plot spectrogram comparison.
 
@@ -169,38 +178,54 @@ def plot_spectrogram_comparison(original_features: np.ndarray,
     fig, axes = plt.subplots(3, 1, figsize=(15, 10))
 
     # Original spectrogram
-    im1 = axes[0].imshow(original_features.T, aspect='auto', origin='lower',
-                         cmap='viridis', interpolation='nearest')
-    axes[0].set_title(f'Original Mel Spectrogram - {segment_name}', fontsize=14)
-    axes[0].set_ylabel('Mel Frequency Bin')
-    plt.colorbar(im1, ax=axes[0], label='Amplitude (dB)')
+    im1 = axes[0].imshow(
+        original_features.T,
+        aspect="auto",
+        origin="lower",
+        cmap="viridis",
+        interpolation="nearest",
+    )
+    axes[0].set_title(f"Original Mel Spectrogram - {segment_name}", fontsize=14)
+    axes[0].set_ylabel("Mel Frequency Bin")
+    plt.colorbar(im1, ax=axes[0], label="Amplitude (dB)")
 
     # Reconstructed spectrogram
-    im2 = axes[1].imshow(reconstructed_features.T, aspect='auto', origin='lower',
-                         cmap='viridis', interpolation='nearest')
-    axes[1].set_title(f'Reconstructed Mel Spectrogram - {segment_name}', fontsize=14)
-    axes[1].set_ylabel('Mel Frequency Bin')
-    plt.colorbar(im2, ax=axes[1], label='Amplitude (dB)')
+    im2 = axes[1].imshow(
+        reconstructed_features.T,
+        aspect="auto",
+        origin="lower",
+        cmap="viridis",
+        interpolation="nearest",
+    )
+    axes[1].set_title(f"Reconstructed Mel Spectrogram - {segment_name}", fontsize=14)
+    axes[1].set_ylabel("Mel Frequency Bin")
+    plt.colorbar(im2, ax=axes[1], label="Amplitude (dB)")
 
     # Difference
     diff = np.abs(original_features - reconstructed_features)
-    im3 = axes[2].imshow(diff.T, aspect='auto', origin='lower',
-                         cmap='hot', interpolation='nearest')
-    axes[2].set_title('Absolute Difference', fontsize=14)
-    axes[2].set_xlabel('TR Index')
-    axes[2].set_ylabel('Mel Frequency Bin')
-    plt.colorbar(im3, ax=axes[2], label='Absolute Difference (dB)')
+    im3 = axes[2].imshow(
+        diff.T, aspect="auto", origin="lower", cmap="hot", interpolation="nearest"
+    )
+    axes[2].set_title("Absolute Difference", fontsize=14)
+    axes[2].set_xlabel("TR Index")
+    axes[2].set_ylabel("Mel Frequency Bin")
+    plt.colorbar(im3, ax=axes[2], label="Absolute Difference (dB)")
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close()
 
     print(f"  Saved spectrogram comparison to {output_path.name}")
 
 
-def validate_audio_segment(processor: AudioProcessor, video_path: Path,
-                          start_tr: int, end_tr: int, segment_name: str,
-                          output_dir: Path):
+def validate_audio_segment(
+    processor: AudioProcessor,
+    video_path: Path,
+    start_tr: int,
+    end_tr: int,
+    segment_name: str,
+    output_dir: Path,
+):
     """
     Validate audio reconstruction for a specific segment.
 
@@ -224,9 +249,9 @@ def validate_audio_segment(processor: AudioProcessor, video_path: Path,
     metrics : dict
         Dictionary with validation metrics
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print(f"VALIDATING SEGMENT: {segment_name.upper()} (TRs {start_tr}-{end_tr})")
-    print("="*80)
+    print("=" * 80)
 
     # Extract audio from video
     print(f"\n1. Extracting audio from video...")
@@ -247,16 +272,14 @@ def validate_audio_segment(processor: AudioProcessor, video_path: Path,
     print(f"   Segment samples: {len(y_segment):,}")
 
     # Save original segment
-    original_audio_path = output_dir / f'audio_original_{segment_name}.wav'
+    original_audio_path = output_dir / f"audio_original_{segment_name}.wav"
     sf.write(str(original_audio_path), y_segment, sr)
     print(f"   Saved original audio to {original_audio_path.name}")
 
     # Convert to features
     print(f"\n2. Converting to mel spectrogram features...")
     features, metadata = processor.audio_to_features(
-        video_path,
-        max_trs=end_tr,
-        from_video=True
+        video_path, max_trs=end_tr, from_video=True
     )
     features = features[start_tr:end_tr]
     print(f"   Features shape: {features.shape}")
@@ -267,7 +290,7 @@ def validate_audio_segment(processor: AudioProcessor, video_path: Path,
 
     # Reconstruct audio from features
     print(f"\n3. Reconstructing audio from features...")
-    reconstructed_audio_path = output_dir / f'audio_reconstructed_{segment_name}.wav'
+    reconstructed_audio_path = output_dir / f"audio_reconstructed_{segment_name}.wav"
     processor.features_to_audio(features, reconstructed_audio_path)
     print(f"   Saved reconstructed audio to {reconstructed_audio_path.name}")
 
@@ -285,7 +308,7 @@ def validate_audio_segment(processor: AudioProcessor, video_path: Path,
         sr=sr,
         n_mels=processor.n_mels,
         n_fft=processor.n_fft,
-        hop_length=processor.hop_length
+        hop_length=processor.hop_length,
     )
     mel_spec_db_recon = librosa.power_to_db(mel_spec_recon, ref=np.max)
 
@@ -303,8 +326,7 @@ def validate_audio_segment(processor: AudioProcessor, video_path: Path,
 
         if end_frame > start_frame and end_frame <= mel_spec_db_recon.shape[1]:
             reconstructed_features[tr_idx] = np.mean(
-                mel_spec_db_recon[:, start_frame:end_frame],
-                axis=1
+                mel_spec_db_recon[:, start_frame:end_frame], axis=1
             )
 
     print(f"   Reconstructed features shape: {reconstructed_features.shape}")
@@ -314,8 +336,9 @@ def validate_audio_segment(processor: AudioProcessor, video_path: Path,
 
     # Feature-level metrics
     feature_mse = np.mean((original_features - reconstructed_features) ** 2)
-    feature_corr = np.corrcoef(original_features.flatten(),
-                               reconstructed_features.flatten())[0, 1]
+    feature_corr = np.corrcoef(
+        original_features.flatten(), reconstructed_features.flatten()
+    )[0, 1]
 
     print(f"   Feature MSE: {feature_mse:.4f}")
     print(f"   Feature correlation: {feature_corr:.4f}")
@@ -328,8 +351,8 @@ def validate_audio_segment(processor: AudioProcessor, video_path: Path,
     print(f"   Audio correlation: {audio_corr:.4f}")
 
     # Calculate spectral statistics
-    original_energy = np.sum(original_features ** 2)
-    reconstructed_energy = np.sum(reconstructed_features ** 2)
+    original_energy = np.sum(original_features**2)
+    reconstructed_energy = np.sum(reconstructed_features**2)
     energy_ratio = reconstructed_energy / original_energy
 
     print(f"   Original energy: {original_energy:.2e}")
@@ -340,13 +363,16 @@ def validate_audio_segment(processor: AudioProcessor, video_path: Path,
     print(f"\n6. Saving visualizations...")
 
     # Waveform comparison
-    waveform_path = output_dir / f'audio_waveform_{segment_name}.png'
-    plot_waveform_comparison(y_segment, y_reconstructed, sr, segment_name, waveform_path)
+    waveform_path = output_dir / f"audio_waveform_{segment_name}.png"
+    plot_waveform_comparison(
+        y_segment, y_reconstructed, sr, segment_name, waveform_path
+    )
 
     # Spectrogram comparison
-    spectrogram_path = output_dir / f'audio_spectrogram_{segment_name}.png'
-    plot_spectrogram_comparison(original_features, reconstructed_features,
-                                segment_name, spectrogram_path)
+    spectrogram_path = output_dir / f"audio_spectrogram_{segment_name}.png"
+    plot_spectrogram_comparison(
+        original_features, reconstructed_features, segment_name, spectrogram_path
+    )
 
     # Quality assessment
     print(f"\n7. Quality assessment:")
@@ -365,12 +391,12 @@ def validate_audio_segment(processor: AudioProcessor, video_path: Path,
         print(f"   ❌ LOW SNR (< 5 dB)")
 
     return {
-        'segment_name': segment_name,
-        'feature_mse': feature_mse,
-        'feature_correlation': feature_corr,
-        'audio_snr': snr,
-        'audio_correlation': audio_corr,
-        'energy_ratio': energy_ratio
+        "segment_name": segment_name,
+        "feature_mse": feature_mse,
+        "feature_correlation": feature_corr,
+        "audio_snr": snr,
+        "audio_correlation": audio_corr,
+        "energy_ratio": energy_ratio,
     }
 
 
@@ -378,14 +404,14 @@ def validate_audio_modality():
     """
     Main validation function for audio modality.
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("AUDIO MODALITY VALIDATION")
-    print("="*80)
+    print("=" * 80)
 
     # Setup paths
     project_root = Path(__file__).parent.parent
-    video_path = project_root / 'data' / 'stimuli_Sherlock.m4v'
-    output_dir = project_root / 'validation_outputs'
+    video_path = project_root / "data" / "stimuli_Sherlock.m4v"
+    output_dir = project_root / "validation_outputs"
     output_dir.mkdir(exist_ok=True)
 
     if not video_path.exists():
@@ -398,17 +424,13 @@ def validate_audio_modality():
 
     # Initialize processor
     processor = AudioProcessor(
-        sample_rate=22050,
-        n_mels=2048,
-        n_fft=4096,
-        hop_length=512,
-        tr=1.5
+        sample_rate=22050, n_mels=2048, n_fft=4096, hop_length=512, tr=1.5
     )
 
     # Get audio info
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("AUDIO INFORMATION")
-    print("="*80)
+    print("=" * 80)
     info = processor.get_audio_info(video_path, from_video=True)
     print(f"\nAudio properties:")
     print(f"  Sample rate: {info['sample_rate']} Hz")
@@ -427,11 +449,11 @@ def validate_audio_modality():
     # Note: Choosing segments based on typical Sherlock content
     # For comprehensive testing, would need scene-by-scene analysis
     test_segments = [
-        (0, 20, "opening_scene"),      # Opening with theme music
+        (0, 20, "opening_scene"),  # Opening with theme music
         (200, 220, "dialogue_scene"),  # Dialogue-heavy segment
-        (460, 480, "middle_scene"),    # Middle of episode
-        (700, 720, "late_scene"),      # Later segment
-        (900, 920, "ending_scene")     # Ending
+        (460, 480, "middle_scene"),  # Middle of episode
+        (700, 720, "late_scene"),  # Later segment
+        (900, 920, "ending_scene"),  # Ending
     ]
 
     all_metrics = []
@@ -443,25 +465,29 @@ def validate_audio_modality():
         all_metrics.append(metrics)
 
     # Summary
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("VALIDATION SUMMARY")
-    print("="*80)
+    print("=" * 80)
 
     print("\nMetrics by segment:")
-    print(f"{'Segment':<20} {'Feature Corr':>13} {'Audio Corr':>11} {'SNR (dB)':>9} {'Energy Ratio':>13}")
+    print(
+        f"{'Segment':<20} {'Feature Corr':>13} {'Audio Corr':>11} {'SNR (dB)':>9} {'Energy Ratio':>13}"
+    )
     print("-" * 80)
 
     for m in all_metrics:
-        print(f"{m['segment_name']:<20} "
-              f"{m['feature_correlation']:>13.4f} "
-              f"{m['audio_correlation']:>11.4f} "
-              f"{m['audio_snr']:>9.2f} "
-              f"{m['energy_ratio']:>13.4f}")
+        print(
+            f"{m['segment_name']:<20} "
+            f"{m['feature_correlation']:>13.4f} "
+            f"{m['audio_correlation']:>11.4f} "
+            f"{m['audio_snr']:>9.2f} "
+            f"{m['energy_ratio']:>13.4f}"
+        )
 
     # Overall statistics
-    avg_feature_corr = np.mean([m['feature_correlation'] for m in all_metrics])
-    avg_audio_corr = np.mean([m['audio_correlation'] for m in all_metrics])
-    avg_snr = np.mean([m['audio_snr'] for m in all_metrics])
+    avg_feature_corr = np.mean([m["feature_correlation"] for m in all_metrics])
+    avg_audio_corr = np.mean([m["audio_correlation"] for m in all_metrics])
+    avg_snr = np.mean([m["audio_snr"] for m in all_metrics])
 
     print("\nOverall averages:")
     print(f"  Feature correlation: {avg_feature_corr:.4f}")
@@ -469,23 +495,24 @@ def validate_audio_modality():
     print(f"  SNR: {avg_snr:.2f} dB")
 
     print(f"\nGenerated .WAV files (LISTEN TO THESE!):")
-    wav_files = sorted(output_dir.glob('audio_*.wav'))
+    wav_files = sorted(output_dir.glob("audio_*.wav"))
     for f in wav_files:
         size_kb = f.stat().st_size / 1024
         duration = len(sf.read(str(f))[0]) / 22050
         print(f"  {f.name:50s} ({size_kb:>7.1f} KB, {duration:>5.1f}s)")
 
     print(f"\nGenerated visualizations:")
-    png_files = sorted(output_dir.glob('audio_*.png'))
+    png_files = sorted(output_dir.glob("audio_*.png"))
     for f in png_files:
         size_kb = f.stat().st_size / 1024
         print(f"  {f.name:50s} ({size_kb:>7.1f} KB)")
 
     # Known issues documentation
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("KNOWN ISSUES / QUALITY NOTES")
-    print("="*80)
-    print("""
+    print("=" * 80)
+    print(
+        """
 Griffin-Lim reconstruction limitations:
 - Phase information is lost in mel spectrogram
 - Reconstructed audio may sound "phasey" or "robotic"
@@ -502,31 +529,37 @@ For better reconstruction, consider:
 For this project's purposes (fMRI prediction), the feature extraction
 is what matters most. The reconstruction quality validates that the
 features contain meaningful audio information.
-    """)
+    """
+    )
 
     # Final verdict
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     if avg_audio_corr > 0.6 and avg_snr > 8:
         print("✅ AUDIO VALIDATION PASSED - GOOD QUALITY")
     elif avg_audio_corr > 0.4 and avg_snr > 5:
         print("✅ AUDIO VALIDATION PASSED - ACCEPTABLE QUALITY")
     else:
         print("⚠ AUDIO VALIDATION WARNING - QUALITY BELOW EXPECTED")
-    print("="*80)
+    print("=" * 80)
 
     return all_metrics
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         metrics = validate_audio_modality()
-        avg_corr = np.mean([m['audio_correlation'] for m in metrics])
-        avg_snr = np.mean([m['audio_snr'] for m in metrics])
-        print(f"\n✓ Audio validation complete. Avg correlation: {avg_corr:.4f}, "
-              f"Avg SNR: {avg_snr:.2f} dB")
-        print("\n⚠ IMPORTANT: Listen to the generated .WAV files in validation_outputs/")
+        avg_corr = np.mean([m["audio_correlation"] for m in metrics])
+        avg_snr = np.mean([m["audio_snr"] for m in metrics])
+        print(
+            f"\n✓ Audio validation complete. Avg correlation: {avg_corr:.4f}, "
+            f"Avg SNR: {avg_snr:.2f} dB"
+        )
+        print(
+            "\n⚠ IMPORTANT: Listen to the generated .WAV files in validation_outputs/"
+        )
     except Exception as e:
         print(f"\n❌ Error during validation: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

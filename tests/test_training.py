@@ -9,7 +9,6 @@ import shutil
 import tempfile
 from pathlib import Path
 
-import numpy as np
 import pytest
 import torch
 
@@ -343,7 +342,7 @@ class TestTrainer:
         # Check history
         assert len(history["train_history"]) == 2  # 2 epochs
         assert len(history["val_history"]) == 2
-        assert history["best_val_loss"] < float("inf")
+        assert history["best_val_loss"] < float("in")
 
         # Check checkpoints were saved
         checkpoint_dir = Path(temp_dir)
@@ -382,7 +381,7 @@ class TestTrainer:
         # Check history
         assert len(history["train_history"]) == 2
         assert len(history["val_history"]) == 2
-        assert history["best_val_loss"] < float("inf")
+        assert history["best_val_loss"] < float("in")
 
         # Check losses decreased (or at least training ran)
         assert all("total_loss" in h for h in history["train_history"])
@@ -412,11 +411,6 @@ class TestTrainer:
             config=config,
             distributed=False,
         )
-
-        # Save initial state
-        initial_params = {
-            name: param.clone() for name, param in model.named_parameters()
-        }
 
         # Train one epoch
         trainer1.current_epoch = 0

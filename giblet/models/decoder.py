@@ -13,7 +13,7 @@ Input: 2048-dimensional bottleneck features
 Output: Separate video (43,200), audio (2048), text (1024) features
 """
 
-from typing import Optional, Tuple
+from typing import Tuple
 
 import torch
 import torch.nn as nn

@@ -3,7 +3,6 @@ Visualize dimension flow through the autoencoder to identify bottleneck.
 """
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 # Define layer dimensions
 layers = [
@@ -119,7 +118,9 @@ main_colors = [
             else (
                 "#00C853"
                 if i == 6  # L7 (true min)
-                else "#2196F3" if i < 5 else "#9C27B0"
+                else "#2196F3"
+                if i < 5
+                else "#9C27B0"
             )
         )
     )
@@ -195,7 +196,7 @@ ax2.text(
 )
 
 # Add legend
-from matplotlib.patches import Patch
+from matplotlib.patches import Patch  # noqa: E402
 
 legend_elements = [
     Patch(facecolor="#4CAF50", edgecolor="black", label="Input/Output"),
@@ -223,7 +224,9 @@ for label, dim in main_pathway:
     marker = (
         " ★ SPEC BOTTLENECK"
         if label == "L6"
-        else " ★ TRUE BOTTLENECK" if label == "L7" else ""
+        else " ★ TRUE BOTTLENECK"
+        if label == "L7"
+        else ""
     )
     print(f"  {label}: {dim:>7,}{marker}")
 

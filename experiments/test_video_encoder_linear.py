@@ -3,11 +3,12 @@ Test Linear-based VideoEncoder with flattened temporal concatenation.
 Phase 1.4: Local testing with simple forward pass.
 """
 import torch
+
 from giblet.models.encoder import VideoEncoder
 
-print("="*80)
+print("=" * 80)
 print("VIDEOENCODER LINEAR ARCHITECTURE TEST")
-print("="*80)
+print("=" * 80)
 
 # Test 1: Create encoder
 print("\n1. Creating VideoEncoder with Linear layers...")
@@ -62,6 +63,6 @@ print(f"✓ Gradients computed successfully")
 print(f"  Gradient shape: {video_grad.grad.shape}")
 print(f"  Gradient norm: {video_grad.grad.norm().item():.4f}")
 
-print("\n" + "="*80)
+print("\n" + "=" * 80)
 print("✓ ALL TESTS PASSED!")
-print("="*80)
+print("=" * 80)

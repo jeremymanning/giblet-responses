@@ -99,9 +99,9 @@ def test_process_group_init():
     os.environ["RANK"] = "0"
 
     print("Initializing process group with:")
-    print(f"  Backend: nccl")
-    print(f"  Rank: 0")
-    print(f"  World size: 1")
+    print("  Backend: nccl")
+    print("  Rank: 0")
+    print("  World size: 1")
 
     dist.init_process_group(backend="nccl", init_method="env://", world_size=1, rank=0)
 

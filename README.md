@@ -39,17 +39,17 @@ For manual setup or troubleshooting, see [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETU
 
 ### Cluster Training
 
-For distributed training on our GPU clusters (tensor01/tensor02, each with 8× NVIDIA RTX A6000):
+For distributed training on a GPU cluster:
 
 ```bash
 # Launch 8-GPU training on tensor01
-./remote_train.sh --cluster tensor01 --config cluster_train_config.yaml --gpus 8 --name production_run
+./remote_train.sh --cluster cluster_name --config cluster_train_config.yaml --gpus 8 --name production_run
 
 # Monitor training
-./check_remote_status.sh --cluster tensor01
+./check_remote_status.sh --cluster cluster_name
 
 # Attach to running session
-ssh f002d6b@tensor01.dartmouth.edu
+ssh yourNetID@tensor01.dartmouth.edu
 screen -r production_run
 ```
 

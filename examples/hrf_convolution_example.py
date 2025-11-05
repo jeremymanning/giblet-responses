@@ -6,8 +6,9 @@ This example demonstrates the basic usage of the HRF module for predicting
 BOLD responses from stimulus features using the canonical Glover HRF model.
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+
 from giblet.alignment.hrf import apply_hrf, get_canonical_hrf, get_hrf_peak_latency
 
 
@@ -40,7 +41,7 @@ def example_2_impulse_response():
     stimulus[20] = 1.0
 
     # Convolve with HRF using full mode to see complete response
-    response = apply_hrf(stimulus, tr=1.5, mode='full')
+    response = apply_hrf(stimulus, tr=1.5, mode="full")
 
     # Find peak of convolved response
     peak_idx = np.argmax(response)
@@ -76,7 +77,7 @@ def example_3_multifeature():
     features[:, 3] = np.random.randn(n_timepoints) * 0.3
 
     # Convolve all features with HRF
-    convolved = apply_hrf(features, tr=1.5, mode='same')
+    convolved = apply_hrf(features, tr=1.5, mode="same")
 
     print(f"Input shape: {features.shape}")
     print(f"Output shape: {convolved.shape}")
@@ -103,7 +104,7 @@ def example_4_realistic_scenario():
     stimulus[event_times] = 1.0
 
     # Convolve with HRF to get predicted BOLD
-    predicted_bold = apply_hrf(stimulus, tr=tr, mode='same')
+    predicted_bold = apply_hrf(stimulus, tr=tr, mode="same")
 
     print(f"Scan duration: {n_timepoints * tr / 60:.1f} minutes")
     print(f"Number of stimulus events: {np.sum(stimulus > 0)}")
@@ -124,11 +125,12 @@ def example_5_edge_handling():
     stimulus[10] = 1.0
 
     # Compare different convolution modes
-    response_same = apply_hrf(stimulus, tr=1.5, mode='same')
-    response_full = apply_hrf(stimulus, tr=1.5, mode='full')
+    response_same = apply_hrf(stimulus, tr=1.5, mode="same")
+    response_full = apply_hrf(stimulus, tr=1.5, mode="full")
 
     # Compare padding approach
     from giblet.alignment.hrf import convolve_with_padding
+
     response_padded = convolve_with_padding(stimulus, tr=1.5, padding_duration=10.0)
 
     print(f"mode='same' shape: {response_same.shape}")
@@ -159,23 +161,25 @@ def example_6_visualization():
     # Plot 1: HRF kernel
     hrf = get_canonical_hrf(tr=tr)
     time = np.arange(len(hrf)) * tr
-    axes[0, 0].plot(time, hrf, 'b-', linewidth=2)
-    axes[0, 0].axvline(get_hrf_peak_latency(tr=tr), color='r', linestyle='--', alpha=0.5)
-    axes[0, 0].set_xlabel('Time (s)')
-    axes[0, 0].set_ylabel('HRF amplitude')
-    axes[0, 0].set_title('Canonical HRF (Glover Model)')
+    axes[0, 0].plot(time, hrf, "b-", linewidth=2)
+    axes[0, 0].axvline(
+        get_hrf_peak_latency(tr=tr), color="r", linestyle="--", alpha=0.5
+    )
+    axes[0, 0].set_xlabel("Time (s)")
+    axes[0, 0].set_ylabel("HRF amplitude")
+    axes[0, 0].set_title("Canonical HRF (Glover Model)")
     axes[0, 0].grid(True, alpha=0.3)
 
     # Plot 2: Impulse response
     stimulus = np.zeros(80)
     stimulus[15] = 1.0
-    response = apply_hrf(stimulus, tr=tr, mode='same')
+    response = apply_hrf(stimulus, tr=tr, mode="same")
     time_stimulus = np.arange(len(stimulus)) * tr
-    axes[0, 1].bar(time_stimulus, stimulus, width=tr*0.8, alpha=0.5, label='Stimulus')
-    axes[0, 1].plot(time_stimulus, response, 'r-', linewidth=2, label='BOLD response')
-    axes[0, 1].set_xlabel('Time (s)')
-    axes[0, 1].set_ylabel('Amplitude')
-    axes[0, 1].set_title('Impulse Response (Temporal Shift Visible)')
+    axes[0, 1].bar(time_stimulus, stimulus, width=tr * 0.8, alpha=0.5, label="Stimulus")
+    axes[0, 1].plot(time_stimulus, response, "r-", linewidth=2, label="BOLD response")
+    axes[0, 1].set_xlabel("Time (s)")
+    axes[0, 1].set_ylabel("Amplitude")
+    axes[0, 1].set_title("Impulse Response (Temporal Shift Visible)")
     axes[0, 1].legend()
     axes[0, 1].grid(True, alpha=0.3)
 
@@ -183,28 +187,37 @@ def example_6_visualization():
     features = np.zeros((100, 2))
     features[20, 0] = 1.0
     features[60, 1] = 1.0
-    convolved = apply_hrf(features, tr=tr, mode='same')
+    convolved = apply_hrf(features, tr=tr, mode="same")
     time_full = np.arange(len(features)) * tr
 
-    axes[1, 0].plot(time_full, convolved[:, 0], label='Feature 1', linewidth=2)
-    axes[1, 0].plot(time_full, convolved[:, 1], label='Feature 2', linewidth=2)
-    axes[1, 0].set_xlabel('Time (s)')
-    axes[1, 0].set_ylabel('BOLD response')
-    axes[1, 0].set_title('Multi-Feature Convolution (Independent)')
+    axes[1, 0].plot(time_full, convolved[:, 0], label="Feature 1", linewidth=2)
+    axes[1, 0].plot(time_full, convolved[:, 1], label="Feature 2", linewidth=2)
+    axes[1, 0].set_xlabel("Time (s)")
+    axes[1, 0].set_ylabel("BOLD response")
+    axes[1, 0].set_title("Multi-Feature Convolution (Independent)")
     axes[1, 0].legend()
     axes[1, 0].grid(True, alpha=0.3)
 
     # Plot 4: Sparse stimulus
     stimulus_sparse = np.zeros(120)
     stimulus_sparse[[15, 40, 70, 95]] = 1.0
-    response_sparse = apply_hrf(stimulus_sparse, tr=tr, mode='same')
+    response_sparse = apply_hrf(stimulus_sparse, tr=tr, mode="same")
     time_sparse = np.arange(len(stimulus_sparse)) * tr
 
-    axes[1, 1].bar(time_sparse, stimulus_sparse, width=tr*0.8, alpha=0.3, color='blue', label='Events')
-    axes[1, 1].plot(time_sparse, response_sparse, 'r-', linewidth=2, label='Predicted BOLD')
-    axes[1, 1].set_xlabel('Time (s)')
-    axes[1, 1].set_ylabel('Amplitude')
-    axes[1, 1].set_title('Sparse Stimulus Events → BOLD Prediction')
+    axes[1, 1].bar(
+        time_sparse,
+        stimulus_sparse,
+        width=tr * 0.8,
+        alpha=0.3,
+        color="blue",
+        label="Events",
+    )
+    axes[1, 1].plot(
+        time_sparse, response_sparse, "r-", linewidth=2, label="Predicted BOLD"
+    )
+    axes[1, 1].set_xlabel("Time (s)")
+    axes[1, 1].set_ylabel("Amplitude")
+    axes[1, 1].set_title("Sparse Stimulus Events → BOLD Prediction")
     axes[1, 1].legend()
     axes[1, 1].grid(True, alpha=0.3)
 
@@ -217,7 +230,7 @@ def example_6_visualization():
     print()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run all examples
     example_1_basic_hrf()
     example_2_impulse_response()

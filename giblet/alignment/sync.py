@@ -15,11 +15,11 @@ References:
     - Truncate to minimum duration across modalities
 """
 
-from typing import Dict, Optional, Union
+from typing import Dict, Union
 
 import numpy as np
 
-from .hrf import apply_hrf, convolve_with_padding
+from .hrf import convolve_with_padding
 
 
 def _resample_features(
@@ -230,7 +230,7 @@ def align_all_modalities(
     # This ensures all data aligns to the shortest duration
     target_trs = min(n_video, n_audio, n_text, n_fmri)
 
-    print(f"Aligning modalities to common TR grid:")
+    print("Aligning modalities to common TR grid:")
     print(f"  Video:  {n_video} TRs -> {target_trs} TRs")
     print(f"  Audio:  {n_audio} TRs -> {target_trs} TRs")
     print(f"  Text:   {n_text} TRs -> {target_trs} TRs")
@@ -279,8 +279,8 @@ def align_all_modalities(
     }
 
     # Print alignment summary
-    print(f"\nAlignment complete:")
-    print(f"  All outputs have shape (920, n_features)")
+    print("\nAlignment complete:")
+    print("  All outputs have shape (920, n_features)")
     print(f"  Video:  ({target_trs}, {video_aligned.shape[1]})")
     print(f"  Audio:  ({target_trs}, {audio_aligned.shape[1]})")
     print(f"  Text:   ({target_trs}, {text_aligned.shape[1]})")

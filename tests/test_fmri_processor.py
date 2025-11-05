@@ -55,10 +55,10 @@ class TestFMRIProcessor:
         yield Path(temp)
         shutil.rmtree(temp)
 
-    def test_data_files_exist(self, nii_files):
+    def test_data_files_exist(self, nii_files, data_dir):
         """Test that all 17 subject files exist."""
-        print(f"\n=== Testing Data Files ===")
-        print(f"Data directory: {DATA_DIR}")
+        print("\n=== Testing Data Files ===")
+        print(f"Data directory: {data_dir}")
         print(f"Found {len(nii_files)} files:")
         for f in nii_files:
             print(f"  - {f.name}")
@@ -71,7 +71,7 @@ class TestFMRIProcessor:
 
     def test_load_single_nii(self, nii_files):
         """Test loading a single NIfTI file."""
-        print(f"\n=== Testing Single NIfTI Load ===")
+        print("\n=== Testing Single NIfTI Load ===")
         test_file = nii_files[0]
         print(f"Loading: {test_file.name}")
 
@@ -90,7 +90,7 @@ class TestFMRIProcessor:
 
     def test_create_shared_mask(self, processor, nii_files):
         """Test shared mask creation across all subjects."""
-        print(f"\n=== Testing Shared Mask Creation ===")
+        print("\n=== Testing Shared Mask Creation ===")
 
         mask_array, mask_img = processor.create_shared_mask(nii_files)
 
@@ -127,12 +127,12 @@ class TestFMRIProcessor:
 
     def test_mask_info(self, processor, nii_files):
         """Test get_mask_info method."""
-        print(f"\n=== Testing Mask Info ===")
+        print("\n=== Testing Mask Info ===")
 
         processor.create_shared_mask(nii_files)
         info = processor.get_mask_info()
 
-        print(f"Mask info:")
+        print("Mask info:")
         for key, value in info.items():
             print(f"  {key}: {value}")
 
@@ -147,7 +147,7 @@ class TestFMRIProcessor:
 
     def test_nii_to_features_single_subject(self, processor, nii_files):
         """Test extracting features from a single subject."""
-        print(f"\n=== Testing NIfTI to Features (Single Subject) ===")
+        print("\n=== Testing NIfTI to Features (Single Subject) ===")
 
         # Create mask first
         processor.create_shared_mask(nii_files)
@@ -190,7 +190,7 @@ class TestFMRIProcessor:
 
     def test_nii_to_features_all_subjects(self, processor, nii_files):
         """Test extracting features from all subjects."""
-        print(f"\n=== Testing NIfTI to Features (All Subjects) ===")
+        print("\n=== Testing NIfTI to Features (All Subjects) ===")
 
         # Create mask first
         processor.create_shared_mask(nii_files)
@@ -215,7 +215,7 @@ class TestFMRIProcessor:
 
     def test_features_to_nii_roundtrip(self, processor, nii_files, temp_dir):
         """Test bidirectional conversion: NIfTI -> features -> NIfTI."""
-        print(f"\n=== Testing Round-trip Conversion ===")
+        print("\n=== Testing Round-trip Conversion ===")
 
         # Create mask
         processor.create_shared_mask(nii_files)
@@ -278,7 +278,7 @@ class TestFMRIProcessor:
 
     def test_average_across_subjects(self, processor, nii_files):
         """Test cross-subject averaging."""
-        print(f"\n=== Testing Cross-Subject Averaging ===")
+        print("\n=== Testing Cross-Subject Averaging ===")
 
         # Create mask
         processor.create_shared_mask(nii_files)
@@ -316,15 +316,18 @@ class TestFMRIProcessor:
 
     def test_load_all_subjects(self, processor, data_dir):
         """Test load_all_subjects convenience method."""
-        print(f"\n=== Testing Load All Subjects ===")
+        print("\n=== Testing Load All Subjects ===")
 
         nii_dir = data_dir / "sherlock_nii"
         if not nii_dir.exists():
             pytest.skip(f"Sherlock NIfTI data not found at {nii_dir}")
 
-        features_list, coordinates_list, metadata_list, subject_ids = (
-            processor.load_all_subjects(nii_dir)
-        )
+        (
+            features_list,
+            coordinates_list,
+            metadata_list,
+            subject_ids,
+        ) = processor.load_all_subjects(nii_dir)
 
         # Check counts
         assert len(features_list) == N_SUBJECTS, f"Expected {N_SUBJECTS} subjects"
@@ -337,7 +340,7 @@ class TestFMRIProcessor:
 
         # Check subject IDs
         expected_ids = [f"s{i}" for i in range(1, N_SUBJECTS + 1)]
-        assert subject_ids == expected_ids, f"Subject ID mismatch"
+        assert subject_ids == expected_ids, "Subject ID mismatch"
 
         # Check shapes
         n_voxels = features_list[0].shape[1]
@@ -359,7 +362,7 @@ class TestFMRIProcessor:
 
     def test_save_and_load_mask(self, processor, nii_files, temp_dir):
         """Test saving and loading mask."""
-        print(f"\n=== Testing Save/Load Mask ===")
+        print("\n=== Testing Save/Load Mask ===")
 
         # Create mask
         processor.create_shared_mask(nii_files)
@@ -389,12 +392,12 @@ class TestFMRIProcessor:
 
     def test_exact_voxel_count(self, processor, nii_files):
         """Test and report exact voxel count."""
-        print(f"\n=== EXACT VOXEL COUNT TEST ===")
+        print("\n=== EXACT VOXEL COUNT TEST ===")
 
         processor.create_shared_mask(nii_files)
         info = processor.get_mask_info()
 
-        print(f"\nFinal Mask Statistics:")
+        print("\nFinal Mask Statistics:")
         print(f"  Brain voxels: {info['n_voxels']:,}")
         print(f"  Total voxels: {info['total_voxels']:,}")
         print(f"  Proportion brain: {info['proportion_brain']:.2%}")

@@ -32,7 +32,7 @@ def create_test_video(output_path, duration_seconds=5.0, fps=25, width=640, heig
     height : int
         Frame height
     """
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
 
     n_frames = int(duration_seconds * fps)
@@ -73,7 +73,9 @@ class TestTemporalConcatenation:
 
     def test_consistent_dimensions_across_trs(self, test_video_path):
         """Test that all TRs have consistent dimensions."""
-        processor = VideoProcessor(tr=1.5, frame_skip=1)  # Disable frame skipping for testing
+        processor = VideoProcessor(
+            tr=1.5, frame_skip=1
+        )  # Disable frame skipping for testing
         features, metadata = processor.video_to_features(test_video_path)
 
         # Check shape
@@ -98,7 +100,9 @@ class TestTemporalConcatenation:
         fps = 25
 
         for tr in tr_lengths:
-            processor = VideoProcessor(tr=tr, frame_skip=1)  # Disable frame skipping for testing
+            processor = VideoProcessor(
+                tr=tr, frame_skip=1
+            )  # Disable frame skipping for testing
             features, metadata = processor.video_to_features(test_video_path)
 
             # Calculate expected dimensions
@@ -109,10 +113,12 @@ class TestTemporalConcatenation:
             assert features.shape[1] == expected_features
 
             # Check metadata
-            assert metadata['frames_per_tr'].iloc[0] == frames_per_tr
+            assert metadata["frames_per_tr"].iloc[0] == frames_per_tr
 
-            print(f"✓ TR={tr}s: {frames_per_tr} frames per TR, "
-                  f"{features.shape[0]} TRs, {expected_features} features per TR")
+            print(
+                f"✓ TR={tr}s: {frames_per_tr} frames per TR, "
+                f"{features.shape[0]} TRs, {expected_features} features per TR"
+            )
 
     def test_first_tr_edge_case(self, test_video_path):
         """Test that first TR handles lack of previous frames correctly."""
@@ -124,17 +130,17 @@ class TestTemporalConcatenation:
 
         # Check first TR metadata
         first_tr = metadata.iloc[0]
-        assert first_tr['tr_index'] == 0
-        assert first_tr['start_time'] == 0.0
-        assert first_tr['end_time'] == 1.5
+        assert first_tr["tr_index"] == 0
+        assert first_tr["start_time"] == 0.0
+        assert first_tr["end_time"] == 1.5
 
         # First TR may have zero-padded frames at the beginning
         # But should still have full dimensions
-        frames_per_tr = first_tr['frames_per_tr']
+        frames_per_tr = first_tr["frames_per_tr"]
         expected_features = frames_per_tr * 90 * 160 * 3
         assert features.shape[1] == expected_features
 
-        print(f"✓ First TR properly handles edge case")
+        print("✓ First TR properly handles edge case")
 
     def test_last_tr_edge_case(self, test_video_path):
         """Test that last TR handles incomplete windows correctly."""
@@ -145,11 +151,11 @@ class TestTemporalConcatenation:
         last_tr = metadata.iloc[-1]
 
         # Should have full dimensions (padded if needed)
-        frames_per_tr = last_tr['frames_per_tr']
+        frames_per_tr = last_tr["frames_per_tr"]
         expected_features = frames_per_tr * 90 * 160 * 3
         assert features.shape[1] == expected_features
 
-        print(f"✓ Last TR properly handles edge case")
+        print("✓ Last TR properly handles edge case")
 
     def test_zero_padding_behavior(self, test_video_path):
         """Test that zero padding is applied correctly."""
@@ -160,7 +166,7 @@ class TestTemporalConcatenation:
         first_tr_features = features[0]
 
         # Reshape to frames
-        frames_per_tr = int(metadata.iloc[0]['frames_per_tr'])
+        frames_per_tr = int(metadata.iloc[0]["frames_per_tr"])
         frames = first_tr_features.reshape(frames_per_tr, 90, 160, 3)
 
         # First frame might be zero-padded (before video start)
@@ -176,13 +182,13 @@ class TestTemporalConcatenation:
 
         # Check metadata for correct time windows
         for i, row in metadata.iterrows():
-            expected_end = (row['tr_index'] + 1) * 1.5
+            expected_end = (row["tr_index"] + 1) * 1.5
             expected_start = expected_end - 1.5
 
-            assert np.isclose(row['end_time'], expected_end)
-            assert np.isclose(row['start_time'], expected_start)
+            assert np.isclose(row["end_time"], expected_end)
+            assert np.isclose(row["start_time"], expected_start)
 
-        print(f"✓ Temporal windows correctly aligned to [t-TR, t]")
+        print("✓ Temporal windows correctly aligned to [t-TR, t]")
 
     def test_feature_extraction_normalization(self, test_video_path):
         """Test that normalization works correctly."""
@@ -192,7 +198,9 @@ class TestTemporalConcatenation:
 
         # Without normalization
         processor_no_norm = VideoProcessor(tr=1.5, normalize=False, frame_skip=1)
-        features_no_norm, _ = processor_no_norm.video_to_features(test_video_path, max_trs=2)
+        features_no_norm, _ = processor_no_norm.video_to_features(
+            test_video_path, max_trs=2
+        )
 
         # Normalized features should be in [0, 1]
         assert features_norm.min() >= 0.0
@@ -203,13 +211,9 @@ class TestTemporalConcatenation:
         assert features_no_norm.max() <= 255.0
 
         # They should be related by factor of 255
-        np.testing.assert_allclose(
-            features_norm * 255.0,
-            features_no_norm,
-            rtol=1e-3
-        )
+        np.testing.assert_allclose(features_norm * 255.0, features_no_norm, rtol=1e-3)
 
-        print(f"✓ Normalization working correctly")
+        print("✓ Normalization working correctly")
 
     def test_max_trs_truncation(self, test_video_path):
         """Test that max_trs parameter truncates correctly."""
@@ -223,7 +227,7 @@ class TestTemporalConcatenation:
         assert features_truncated.shape[0] == 2
         assert len(metadata_truncated) == 2
 
-        print(f"✓ max_trs truncation works correctly")
+        print("✓ max_trs truncation works correctly")
 
     def test_reconstruction_roundtrip(self, test_video_path, tmp_path):
         """Test that video can be reconstructed from features."""
@@ -260,7 +264,7 @@ class TestTemporalConcatenation:
         expected_frames = frames_per_tr * 2
         assert total_frames == expected_frames
 
-        print(f"✓ Reconstruction roundtrip successful")
+        print("✓ Reconstruction roundtrip successful")
         print(f"  Output: {width}x{height} @ {fps}fps, {total_frames} frames")
 
 
@@ -286,7 +290,9 @@ class TestDimensionConsistency:
         """Test that dimension calculation is correct."""
         tr = 1.5
         fps = 25
-        processor = VideoProcessor(tr=tr, target_height=90, target_width=160, frame_skip=1)
+        processor = VideoProcessor(
+            tr=tr, target_height=90, target_width=160, frame_skip=1
+        )
         features, metadata = processor.video_to_features(test_video_path, max_trs=1)
 
         # Calculate expected dimension
@@ -296,9 +302,9 @@ class TestDimensionConsistency:
 
         # Check
         assert features.shape[1] == expected_dim
-        assert metadata.iloc[0]['frames_per_tr'] == frames_per_tr
+        assert metadata.iloc[0]["frames_per_tr"] == frames_per_tr
 
-        print(f"✓ Dimension calculation correct:")
+        print("✓ Dimension calculation correct:")
         print(f"  frames_per_tr: {frames_per_tr}")
         print(f"  features_per_frame: {features_per_frame}")
         print(f"  total_features: {expected_dim}")

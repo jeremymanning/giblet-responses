@@ -105,10 +105,11 @@ if __name__ == '__main__':
     main()
 """
 
+
 def main():
-    print("="*70)
+    print("=" * 70)
     print("PlotNeuralNet Example for MultimodalAutoencoder")
-    print("="*70)
+    print("=" * 70)
     print("\nWARNING: PlotNeuralNet requires significant manual work!")
     print("\nThis file contains example code showing what PlotNeuralNet")
     print("architecture specification would look like.")
@@ -120,14 +121,15 @@ def main():
     print("3. Modify the example code in this file")
     print("4. Run and compile the .tex output")
     print("\nExample code stored in PLOTNEURALNET_EXAMPLE variable above.")
-    print("="*70)
+    print("=" * 70)
 
     # Save the example code to a file
-    with open('plotneuralnet_example_code.py', 'w') as f:
+    with open("plotneuralnet_example_code.py", "w") as f:
         f.write(PLOTNEURALNET_EXAMPLE)
 
     print("\n✓ Example code saved to: plotneuralnet_example_code.py")
     print("  (This is for reference only - requires PlotNeuralNet installation)")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

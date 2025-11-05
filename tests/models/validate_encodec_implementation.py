@@ -64,7 +64,7 @@ init_params = []
 for node in ast.walk(tree):
     if isinstance(node, ast.FunctionDef) and node.name == "__init__":
         for arg in node.args.args:
-            if arg.arg != "self":
+            if arg.arg != "sel":
                 init_params.append(arg.arg)
 
 expected_params = ["use_encodec", "encodec_bandwidth", "device"]

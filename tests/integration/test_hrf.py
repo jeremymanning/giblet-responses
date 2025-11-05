@@ -8,8 +8,6 @@ Tests verify:
 4. Multi-feature support
 """
 
-from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
@@ -400,7 +398,6 @@ class TestIntegration:
         features[:, 0] = np.sin(2 * np.pi * np.arange(n_timepoints) / 50)
 
         # Motion feature: random but smooth
-        motion = np.random.randn(n_features)
         features[:, 1] = np.convolve(
             np.random.randn(n_timepoints), np.ones(10) / 10, mode="same"
         )
@@ -421,9 +418,8 @@ class TestIntegration:
         # Each channel should be convolved independently
         for i in range(n_features):
             # Convolved version should be smoother
-            original_roughness = np.sum(np.diff(features[:, i]) ** 2)
-            convolved_roughness = np.sum(np.diff(convolved[:, i]) ** 2)
             # Note: not always true for all features, but generally HRF smooths
+            pass
 
     def test_hrf_reproducibility(self):
         """Test that HRF convolution is reproducible."""

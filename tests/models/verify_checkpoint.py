@@ -6,11 +6,10 @@ Verify checkpoint quality: check for NaNs, zeros, correct dimensions, etc.
 import sys
 from pathlib import Path
 
-import numpy as np
 import torch
 
 
-def verify_checkpoint(checkpoint_path: str):
+def verify_checkpoint(checkpoint_path: str):  # noqa: C901
     """
     Verify a checkpoint file for quality issues.
 

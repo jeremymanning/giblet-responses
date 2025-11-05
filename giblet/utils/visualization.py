@@ -14,7 +14,6 @@ from typing import Dict, List, Optional, Tuple
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
 import torch.nn as nn
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -431,7 +430,7 @@ def create_model_summary(model: nn.Module, output_path: Optional[str] = None) ->
 
     summary_lines = [
         "=" * 80,
-        f"Model Architecture Summary",
+        "Model Architecture Summary",
         "=" * 80,
         f"Total layers: {len(layers)}",
         f"Total parameters: {total_params:,}",

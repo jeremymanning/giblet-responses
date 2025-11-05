@@ -72,7 +72,7 @@ def test_tiny_model_single_gpu():
     # Test backward pass
     loss = y.sum()
     loss.backward()
-    print(f"Backward pass successful")
+    print("Backward pass successful")
 
     assert y.shape == (4, 10), f"Expected output shape (4, 10), got {y.shape}"
     print("✓ Single GPU test passed")
@@ -89,7 +89,7 @@ def run_ddp_initialization():
         torchrun --nproc_per_node=8 tests/diagnostics/test_small_model_ddp.py
     """
     # Get rank info from environment (set by torchrun)
-    local_rank = int(os.environ["LOCAL_RANK"])
+    local_rank = int(os.environ["LOCAL_RANK"])  # noqa: F841
     world_size = int(os.environ["WORLD_SIZE"])
     rank = int(os.environ["RANK"])
 
@@ -201,7 +201,7 @@ def main():
         print("  torchrun --nproc_per_node=8 tests/diagnostics/test_small_model_ddp.py")
         return 1
 
-    local_rank = int(os.environ["LOCAL_RANK"])
+    local_rank = int(os.environ["LOCAL_RANK"])  # noqa: F841
     world_size = int(os.environ["WORLD_SIZE"])
     rank = int(os.environ["RANK"])
 
@@ -222,7 +222,7 @@ def main():
         try:
             if dist.is_initialized():
                 dist.barrier()
-        except:
+        except Exception:
             pass
 
     # Print results

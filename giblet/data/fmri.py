@@ -42,7 +42,7 @@ class FMRIProcessor:
         self,
         tr: float = 1.5,
         max_trs: Optional[int] = None,
-        mask_threshold: float = 0.5
+        mask_threshold: float = 0.5,
     ):
         self.tr = tr
         self.max_trs = max_trs
@@ -54,8 +54,7 @@ class FMRIProcessor:
         self._template_header = None
 
     def create_shared_mask(
-        self,
-        nii_files: List[Union[str, Path]]
+        self, nii_files: List[Union[str, Path]]
     ) -> Tuple[np.ndarray, nib.Nifti1Image]:
         """
         Create shared brain mask across all subjects.
@@ -128,13 +127,13 @@ class FMRIProcessor:
         # Count non-zero voxels
         n_voxels = np.sum(mask_array)
         print(f"Shared mask created: {n_voxels:,} brain voxels")
-        print(f"  Vote threshold: voxels in >={vote_threshold}/{len(nii_files)} subjects")
+        print(
+            f"  Vote threshold: voxels in >={vote_threshold}/{len(nii_files)} subjects"
+        )
 
         # Create NIfTI image for mask
         mask_img = nib.Nifti1Image(
-            mask_array.astype(np.uint8),
-            template_affine,
-            template_header
+            mask_array.astype(np.uint8), template_affine, template_header
         )
 
         # Store mask and template info
@@ -164,9 +163,7 @@ class FMRIProcessor:
         print(f"Stored coordinates for {len(coords):,} voxels")
 
     def nii_to_features(
-        self,
-        nii_path: Union[str, Path],
-        brain_mask: Optional[np.ndarray] = None
+        self, nii_path: Union[str, Path], brain_mask: Optional[np.ndarray] = None
     ) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """
         Extract timeseries features from NIfTI file.
@@ -237,10 +234,9 @@ class FMRIProcessor:
             features[t] = volume[brain_mask]
 
         # Create metadata
-        metadata = pd.DataFrame({
-            'tr_index': np.arange(n_trs),
-            'time': np.arange(n_trs) * self.tr
-        })
+        metadata = pd.DataFrame(
+            {"tr_index": np.arange(n_trs), "time": np.arange(n_trs) * self.tr}
+        )
 
         print(f"  Extracted features: {features.shape}")
         print(f"  Non-zero voxels: {np.sum(np.any(features != 0, axis=0)):,}")
@@ -253,7 +249,7 @@ class FMRIProcessor:
         coordinates: np.ndarray,
         output_path: Union[str, Path],
         template_img: Optional[nib.Nifti1Image] = None,
-        template_shape: Optional[Tuple[int, int, int]] = None
+        template_shape: Optional[Tuple[int, int, int]] = None,
     ) -> nib.Nifti1Image:
         """
         Reconstruct NIfTI file from feature matrix.
@@ -335,8 +331,7 @@ class FMRIProcessor:
         return img
 
     def average_across_subjects(
-        self,
-        subject_features_list: List[np.ndarray]
+        self, subject_features_list: List[np.ndarray]
     ) -> np.ndarray:
         """
         Average timeseries across multiple subjects.
@@ -373,7 +368,7 @@ class FMRIProcessor:
 
         # Stack and average
         stacked = np.stack(truncated, axis=0)  # (n_subjects, n_trs, n_voxels)
-        averaged = np.mean(stacked, axis=0)     # (n_trs, n_voxels)
+        averaged = np.mean(stacked, axis=0)  # (n_trs, n_voxels)
 
         print(f"Averaged {len(subject_features_list)} subjects")
         print(f"  Shape: {averaged.shape}")
@@ -382,9 +377,7 @@ class FMRIProcessor:
         return averaged
 
     def load_all_subjects(
-        self,
-        data_dir: Union[str, Path],
-        pattern: str = "sherlock_movie_s*.nii.gz"
+        self, data_dir: Union[str, Path], pattern: str = "sherlock_movie_s*.nii.gz"
     ) -> Tuple[List[np.ndarray], List[np.ndarray], List[pd.DataFrame], List[str]]:
         """
         Load all subject fMRI data from a directory.
@@ -418,7 +411,7 @@ class FMRIProcessor:
         # not alphabetically (which would give s1, s10, s11, ..., s2)
         nii_files = sorted(
             data_dir.glob(pattern),
-            key=lambda f: int(f.name.split('_')[-1].split('.')[0][1:])
+            key=lambda f: int(f.name.split("_")[-1].split(".")[0][1:]),
         )
 
         if len(nii_files) == 0:
@@ -439,7 +432,7 @@ class FMRIProcessor:
         for nii_file in tqdm(nii_files, desc="Loading subjects"):
             # Extract subject ID from filename
             # e.g., "sherlock_movie_s1.nii.gz" -> "s1"
-            subject_id = nii_file.stem.replace('.nii', '').split('_')[-1]
+            subject_id = nii_file.stem.replace(".nii", "").split("_")[-1]
             subject_ids.append(subject_id)
 
             # Extract features
@@ -468,12 +461,14 @@ class FMRIProcessor:
         proportion = n_voxels / total_voxels
 
         return {
-            'n_voxels': int(n_voxels),
-            'total_voxels': int(total_voxels),
-            'proportion_brain': float(proportion),
-            'proportion_zero': float(1 - proportion),
-            'mask_shape': mask_array.shape,
-            'coordinates_shape': self._coordinates.shape if self._coordinates is not None else None
+            "n_voxels": int(n_voxels),
+            "total_voxels": int(total_voxels),
+            "proportion_brain": float(proportion),
+            "proportion_zero": float(1 - proportion),
+            "mask_shape": mask_array.shape,
+            "coordinates_shape": self._coordinates.shape
+            if self._coordinates is not None
+            else None,
         }
 
     def save_mask(self, output_path: Union[str, Path]):

@@ -4,7 +4,6 @@ Tests for multimodal decoder module.
 Tests forward pass, output shapes, and component functionality.
 """
 
-import numpy as np
 import pytest
 import torch
 
@@ -208,7 +207,7 @@ class TestMultimodalDecoder:
         # Check total is reasonable
         assert param_counts["total"] > 0
 
-        print(f"\nDecoder parameter counts:")
+        print("\nDecoder parameter counts:")
         for key, count in param_counts.items():
             print(f"  {key}: {count:,}")
 

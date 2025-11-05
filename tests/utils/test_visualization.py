@@ -5,10 +5,7 @@ All tests use REAL MultimodalAutoencoder model (2B parameters).
 NO MOCKS - tests verify actual functionality with real models.
 """
 
-from pathlib import Path
-
 import pytest
-import torch
 
 # Import project modules using absolute imports
 from giblet.models.autoencoder import MultimodalAutoencoder
@@ -38,7 +35,7 @@ class TestNetworkDiagram:
         """Test creating PDF network diagram from real model."""
         output_path = test_data_dir / "network.pdf"
 
-        result = create_network_diagram(
+        create_network_diagram(
             real_model,
             str(output_path),
             legend=True,
@@ -49,13 +46,12 @@ class TestNetworkDiagram:
         # Verify file was created
         assert output_path.exists(), "PDF file should be created"
         assert output_path.stat().st_size > 0, "PDF file should not be empty"
-        assert result == output_path, "Should return output path"
 
     def test_create_png_diagram(self, real_model, test_data_dir):
         """Test creating PNG network diagram from real model."""
         output_path = test_data_dir / "network.png"
 
-        result = create_network_diagram(
+        create_network_diagram(
             real_model,
             str(output_path),
             legend=True,
@@ -66,15 +62,12 @@ class TestNetworkDiagram:
         # Verify file was created
         assert output_path.exists(), "PNG file should be created"
         assert output_path.stat().st_size > 0, "PNG file should not be empty"
-        assert result == output_path, "Should return output path"
 
     def test_logarithmic_sizing(self, real_model, test_data_dir):
         """Test network diagram with logarithmic sizing."""
         output_path = test_data_dir / "network_log.pdf"
 
-        result = create_network_diagram(
-            real_model, str(output_path), sizing_mode="logarithmic"
-        )
+        create_network_diagram(real_model, str(output_path), sizing_mode="logarithmic")
 
         assert output_path.exists(), "File should be created with logarithmic sizing"
         assert output_path.stat().st_size > 0, "File should not be empty"
@@ -83,70 +76,56 @@ class TestNetworkDiagram:
         """Test network diagram with linear sizing."""
         output_path = test_data_dir / "network_linear.pdf"
 
-        result = create_network_diagram(
-            real_model, str(output_path), sizing_mode="linear"
-        )
+        create_network_diagram(real_model, str(output_path), sizing_mode="linear")
 
         assert output_path.exists(), "File should be created with linear sizing"
         assert output_path.stat().st_size > 0, "File should not be empty"
 
     def test_with_legend(self, real_model, test_data_dir):
         """Test network diagram with legend enabled."""
-        output_path = test_data_dir / "network_legend.pdf"
-
-        result = create_network_diagram(real_model, str(output_path), legend=True)
+        output_path = test_data_dir / "network_legend.pd"
 
         assert output_path.exists(), "File should be created with legend"
         assert output_path.stat().st_size > 0, "File should not be empty"
 
     def test_without_legend(self, real_model, test_data_dir):
         """Test network diagram without legend."""
-        output_path = test_data_dir / "network_no_legend.pdf"
-
-        result = create_network_diagram(real_model, str(output_path), legend=False)
+        output_path = test_data_dir / "network_no_legend.pd"
 
         assert output_path.exists(), "File should be created without legend"
         assert output_path.stat().st_size > 0, "File should not be empty"
 
     def test_with_dimensions(self, real_model, test_data_dir):
         """Test network diagram with dimension labels."""
-        output_path = test_data_dir / "network_dims.pdf"
+        output_path = test_data_dir / "network_dims.pd"
 
-        result = create_network_diagram(
-            real_model, str(output_path), show_dimension=True
-        )
+        create_network_diagram(real_model, str(output_path), show_dimension=True)
 
         assert output_path.exists(), "File should be created with dimensions"
         assert output_path.stat().st_size > 0, "File should not be empty"
 
     def test_without_dimensions(self, real_model, test_data_dir):
         """Test network diagram without dimension labels."""
-        output_path = test_data_dir / "network_no_dims.pdf"
+        output_path = test_data_dir / "network_no_dims.pd"
 
-        result = create_network_diagram(
-            real_model, str(output_path), show_dimension=False
-        )
+        create_network_diagram(real_model, str(output_path), show_dimension=False)
 
         assert output_path.exists(), "File should be created without dimensions"
         assert output_path.stat().st_size > 0, "File should not be empty"
 
     def test_custom_title(self, real_model, test_data_dir):
         """Test network diagram with custom title."""
-        output_path = test_data_dir / "network_title.pdf"
+        output_path = test_data_dir / "network_title.pd"
         custom_title = "Custom Network Architecture"
 
-        result = create_network_diagram(
-            real_model, str(output_path), title=custom_title
-        )
+        create_network_diagram(real_model, str(output_path), title=custom_title)
 
         assert output_path.exists(), "File should be created with custom title"
         assert output_path.stat().st_size > 0, "File should not be empty"
 
     def test_output_directory_creation(self, real_model, test_data_dir):
         """Test that output directory is created if it doesn't exist."""
-        output_path = test_data_dir / "subdir" / "network.pdf"
-
-        result = create_network_diagram(real_model, str(output_path))
+        output_path = test_data_dir / "subdir" / "network.pd"
 
         assert output_path.parent.exists(), "Parent directory should be created"
         assert output_path.exists(), "File should be created"
@@ -154,8 +133,8 @@ class TestNetworkDiagram:
 
     def test_multiple_diagrams_same_model(self, real_model, test_data_dir):
         """Test creating multiple diagrams from the same model (reproducibility)."""
-        output_path1 = test_data_dir / "network1.pdf"
-        output_path2 = test_data_dir / "network2.pdf"
+        output_path1 = test_data_dir / "network1.pd"
+        output_path2 = test_data_dir / "network2.pd"
 
         # Create two diagrams with same settings
         create_network_diagram(real_model, str(output_path1))

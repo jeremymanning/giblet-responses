@@ -21,7 +21,7 @@ import torch
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from giblet.data.dataset import MultimodalDataset
+from giblet.data.dataset import MultimodalDataset  # noqa: E402
 
 
 def test_encodec_dataset():
@@ -55,7 +55,7 @@ def test_encodec_dataset():
         traceback.print_exc()
         return False
 
-    print(f"   ✓ Dataset loaded successfully")
+    print("   ✓ Dataset loaded successfully")
     print(f"   Samples: {len(dataset)}")
     print(f"   Feature dims: {dataset.feature_dims}")
 
@@ -63,7 +63,7 @@ def test_encodec_dataset():
     print("\n2. Testing __getitem__...")
     try:
         sample = dataset[0]
-        print(f"   ✓ Sample retrieved successfully")
+        print("   ✓ Sample retrieved successfully")
         print(f"   Keys: {list(sample.keys())}")
         print(
             f"   Video shape: {sample['video'].shape}, dtype: {sample['video'].dtype}"
@@ -76,7 +76,7 @@ def test_encodec_dataset():
 
         # Verify audio is discrete codes
         if sample["audio"].dtype == torch.int64:
-            print(f"   ✓ Audio is discrete codes (int64)")
+            print("   ✓ Audio is discrete codes (int64)")
             print(f"   Code range: [{sample['audio'].min()}, {sample['audio'].max()}]")
             if sample["audio"].ndim == 2:
                 n_codebooks, frames_per_tr = sample["audio"].shape
@@ -109,7 +109,7 @@ def test_encodec_dataset():
     print("\n3. Testing batch retrieval...")
     try:
         batch = dataset.get_batch([0, 1, 2])
-        print(f"   ✓ Batch retrieved successfully")
+        print("   ✓ Batch retrieved successfully")
         print(f"   Batch size: {batch['audio'].shape[0]}")
         print(f"   Audio batch shape: {batch['audio'].shape}")
     except Exception as e:
@@ -153,7 +153,7 @@ def test_mel_dataset():
         traceback.print_exc()
         return False
 
-    print(f"   ✓ Dataset loaded successfully")
+    print("   ✓ Dataset loaded successfully")
     print(f"   Samples: {len(dataset)}")
     print(f"   Feature dims: {dataset.feature_dims}")
 
@@ -161,14 +161,14 @@ def test_mel_dataset():
     print("\n2. Testing __getitem__...")
     try:
         sample = dataset[0]
-        print(f"   ✓ Sample retrieved successfully")
+        print("   ✓ Sample retrieved successfully")
         print(
             f"   Audio shape: {sample['audio'].shape}, dtype: {sample['audio'].dtype}"
         )
 
         # Verify audio is float
         if sample["audio"].dtype == torch.float32:
-            print(f"   ✓ Audio is continuous (float32)")
+            print("   ✓ Audio is continuous (float32)")
         else:
             print(f"   ⚠ Expected float32, got {sample['audio'].dtype}")
 
@@ -214,19 +214,19 @@ def test_cross_subject_mode():
         traceback.print_exc()
         return False
 
-    print(f"   ✓ Dataset loaded successfully")
+    print("   ✓ Dataset loaded successfully")
     print(f"   Samples: {len(dataset)} (should equal n_trs, not n_subjects × n_trs)")
 
     # Get a sample
     try:
         sample = dataset[0]
-        print(f"   ✓ Sample retrieved successfully")
+        print("   ✓ Sample retrieved successfully")
         print(f"   Audio shape: {sample['audio'].shape}")
         if "subject_id" in sample:
-            print(f"   ⚠ subject_id should not be in cross_subject mode")
+            print("   ⚠ subject_id should not be in cross_subject mode")
             return False
         else:
-            print(f"   ✓ No subject_id (correct for cross_subject mode)")
+            print("   ✓ No subject_id (correct for cross_subject mode)")
     except Exception as e:
         print(f"\n✗ Failed to get sample: {e}")
         import traceback

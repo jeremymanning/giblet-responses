@@ -4,10 +4,8 @@ Validates that the model loads without segfaults and performs nearest-neighbor r
 """
 
 from datetime import datetime
-from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import pytest
 
 from giblet.data.text import TextProcessor
@@ -16,7 +14,7 @@ from giblet.data.text import TextProcessor
 @pytest.mark.slow
 @pytest.mark.integration
 @pytest.mark.data
-def test_text_embedding_validation(data_dir, tmp_path):
+def test_text_embedding_validation(data_dir, tmp_path):  # noqa: C901
     """Run text embedding validation test."""
 
     output_lines = []
@@ -117,7 +115,7 @@ def test_text_embedding_validation(data_dir, tmp_path):
         )
 
         log(f"   ✓ Generated embeddings: shape {embeddings.shape}")
-        log(f"   Embedding stats:")
+        log("   Embedding stats:")
         log(f"     Mean: {embeddings.mean():.6f}")
         log(f"     Std: {embeddings.std():.6f}")
         log(f"     Min: {embeddings.min():.6f}")
@@ -181,7 +179,7 @@ def test_text_embedding_validation(data_dir, tmp_path):
             if is_match:
                 recovered_count += 1
 
-            log(f"")
+            log("")
             log(f"   Query [{i}]:")
             orig_trunc = (
                 original_text[:80] + "..." if len(original_text) > 80 else original_text

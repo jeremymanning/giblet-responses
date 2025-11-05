@@ -56,7 +56,7 @@ class VideoProcessor:
         target_width: int = 160,
         tr: float = 1.5,
         normalize: bool = True,
-        frame_skip: int = 2
+        frame_skip: int = 2,
     ):
         self.target_height = target_height
         self.target_width = target_width
@@ -66,9 +66,7 @@ class VideoProcessor:
         self.frame_features = target_height * target_width * 3  # RGB channels per frame
 
     def video_to_features(
-        self,
-        video_path: Union[str, Path],
-        max_trs: Optional[int] = None
+        self, video_path: Union[str, Path], max_trs: Optional[int] = None
     ) -> Tuple[np.ndarray, pd.DataFrame]:
         """
         Convert video file to feature matrix with temporal concatenation aligned to fMRI TRs.
@@ -145,19 +143,19 @@ class VideoProcessor:
 
             # Extract frames within this TR window (with skipping for memory optimization)
             tr_frames = []
-            for frame_idx in range(start_frame, end_frame, self.frame_skip):  # Skip frames
+            for frame_idx in range(
+                start_frame, end_frame, self.frame_skip
+            ):  # Skip frames
                 if frame_idx < 0:
                     # Before video start - create zero-padded frame
                     zero_frame = np.zeros(
-                        (self.target_height, self.target_width, 3),
-                        dtype=np.float32
+                        (self.target_height, self.target_width, 3), dtype=np.float32
                     )
                     tr_frames.append(zero_frame)
                 elif frame_idx >= total_frames:
                     # After video end - create zero-padded frame
                     zero_frame = np.zeros(
-                        (self.target_height, self.target_width, 3),
-                        dtype=np.float32
+                        (self.target_height, self.target_width, 3), dtype=np.float32
                     )
                     tr_frames.append(zero_frame)
                 else:
@@ -168,8 +166,7 @@ class VideoProcessor:
                     if not ret:
                         # Failed to read frame - use zero padding
                         zero_frame = np.zeros(
-                            (self.target_height, self.target_width, 3),
-                            dtype=np.float32
+                            (self.target_height, self.target_width, 3), dtype=np.float32
                         )
                         tr_frames.append(zero_frame)
                     else:
@@ -180,7 +177,7 @@ class VideoProcessor:
                         frame = cv2.resize(
                             frame,
                             (self.target_width, self.target_height),
-                            interpolation=cv2.INTER_AREA
+                            interpolation=cv2.INTER_AREA,
                         )
 
                         # Convert to float and normalize if requested
@@ -196,8 +193,7 @@ class VideoProcessor:
                 n_padding = frames_per_tr - len(tr_frames)
                 for _ in range(n_padding):
                     zero_frame = np.zeros(
-                        (self.target_height, self.target_width, 3),
-                        dtype=np.float32
+                        (self.target_height, self.target_width, 3), dtype=np.float32
                     )
                     tr_frames.append(zero_frame)
             elif len(tr_frames) > frames_per_tr:
@@ -211,13 +207,15 @@ class VideoProcessor:
             features[tr_idx] = tr_frames.reshape(-1)
 
             # Store metadata
-            tr_metadata.append({
-                'tr_index': tr_idx,
-                'start_time': start_time,
-                'end_time': end_time,
-                'n_frames_concatenated': len(tr_frames),
-                'frames_per_tr': frames_per_tr
-            })
+            tr_metadata.append(
+                {
+                    "tr_index": tr_idx,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "n_frames_concatenated": len(tr_frames),
+                    "frames_per_tr": frames_per_tr,
+                }
+            )
 
         cap.release()
 
@@ -230,7 +228,7 @@ class VideoProcessor:
         features: np.ndarray,
         output_path: Union[str, Path],
         fps: float = 25,
-        metadata: Optional[pd.DataFrame] = None
+        metadata: Optional[pd.DataFrame] = None,
     ) -> None:
         """
         Reconstruct video from concatenated temporal feature matrix.
@@ -266,16 +264,15 @@ class VideoProcessor:
 
         # Reshape features to concatenated frames
         # (n_trs, frames_per_tr, H, W, C)
-        frames = features.reshape(n_trs, frames_per_tr, self.target_height, self.target_width, 3)
+        frames = features.reshape(
+            n_trs, frames_per_tr, self.target_height, self.target_width, 3
+        )
         frames = np.clip(frames, 0, 255).astype(np.uint8)
 
         # Initialize video writer
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         out = cv2.VideoWriter(
-            str(output_path),
-            fourcc,
-            fps,
-            (self.target_width, self.target_height)
+            str(output_path), fourcc, fps, (self.target_width, self.target_height)
         )
 
         if not out.isOpened():
@@ -308,9 +305,7 @@ class VideoProcessor:
         """
         # Downsample
         frame = cv2.resize(
-            frame,
-            (self.target_width, self.target_height),
-            interpolation=cv2.INTER_AREA
+            frame, (self.target_width, self.target_height), interpolation=cv2.INTER_AREA
         )
 
         # Normalize if requested
@@ -373,10 +368,10 @@ class VideoProcessor:
         cap.release()
 
         return {
-            'fps': fps,
-            'width': width,
-            'height': height,
-            'total_frames': total_frames,
-            'duration': duration,
-            'n_trs': n_trs
+            "fps": fps,
+            "width": width,
+            "height": height,
+            "total_frames": total_frames,
+            "duration": duration,
+            "n_trs": n_trs,
         }

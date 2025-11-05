@@ -12,12 +12,12 @@ import sys
 
 sys.path.insert(0, ".")
 
-import traceback
-from pathlib import Path
+import traceback  # noqa: E402
+from pathlib import Path  # noqa: E402
 
-import numpy as np
+import numpy as np  # noqa: E402
 
-from giblet.data.audio import AudioProcessor
+from giblet.data.audio import AudioProcessor  # noqa: E402
 
 
 def verify_single_test(processor, max_trs, audio_path):
@@ -34,7 +34,7 @@ def verify_single_test(processor, max_trs, audio_path):
         # Verify shape
         expected_shape = (max_trs, 896)
         if features.shape != expected_shape:
-            print(f"✗ FAIL: Shape mismatch")
+            print("✗ FAIL: Shape mismatch")
             print(f"  Expected: {expected_shape}")
             print(f"  Got: {features.shape}")
             return False
@@ -43,8 +43,8 @@ def verify_single_test(processor, max_trs, audio_path):
 
         # Verify dtype
         if features.dtype != np.int64:
-            print(f"✗ FAIL: Dtype mismatch")
-            print(f"  Expected: int64")
+            print("✗ FAIL: Dtype mismatch")
+            print("  Expected: int64")
             print(f"  Got: {features.dtype}")
             return False
 
@@ -56,7 +56,7 @@ def verify_single_test(processor, max_trs, audio_path):
             unique_shapes.add(features[i].shape)
 
         if len(unique_shapes) != 1:
-            print(f"✗ FAIL: Inconsistent TR shapes")
+            print("✗ FAIL: Inconsistent TR shapes")
             print(f"  Unique shapes: {unique_shapes}")
             return False
 
@@ -68,12 +68,12 @@ def verify_single_test(processor, max_trs, audio_path):
         max_val = features.max()
 
         if min_val < 0:
-            print(f"✗ FAIL: Negative values found")
+            print("✗ FAIL: Negative values found")
             print(f"  Min value: {min_val}")
             return False
 
         if max_val > 1023:
-            print(f"✗ FAIL: Values exceed codebook range")
+            print("✗ FAIL: Values exceed codebook range")
             print(f"  Max value: {max_val}")
             return False
 
@@ -81,7 +81,7 @@ def verify_single_test(processor, max_trs, audio_path):
 
         # Verify metadata
         if len(metadata) != max_trs:
-            print(f"✗ FAIL: Metadata length mismatch")
+            print("✗ FAIL: Metadata length mismatch")
             print(f"  Expected: {max_trs}")
             print(f"  Got: {len(metadata)}")
             return False
@@ -107,12 +107,12 @@ def verify_single_test(processor, max_trs, audio_path):
 
         # Verify n_frames and n_codebooks are consistent
         if metadata["n_frames"].nunique() != 1:
-            print(f"✗ FAIL: Inconsistent n_frames in metadata")
+            print("✗ FAIL: Inconsistent n_frames in metadata")
             print(f"  Values: {metadata['n_frames'].unique()}")
             return False
 
         if metadata["n_codebooks"].nunique() != 1:
-            print(f"✗ FAIL: Inconsistent n_codebooks in metadata")
+            print("✗ FAIL: Inconsistent n_codebooks in metadata")
             print(f"  Values: {metadata['n_codebooks'].unique()}")
             return False
 
@@ -120,13 +120,13 @@ def verify_single_test(processor, max_trs, audio_path):
         n_codebooks = metadata["n_codebooks"].iloc[0]
         expected_flat_dim = n_frames * n_codebooks
 
-        print(f"✓ Metadata consistency:")
+        print("✓ Metadata consistency:")
         print(f"  n_frames: {n_frames}")
         print(f"  n_codebooks: {n_codebooks}")
         print(f"  Expected flat dim: {expected_flat_dim}")
 
         if features.shape[1] != expected_flat_dim:
-            print(f"✗ FAIL: Flat dimension mismatch")
+            print("✗ FAIL: Flat dimension mismatch")
             print(f"  Expected: {expected_flat_dim}")
             print(f"  Got: {features.shape[1]}")
             return False
@@ -172,7 +172,7 @@ def main():
         )
         print("\n✓ AudioProcessor initialized")
     except Exception as e:
-        print(f"\n✗ ERROR: Failed to initialize AudioProcessor")
+        print("\n✗ ERROR: Failed to initialize AudioProcessor")
         print(f"Error: {e}")
         traceback.print_exc()
         return False

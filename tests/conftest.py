@@ -7,7 +7,6 @@ ensure consistent test setup across all test modules.
 
 from pathlib import Path
 
-import numpy as np
 import pytest
 import torch
 
