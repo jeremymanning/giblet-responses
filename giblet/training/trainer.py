@@ -51,21 +51,18 @@ try:
 except ImportError:
     HAS_BITSANDBYTES = False
 
-import json
-import os
-import time
-from dataclasses import asdict, dataclass
-from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+import os  # noqa: E402
+from dataclasses import asdict, dataclass  # noqa: E402
+from pathlib import Path  # noqa: E402
+from typing import Dict, Optional  # noqa: E402
 
-import numpy as np
-from tqdm import tqdm
+from tqdm import tqdm  # noqa: E402
 
-from ..models.autoencoder import MultimodalAutoencoder
+from ..models.autoencoder import MultimodalAutoencoder  # noqa: E402
 
 # Keep backwards compatibility
 SherlockAutoencoder = MultimodalAutoencoder
-from .losses import (
+from .losses import (  # noqa: E402
     CombinedAutoEncoderLoss,
     compute_correlation_metric,
     compute_r2_score,
@@ -847,10 +844,16 @@ def setup_distributed(rank: int, world_size: int, backend: str = "nccl"):
     backend : str, default='nccl'
         Distributed backend ('nccl' or 'gloo')
     """
+    from datetime import timedelta
+
     os.environ["MASTER_ADDR"] = os.environ.get("MASTER_ADDR", "localhost")
     os.environ["MASTER_PORT"] = os.environ.get("MASTER_PORT", "12355")
 
-    dist.init_process_group(backend, rank=rank, world_size=world_size)
+    # Set 60-minute timeout to handle large cache file loading
+    # Default 10-minute timeout is insufficient for loading 58GB cache
+    dist.init_process_group(
+        backend, rank=rank, world_size=world_size, timeout=timedelta(minutes=60)
+    )
 
 
 def cleanup_distributed():

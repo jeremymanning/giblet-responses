@@ -17,8 +17,7 @@ from torch.utils.data import Dataset
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from typing import Optional, Union, List, Dict, Tuple
-from tqdm import tqdm
+from typing import Optional, Union, List, Dict
 import pickle
 
 from .video import VideoProcessor
@@ -29,6 +28,7 @@ from ..alignment.sync import align_all_modalities
 # Try to import text processor, use dummy features if unavailable
 try:
     from .text import TextProcessor
+
     TEXT_PROCESSOR_AVAILABLE = True
 except Exception as e:
     print(f"Warning: TextProcessor not available ({e}). Will use dummy text features.")
@@ -114,10 +114,10 @@ class MultimodalDataset(Dataset):
     def __init__(
         self,
         data_dir: Union[str, Path],
-        subjects: Union[str, int, List[int]] = 'all',
+        subjects: Union[str, int, List[int]] = "all",
         split: Optional[str] = None,
         apply_hrf: bool = True,
-        mode: str = 'per_subject',
+        mode: str = "per_subject",
         cache_dir: Optional[Union[str, Path]] = None,
         preprocess: bool = True,
         tr: float = 1.5,
@@ -125,7 +125,7 @@ class MultimodalDataset(Dataset):
         use_encodec: bool = True,
         encodec_bandwidth: float = 3.0,
         encodec_sample_rate: int = 12000,
-        frame_skip: int = 2  # Issue #30: Memory optimization via frame skipping
+        frame_skip: int = 2,  # Issue #30: Memory optimization via frame skipping
     ):
         self.data_dir = Path(data_dir)
         self.split = split
@@ -140,13 +140,13 @@ class MultimodalDataset(Dataset):
 
         # Set up cache directory
         if cache_dir is None:
-            self.cache_dir = self.data_dir / 'cache'
+            self.cache_dir = self.data_dir / "cache"
         else:
             self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Parse subjects
-        if subjects == 'all':
+        if subjects == "all":
             self.subject_ids = list(range(1, 18))  # 1-17
         elif isinstance(subjects, int):
             self.subject_ids = [subjects]
@@ -163,7 +163,7 @@ class MultimodalDataset(Dataset):
             tr=tr,
             use_encodec=use_encodec,
             encodec_bandwidth=encodec_bandwidth,
-            sample_rate=encodec_sample_rate
+            sample_rate=encodec_sample_rate,
         )
         if TEXT_PROCESSOR_AVAILABLE:
             self.text_processor = TextProcessor(tr=tr)
@@ -191,7 +191,7 @@ class MultimodalDataset(Dataset):
                 self.target_dtype = torch.bfloat16
             else:
                 self.target_dtype = torch.float32
-        except:
+        except Exception:
             # If CUDA check fails (e.g., in worker process), default to float32
             self.target_dtype = torch.float32
 
@@ -208,9 +208,12 @@ class MultimodalDataset(Dataset):
     def _get_cache_path(self) -> Path:
         """Get path for cached features."""
         # Create unique cache filename based on parameters
-        subjects_str = 'all' if len(self.subject_ids) == 17 else \
-                       f"s{'_'.join(map(str, self.subject_ids))}"
-        hrf_str = 'hrf' if self.apply_hrf else 'nohrf'
+        subjects_str = (
+            "all"
+            if len(self.subject_ids) == 17
+            else f"s{'_'.join(map(str, self.subject_ids))}"
+        )
+        hrf_str = "hrf" if self.apply_hrf else "nohrf"
         mode_str = self.mode
 
         # Include EnCodec parameters in cache name if using EnCodec
@@ -227,7 +230,10 @@ class MultimodalDataset(Dataset):
 
     def _get_encodec_cache_path(self, video_path: Path) -> Path:
         """Get path for cached EnCodec features."""
-        encodec_cache_dir = self.cache_dir / f"encodec_{self.encodec_sample_rate//1000}khz_{self.encodec_bandwidth}kbps"
+        encodec_cache_dir = (
+            self.cache_dir
+            / f"encodec_{self.encodec_sample_rate//1000}khz_{self.encodec_bandwidth}kbps"
+        )
         encodec_cache_dir.mkdir(parents=True, exist_ok=True)
         cache_name = f"{video_path.stem}_encodec.npz"
         return encodec_cache_dir / cache_name
@@ -249,7 +255,7 @@ class MultimodalDataset(Dataset):
 
             if not cache_exists and rank == 0:
                 # Only rank 0 preprocesses and creates cache
-                print(f"[Rank 0] Preprocessing data from raw files...")
+                print("[Rank 0] Preprocessing data from raw files...")
                 self._preprocess_data()
                 self._save_to_cache(cache_path)
                 print(f"[Rank 0] Cache saved to {cache_path}")
@@ -257,12 +263,24 @@ class MultimodalDataset(Dataset):
             # Barrier: all ranks wait for rank 0 to finish caching
             dist.barrier()
 
-            # Now all ranks can safely load from complete cache
+            # PERFORMANCE FIX: Sequential cache loading to prevent memory spikes
+            # Loading 58GB cache on all 8 ranks simultaneously causes OOM/timeouts
+            # Instead, load one rank at a time with barriers between each
+            world_size = dist.get_world_size()
+
             if cache_path.exists():
-                print(f"[Rank {rank}] Loading cached features from {cache_path}")
-                self._load_from_cache(cache_path)
+                # Each rank loads sequentially to avoid memory pressure
+                for loading_rank in range(world_size):
+                    if rank == loading_rank:
+                        print(f"[Rank {rank}] Loading cached features from {cache_path}")
+                        self._load_from_cache(cache_path)
+                        print(f"[Rank {rank}] Cache loaded successfully")
+                    # Wait for this rank to finish loading before next rank starts
+                    dist.barrier()
             else:
-                raise FileNotFoundError(f"Cache file not created by rank 0: {cache_path}")
+                raise FileNotFoundError(
+                    f"Cache file not created by rank 0: {cache_path}"
+                )
         else:
             # Non-distributed: original logic
             if cache_path.exists():
@@ -275,15 +293,15 @@ class MultimodalDataset(Dataset):
 
     def _preprocess_data(self):
         """Preprocess all modalities and align them."""
-        print(f"\nPreprocessing multimodal dataset:")
+        print("\nPreprocessing multimodal dataset:")
         print(f"  Subjects: {self.subject_ids}")
         print(f"  Mode: {self.mode}")
         print(f"  Apply HRF: {self.apply_hrf}")
 
         # Paths to data files
-        video_path = self.data_dir / 'stimuli_Sherlock.m4v'
-        annotations_path = self.data_dir / 'annotations.xlsx'
-        fmri_dir = self.data_dir / 'sherlock_nii'
+        video_path = self.data_dir / "stimuli_Sherlock.m4v"
+        annotations_path = self.data_dir / "annotations.xlsx"
+        fmri_dir = self.data_dir / "sherlock_nii"
 
         # Check files exist
         if not video_path.exists():
@@ -309,36 +327,42 @@ class MultimodalDataset(Dataset):
             if encodec_cache_path.exists():
                 print(f"  Loading cached EnCodec features from {encodec_cache_path}")
                 cached_data = np.load(encodec_cache_path)
-                audio_features = cached_data['features']
+                audio_features = cached_data["features"]
                 # Recreate metadata DataFrame
-                audio_meta = pd.DataFrame({
-                    'tr_index': cached_data['tr_indices'],
-                    'start_time': cached_data['start_times'],
-                    'end_time': cached_data['end_times'],
-                    'n_frames': cached_data['n_frames'],
-                    'encoding_mode': ['encodec'] * len(cached_data['tr_indices'])
-                })
+                audio_meta = pd.DataFrame(
+                    {
+                        "tr_index": cached_data["tr_indices"],
+                        "start_time": cached_data["start_times"],
+                        "end_time": cached_data["end_times"],
+                        "n_frames": cached_data["n_frames"],
+                        "encoding_mode": ["encodec"] * len(cached_data["tr_indices"]),
+                    }
+                )
                 # Apply max_trs if specified
                 if self.max_trs is not None:
-                    audio_features = audio_features[:self.max_trs]
-                    audio_meta = audio_meta.iloc[:self.max_trs]
+                    audio_features = audio_features[: self.max_trs]
+                    audio_meta = audio_meta.iloc[: self.max_trs]
                 print(f"  Audio features (cached): {audio_features.shape}")
             else:
-                print(f"  Computing EnCodec features (will cache to {encodec_cache_path})...")
+                print(
+                    f"  Computing EnCodec features (will cache to {encodec_cache_path})..."
+                )
                 audio_features, audio_meta = self.audio_processor.audio_to_features(
                     video_path, max_trs=self.max_trs, from_video=True
                 )
                 # Save to cache
-                print(f"  Caching EnCodec features...")
+                print("  Caching EnCodec features...")
                 np.savez_compressed(
                     encodec_cache_path,
                     features=audio_features,
-                    tr_indices=audio_meta['tr_index'].values,
-                    start_times=audio_meta['start_time'].values,
-                    end_times=audio_meta['end_time'].values,
-                    n_frames=audio_meta['n_frames'].values
+                    tr_indices=audio_meta["tr_index"].values,
+                    start_times=audio_meta["start_time"].values,
+                    end_times=audio_meta["end_time"].values,
+                    n_frames=audio_meta["n_frames"].values,
                 )
-                print(f"  Cached {encodec_cache_path.stat().st_size / 1024 / 1024:.1f} MB")
+                print(
+                    f"  Cached {encodec_cache_path.stat().st_size / 1024 / 1024:.1f} MB"
+                )
                 print(f"  Audio features: {audio_features.shape}")
         else:
             # Mel spectrogram mode (no caching)
@@ -362,7 +386,9 @@ class MultimodalDataset(Dataset):
             print("  Creating dummy text features (TextProcessor unavailable)...")
             text_features = np.random.randn(n_trs_target, 1024).astype(np.float32)
             # Normalize like real embeddings
-            text_features = text_features / np.linalg.norm(text_features, axis=1, keepdims=True)
+            text_features = text_features / np.linalg.norm(
+                text_features, axis=1, keepdims=True
+            )
             print(f"  Text features (dummy): {text_features.shape}")
 
         # 4. Process fMRI for each subject
@@ -393,7 +419,7 @@ class MultimodalDataset(Dataset):
         # 5. Align all modalities
         print("\n5. Aligning all modalities to common TR grid...")
 
-        if self.mode == 'per_subject':
+        if self.mode == "per_subject":
             # Align each subject separately
             aligned_data = []
             for sub_idx in range(self.n_subjects):
@@ -403,21 +429,21 @@ class MultimodalDataset(Dataset):
                     text_features=text_features,
                     fmri_features=fmri_features_stacked[sub_idx],
                     apply_hrf_conv=self.apply_hrf,
-                    tr=self.tr
+                    tr=self.tr,
                 )
                 aligned_data.append(result)
 
             # Stack aligned features
             # Shape: (n_subjects, n_trs, n_features)
-            self.n_trs = aligned_data[0]['n_trs']
-            self.video_features = np.stack([d['video'] for d in aligned_data], axis=0)
-            self.audio_features = np.stack([d['audio'] for d in aligned_data], axis=0)
-            self.text_features = np.stack([d['text'] for d in aligned_data], axis=0)
-            self.fmri_features = np.stack([d['fmri'] for d in aligned_data], axis=0)
+            self.n_trs = aligned_data[0]["n_trs"]
+            self.video_features = np.stack([d["video"] for d in aligned_data], axis=0)
+            self.audio_features = np.stack([d["audio"] for d in aligned_data], axis=0)
+            self.text_features = np.stack([d["text"] for d in aligned_data], axis=0)
+            self.fmri_features = np.stack([d["fmri"] for d in aligned_data], axis=0)
 
             self.n_samples = self.n_subjects * self.n_trs
 
-        elif self.mode == 'cross_subject':
+        elif self.mode == "cross_subject":
             # Average fMRI across subjects first
             fmri_avg = np.mean(fmri_features_stacked, axis=0)
 
@@ -428,16 +454,16 @@ class MultimodalDataset(Dataset):
                 text_features=text_features,
                 fmri_features=fmri_avg,
                 apply_hrf_conv=self.apply_hrf,
-                tr=self.tr
+                tr=self.tr,
             )
 
             # Store aligned features (no subject dimension)
             # Shape: (n_trs, n_features)
-            self.n_trs = result['n_trs']
-            self.video_features = result['video'][np.newaxis, ...]
-            self.audio_features = result['audio'][np.newaxis, ...]
-            self.text_features = result['text'][np.newaxis, ...]
-            self.fmri_features = result['fmri'][np.newaxis, ...]
+            self.n_trs = result["n_trs"]
+            self.video_features = result["video"][np.newaxis, ...]
+            self.audio_features = result["audio"][np.newaxis, ...]
+            self.text_features = result["text"][np.newaxis, ...]
+            self.fmri_features = result["fmri"][np.newaxis, ...]
 
             self.n_samples = self.n_trs
 
@@ -448,34 +474,38 @@ class MultimodalDataset(Dataset):
         # Note: audio features are now 3D (n_codebooks/n_mels, frames_per_tr)
         if self.audio_features.ndim == 4:
             # New format with 4D: (n_subjects/1, n_trs, n_codebooks/n_mels, frames_per_tr)
-            audio_dim = self.audio_features.shape[-2:]  # (n_codebooks/n_mels, frames_per_tr)
+            audio_dim = self.audio_features.shape[
+                -2:
+            ]  # (n_codebooks/n_mels, frames_per_tr)
         elif self.audio_features.ndim == 3:
             # Legacy 3D format for individual subject: (n_trs, n_codebooks/n_mels, frames_per_tr)
-            audio_dim = self.audio_features.shape[-2:]  # (n_codebooks/n_mels, frames_per_tr)
+            audio_dim = self.audio_features.shape[
+                -2:
+            ]  # (n_codebooks/n_mels, frames_per_tr)
         else:
             # Old 2D format: (n_subjects/1, n_trs, n_features)
             audio_dim = self.audio_features.shape[-1]
 
         self.feature_dims = {
-            'video': self.video_features.shape[-1],
-            'audio': audio_dim,
-            'text': self.text_features.shape[-1],
-            'fmri': self.fmri_features.shape[-1]
+            "video": self.video_features.shape[-1],
+            "audio": audio_dim,
+            "text": self.text_features.shape[-1],
+            "fmri": self.fmri_features.shape[-1],
         }
 
         # Create metadata
         self.metadata = {
-            'subject_ids': self.subject_ids,
-            'n_subjects': self.n_subjects,
-            'n_trs': self.n_trs,
-            'n_samples': self.n_samples,
-            'feature_dims': self.feature_dims,
-            'tr': self.tr,
-            'apply_hrf': self.apply_hrf,
-            'mode': self.mode
+            "subject_ids": self.subject_ids,
+            "n_subjects": self.n_subjects,
+            "n_trs": self.n_trs,
+            "n_samples": self.n_samples,
+            "feature_dims": self.feature_dims,
+            "tr": self.tr,
+            "apply_hrf": self.apply_hrf,
+            "mode": self.mode,
         }
 
-        print(f"\nPreprocessing complete:")
+        print("\nPreprocessing complete:")
         print(f"  N subjects: {self.n_subjects}")
         print(f"  N TRs: {self.n_trs}")
         print(f"  N samples: {self.n_samples}")
@@ -486,46 +516,46 @@ class MultimodalDataset(Dataset):
         print(f"\nSaving to cache: {cache_path}")
 
         cache_data = {
-            'video_features': self.video_features,
-            'audio_features': self.audio_features,
-            'text_features': self.text_features,
-            'fmri_features': self.fmri_features,
-            'metadata': self.metadata
+            "video_features": self.video_features,
+            "audio_features": self.audio_features,
+            "text_features": self.text_features,
+            "fmri_features": self.fmri_features,
+            "metadata": self.metadata,
         }
 
-        with open(cache_path, 'wb') as f:
+        with open(cache_path, "wb") as f:
             pickle.dump(cache_data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         print(f"  Cached {cache_path.stat().st_size / 1024 / 1024:.1f} MB")
 
     def _load_from_cache(self, cache_path: Path):
         """Load processed features from cache."""
-        with open(cache_path, 'rb') as f:
+        with open(cache_path, "rb") as f:
             cache_data = pickle.load(f)
 
-        self.video_features = cache_data['video_features']
-        self.audio_features = cache_data['audio_features']
-        self.text_features = cache_data['text_features']
-        self.fmri_features = cache_data['fmri_features']
-        self.metadata = cache_data['metadata']
+        self.video_features = cache_data["video_features"]
+        self.audio_features = cache_data["audio_features"]
+        self.text_features = cache_data["text_features"]
+        self.fmri_features = cache_data["fmri_features"]
+        self.metadata = cache_data["metadata"]
 
-        self.n_subjects = self.metadata['n_subjects']
-        self.n_trs = self.metadata['n_trs']
-        self.n_samples = self.metadata['n_samples']
-        self.feature_dims = self.metadata['feature_dims']
+        self.n_subjects = self.metadata["n_subjects"]
+        self.n_trs = self.metadata["n_trs"]
+        self.n_samples = self.metadata["n_samples"]
+        self.feature_dims = self.metadata["feature_dims"]
 
         print(f"  Loaded {self.n_samples} samples")
         print(f"  Feature dims: {self.feature_dims}")
 
     def _apply_split(self):
         """Apply train/validation split to the data."""
-        if self.split not in ['train', 'val']:
+        if self.split not in ["train", "val"]:
             raise ValueError(f"Invalid split: {self.split}. Use 'train' or 'val'.")
 
         # Use 80/20 split on TRs
         split_idx = int(0.8 * self.n_trs)
 
-        if self.split == 'train':
+        if self.split == "train":
             tr_start, tr_end = 0, split_idx
         else:  # val
             tr_start, tr_end = split_idx, self.n_trs
@@ -538,7 +568,7 @@ class MultimodalDataset(Dataset):
 
         # Update counts
         self.n_trs = tr_end - tr_start
-        if self.mode == 'per_subject':
+        if self.mode == "per_subject":
             self.n_samples = self.n_subjects * self.n_trs
         else:
             self.n_samples = self.n_trs
@@ -583,7 +613,7 @@ class MultimodalDataset(Dataset):
         # This avoids CUDA re-initialization in DataLoader worker processes
         target_dtype = self.target_dtype
 
-        if self.mode == 'per_subject':
+        if self.mode == "per_subject":
             # Compute subject and TR indices
             subject_idx = idx // self.n_trs
             tr_idx = idx % self.n_trs
@@ -598,12 +628,18 @@ class MultimodalDataset(Dataset):
                 audio_tensor = torch.from_numpy(audio_feat).to(target_dtype)
 
             sample = {
-                'video': torch.from_numpy(self.video_features[subject_idx, tr_idx]).to(target_dtype),
-                'audio': audio_tensor,
-                'text': torch.from_numpy(self.text_features[subject_idx, tr_idx]).to(target_dtype),
-                'fmri': torch.from_numpy(self.fmri_features[subject_idx, tr_idx]).to(target_dtype),
-                'subject_id': self.subject_ids[subject_idx],
-                'tr_index': tr_idx
+                "video": torch.from_numpy(self.video_features[subject_idx, tr_idx]).to(
+                    target_dtype
+                ),
+                "audio": audio_tensor,
+                "text": torch.from_numpy(self.text_features[subject_idx, tr_idx]).to(
+                    target_dtype
+                ),
+                "fmri": torch.from_numpy(self.fmri_features[subject_idx, tr_idx]).to(
+                    target_dtype
+                ),
+                "subject_id": self.subject_ids[subject_idx],
+                "tr_index": tr_idx,
             }
 
         else:  # cross_subject
@@ -619,11 +655,17 @@ class MultimodalDataset(Dataset):
                 audio_tensor = torch.from_numpy(audio_feat).to(target_dtype)
 
             sample = {
-                'video': torch.from_numpy(self.video_features[0, tr_idx]).to(target_dtype),
-                'audio': audio_tensor,
-                'text': torch.from_numpy(self.text_features[0, tr_idx]).to(target_dtype),
-                'fmri': torch.from_numpy(self.fmri_features[0, tr_idx]).to(target_dtype),
-                'tr_index': tr_idx
+                "video": torch.from_numpy(self.video_features[0, tr_idx]).to(
+                    target_dtype
+                ),
+                "audio": audio_tensor,
+                "text": torch.from_numpy(self.text_features[0, tr_idx]).to(
+                    target_dtype
+                ),
+                "fmri": torch.from_numpy(self.fmri_features[0, tr_idx]).to(
+                    target_dtype
+                ),
+                "tr_index": tr_idx,
             }
 
         return sample
@@ -646,15 +688,15 @@ class MultimodalDataset(Dataset):
 
         # Stack into batch
         batch = {
-            'video': torch.stack([s['video'] for s in samples]),
-            'audio': torch.stack([s['audio'] for s in samples]),
-            'text': torch.stack([s['text'] for s in samples]),
-            'fmri': torch.stack([s['fmri'] for s in samples]),
-            'tr_index': torch.tensor([s['tr_index'] for s in samples])
+            "video": torch.stack([s["video"] for s in samples]),
+            "audio": torch.stack([s["audio"] for s in samples]),
+            "text": torch.stack([s["text"] for s in samples]),
+            "fmri": torch.stack([s["fmri"] for s in samples]),
+            "tr_index": torch.tensor([s["tr_index"] for s in samples]),
         }
 
-        if self.mode == 'per_subject':
-            batch['subject_id'] = torch.tensor([s['subject_id'] for s in samples])
+        if self.mode == "per_subject":
+            batch["subject_id"] = torch.tensor([s["subject_id"] for s in samples])
 
         return batch
 
@@ -672,7 +714,7 @@ class MultimodalDataset(Dataset):
         data : dict
             Dictionary with full timeseries for the subject
         """
-        if self.mode != 'per_subject':
+        if self.mode != "per_subject":
             raise ValueError("get_subject_data only available in per_subject mode")
 
         if subject_id not in self.subject_ids:
@@ -681,12 +723,12 @@ class MultimodalDataset(Dataset):
         subject_idx = self.subject_ids.index(subject_id)
 
         return {
-            'video': self.video_features[subject_idx],
-            'audio': self.audio_features[subject_idx],
-            'text': self.text_features[subject_idx],
-            'fmri': self.fmri_features[subject_idx],
-            'subject_id': subject_id,
-            'n_trs': self.n_trs
+            "video": self.video_features[subject_idx],
+            "audio": self.audio_features[subject_idx],
+            "text": self.text_features[subject_idx],
+            "fmri": self.fmri_features[subject_idx],
+            "subject_id": subject_id,
+            "n_trs": self.n_trs,
         }
 
     def get_feature_stats(self) -> Dict[str, Dict[str, float]]:
@@ -700,15 +742,15 @@ class MultimodalDataset(Dataset):
         """
         stats = {}
 
-        for modality in ['video', 'audio', 'text', 'fmri']:
-            features = getattr(self, f'{modality}_features')
+        for modality in ["video", "audio", "text", "fmri"]:
+            features = getattr(self, f"{modality}_features")
 
             stats[modality] = {
-                'mean': float(np.mean(features)),
-                'std': float(np.std(features)),
-                'min': float(np.min(features)),
-                'max': float(np.max(features)),
-                'shape': features.shape
+                "mean": float(np.mean(features)),
+                "std": float(np.std(features)),
+                "min": float(np.min(features)),
+                "max": float(np.max(features)),
+                "shape": features.shape,
             }
 
         return stats
