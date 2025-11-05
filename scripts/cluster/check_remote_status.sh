@@ -311,28 +311,26 @@ fi
 # Check disk usage
 print_subheader "Disk Usage"
 
-DISK_OUTPUT=$(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "${USERNAME}@${SERVER}" \
-    "cd ${BASE_PATH} && du -sh data/ checkpoints/ logs/ test_checkpoints/ test_logs/ . 2>/dev/null | tail -n 1" 2>&1)
+# Get all directory sizes in a single SSH session to avoid connection issues
+DISK_SIZES=$(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "${USERNAME}@${SERVER}" \
+    "cd ${BASE_PATH} && du -sh data/ checkpoints/ logs/ test_checkpoints/ test_logs/ . 2>/dev/null" 2>&1 | grep -v "Warning:")
 
-if [ $? -eq 0 ]; then
-    # Get individual directory sizes
-    DATA_SIZE=$(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "${USERNAME}@${SERVER}" \
-        "cd ${BASE_PATH} && du -sh data/ 2>/dev/null | cut -f1" 2>&1 || echo "0B")
+if [ -n "$DISK_SIZES" ]; then
+    # Parse the output (format: "SIZE<tab>path/")
+    DATA_SIZE=$(echo "$DISK_SIZES" | awk '/\tdata\// {print $1}')
+    CHECKPOINTS_SIZE=$(echo "$DISK_SIZES" | awk '/\tcheckpoints\// {print $1}')
+    LOGS_SIZE=$(echo "$DISK_SIZES" | awk '/\tlogs\// {print $1}')
+    TEST_CHECKPOINTS_SIZE=$(echo "$DISK_SIZES" | awk '/\ttest_checkpoints\// {print $1}')
+    TEST_LOGS_SIZE=$(echo "$DISK_SIZES" | awk '/\ttest_logs\// {print $1}')
+    TOTAL_SIZE=$(echo "$DISK_SIZES" | awk '/\t\.$/ {print $1}')
 
-    CHECKPOINTS_SIZE=$(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "${USERNAME}@${SERVER}" \
-        "cd ${BASE_PATH} && du -sh checkpoints/ 2>/dev/null | cut -f1" 2>&1 || echo "0B")
-
-    LOGS_SIZE=$(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "${USERNAME}@${SERVER}" \
-        "cd ${BASE_PATH} && du -sh logs/ 2>/dev/null | cut -f1" 2>&1 || echo "0B")
-
-    TEST_CHECKPOINTS_SIZE=$(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "${USERNAME}@${SERVER}" \
-        "cd ${BASE_PATH} && du -sh test_checkpoints/ 2>/dev/null | cut -f1" 2>&1 || echo "0B")
-
-    TEST_LOGS_SIZE=$(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "${USERNAME}@${SERVER}" \
-        "cd ${BASE_PATH} && du -sh test_logs/ 2>/dev/null | cut -f1" 2>&1 || echo "0B")
-
-    TOTAL_SIZE=$(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "${USERNAME}@${SERVER}" \
-        "cd ${BASE_PATH} && du -sh . 2>/dev/null | cut -f1" 2>&1 || echo "0B")
+    # Use fallback values if any are empty
+    [ -z "$DATA_SIZE" ] && DATA_SIZE="0B"
+    [ -z "$CHECKPOINTS_SIZE" ] && CHECKPOINTS_SIZE="0B"
+    [ -z "$LOGS_SIZE" ] && LOGS_SIZE="0B"
+    [ -z "$TEST_CHECKPOINTS_SIZE" ] && TEST_CHECKPOINTS_SIZE="0B"
+    [ -z "$TEST_LOGS_SIZE" ] && TEST_LOGS_SIZE="0B"
+    [ -z "$TOTAL_SIZE" ] && TOTAL_SIZE="0B"
 
     echo "data/: $DATA_SIZE"
     echo "checkpoints/: $CHECKPOINTS_SIZE"
