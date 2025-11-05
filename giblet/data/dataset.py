@@ -126,6 +126,7 @@ class MultimodalDataset(Dataset):
         encodec_bandwidth: float = 3.0,
         encodec_sample_rate: int = 12000,
         frame_skip: int = 2,  # Issue #30: Memory optimization via frame skipping
+        shared_data: Optional[Dict] = None,  # For sharing cache between train/val
     ):
         self.data_dir = Path(data_dir)
         self.split = split
@@ -137,6 +138,7 @@ class MultimodalDataset(Dataset):
         self.encodec_bandwidth = encodec_bandwidth
         self.encodec_sample_rate = encodec_sample_rate
         self.frame_skip = frame_skip  # Issue #30
+        self.shared_data = shared_data  # Shared data for memory efficiency
 
         # Set up cache directory
         if cache_dir is None:
@@ -196,7 +198,10 @@ class MultimodalDataset(Dataset):
             self.target_dtype = torch.float32
 
         # Load or preprocess data
-        if preprocess:
+        if self.shared_data is not None:
+            # Use shared data (for memory efficiency with train/val splits)
+            self._load_from_shared_data(self.shared_data)
+        elif preprocess:
             self._load_or_preprocess_data()
         else:
             raise NotImplementedError("On-the-fly loading not yet implemented")
@@ -546,6 +551,41 @@ class MultimodalDataset(Dataset):
 
         print(f"  Loaded {self.n_samples} samples")
         print(f"  Feature dims: {self.feature_dims}")
+
+    def _load_from_shared_data(self, shared_data: Dict):
+        """Load features from shared data dictionary (avoids duplicate cache loading)."""
+        # Directly reference shared arrays (no copy)
+        self.video_features = shared_data["video_features"]
+        self.audio_features = shared_data["audio_features"]
+        self.text_features = shared_data["text_features"]
+        self.fmri_features = shared_data["fmri_features"]
+        self.metadata = shared_data["metadata"].copy()  # Copy metadata to allow per-split modifications
+
+        self.n_subjects = self.metadata["n_subjects"]
+        self.n_trs = self.metadata["n_trs"]
+        self.n_samples = self.metadata["n_samples"]
+        self.feature_dims = self.metadata["feature_dims"]
+
+        print(f"  Using shared data: {self.n_samples} samples")
+        print(f"  Feature dims: {self.feature_dims}")
+
+    def get_data_dict(self) -> Dict:
+        """
+        Export data as dictionary for sharing between train/val datasets.
+
+        Returns
+        -------
+        dict
+            Dictionary containing feature arrays and metadata.
+            Arrays are references (not copies) for memory efficiency.
+        """
+        return {
+            "video_features": self.video_features,
+            "audio_features": self.audio_features,
+            "text_features": self.text_features,
+            "fmri_features": self.fmri_features,
+            "metadata": self.metadata,
+        }
 
     def _apply_split(self):
         """Apply train/validation split to the data."""

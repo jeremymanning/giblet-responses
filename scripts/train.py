@@ -23,16 +23,15 @@ import sys
 from pathlib import Path
 
 import torch
-import torch.distributed as dist
 import yaml
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from giblet.data.dataset import MultimodalDataset
-from giblet.models.autoencoder import create_autoencoder
-from giblet.training.trainer import (
+from giblet.data.dataset import MultimodalDataset  # noqa: E402
+from giblet.models.autoencoder import create_autoencoder  # noqa: E402
+from giblet.training.trainer import (  # noqa: E402
     Trainer,
     TrainingConfig,
     cleanup_distributed,
@@ -80,7 +79,7 @@ def create_training_config(config: dict) -> TrainingConfig:
     return TrainingConfig(**training_params)
 
 
-def main():
+def main():  # noqa: C901
     parser = argparse.ArgumentParser(description="Train Sherlock autoencoder")
     parser.add_argument(
         "--config",
@@ -148,14 +147,31 @@ def main():
     if is_main_process:
         print("Loading datasets...")
 
+    # Load base dataset without split (loads cache once)
+    base_dataset = MultimodalDataset(
+        data_dir=data_dir,
+        subjects=data_config.get("subjects", "all"),
+        split=None,  # No split yet - load full dataset
+        apply_hrf=data_config.get("apply_hrf", True),
+        mode=data_config.get("mode", "per_subject"),
+        preprocess=True,
+        frame_skip=data_config.get("frame_skip", 2),  # Issue #30: Memory optimization
+    )
+
+    # Get shared data dictionary (references, not copies)
+    shared_data = base_dataset.get_data_dict()
+
+    # Create train and val datasets sharing the same underlying data
+    # This avoids loading the 58GB cache twice (memory optimization)
     train_dataset = MultimodalDataset(
         data_dir=data_dir,
         subjects=data_config.get("subjects", "all"),
         split="train",
         apply_hrf=data_config.get("apply_hrf", True),
         mode=data_config.get("mode", "per_subject"),
-        preprocess=True,
-        frame_skip=data_config.get("frame_skip", 2),  # Issue #30: Memory optimization
+        preprocess=False,  # Don't reload - use shared_data
+        frame_skip=data_config.get("frame_skip", 2),
+        shared_data=shared_data,  # Share data from base_dataset
     )
 
     val_dataset = MultimodalDataset(
@@ -164,8 +180,9 @@ def main():
         split="val",
         apply_hrf=data_config.get("apply_hrf", True),
         mode=data_config.get("mode", "per_subject"),
-        preprocess=True,
-        frame_skip=data_config.get("frame_skip", 2),  # Issue #30: Memory optimization
+        preprocess=False,  # Don't reload - use shared_data
+        frame_skip=data_config.get("frame_skip", 2),
+        shared_data=shared_data,  # Share data from base_dataset
     )
 
     if is_main_process:
