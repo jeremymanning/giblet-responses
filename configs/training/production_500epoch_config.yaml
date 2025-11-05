@@ -38,7 +38,9 @@ early_stopping_patience: 50  # More patience for production
 early_stopping_delta: 1.0e-4
 
 # Resume training from 4-epoch checkpoint
-resume_from: 'test_3more_checkpoints/checkpoint_epoch_3.pt'
+# TEMPORARILY DISABLED: Checkpoint loading (13GB × 8 ranks = 104GB) causes OOM
+# TODO: Implement sequential checkpoint loading to avoid memory spike
+# resume_from: 'test_3more_checkpoints/checkpoint_epoch_3.pt'
 
 # Data settings - ALL SUBJECTS for production
 data:
