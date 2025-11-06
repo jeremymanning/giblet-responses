@@ -263,6 +263,15 @@ install_dependencies() {
 
     cd "$PROJECT_ROOT"
 
+    # First, install ffmpeg from conda-forge (needed for audio processing)
+    print_info "Installing ffmpeg for audio processing..."
+    if conda install -y -c conda-forge ffmpeg; then
+        print_success "ffmpeg installed successfully"
+    else
+        print_warning "Failed to install ffmpeg - audio processing may not work"
+        print_warning "You can install it manually: conda install -c conda-forge ffmpeg"
+    fi
+
     # Install in stages for better error reporting
     if pip install -r "$REQUIREMENTS_FILE" --no-cache-dir; then
         print_success "All dependencies installed successfully"
