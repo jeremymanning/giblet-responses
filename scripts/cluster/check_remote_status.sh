@@ -353,14 +353,16 @@ if [ -n "$LATEST_LOG" ]; then
     if [ $? -eq 0 ] && [ -n "$LOG_CONTENT" ]; then
         # Parse log to extract epoch info
         # Format: Epoch N/TOTAL | Train Loss: X.XXXX | Val Loss: X.XXXX | ...
+        # Note: tqdm progress bars use \r, so epoch summaries might not start at line beginning
+        # Match lines that have both "| Train Loss:" and "| Val Loss:" to avoid matching progress bars
 
-        EPOCH_LINES=$(echo "$LOG_CONTENT" | grep -E "^Epoch [0-9]+/[0-9]+" | tail -50)
+        EPOCH_LINES=$(echo "$LOG_CONTENT" | grep "| Train Loss:.*| Val Loss:" | tail -50)
 
         if [ -n "$EPOCH_LINES" ]; then
             # Extract current and total epochs
             LAST_EPOCH_LINE=$(echo "$EPOCH_LINES" | tail -1)
-            CURRENT_EPOCH=$(echo "$LAST_EPOCH_LINE" | grep -oE "^Epoch [0-9]+" | grep -oE "[0-9]+")
-            TOTAL_EPOCHS=$(echo "$LAST_EPOCH_LINE" | grep -oE "Epoch [0-9]+/[0-9]+" | grep -oE "/[0-9]+" | tr -d '/')
+            CURRENT_EPOCH=$(echo "$LAST_EPOCH_LINE" | grep -oE "Epoch [0-9]+" | head -1 | grep -oE "[0-9]+")
+            TOTAL_EPOCHS=$(echo "$LAST_EPOCH_LINE" | grep -oE "Epoch [0-9]+/[0-9]+" | head -1 | grep -oE "/[0-9]+" | tr -d '/')
 
             if [ -n "$CURRENT_EPOCH" ] && [ -n "$TOTAL_EPOCHS" ]; then
                 EPOCHS_REMAINING=$((TOTAL_EPOCHS - CURRENT_EPOCH))
@@ -383,60 +385,83 @@ if [ -n "$LATEST_LOG" ]; then
 
                 # Get log modification times for each epoch line using grep with line numbers
                 # This is approximate - we'll estimate based on log file modification
-                FIRST_EPOCH_IN_LOG=$(echo "$EPOCH_LINES" | head -1 | grep -oE "^Epoch [0-9]+" | grep -oE "[0-9]+")
+                FIRST_EPOCH_IN_LOG=$(echo "$EPOCH_LINES" | head -1 | grep -oE "Epoch [0-9]+" | head -1 | grep -oE "[0-9]+")
                 EPOCHS_IN_LOG=$(echo "$EPOCH_LINES" | wc -l | xargs)
 
                 if [ "$EPOCHS_IN_LOG" -ge 2 ]; then
-                    # Get log file's age
-                    LOG_START_TIME=$(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "${USERNAME}@${SERVER}" \
-                        "cd ${BASE_PATH} && stat -f %B ${LATEST_LOG} 2>/dev/null || stat -c %Y ${LATEST_LOG} 2>/dev/null" 2>&1)
+                    # Try to extract timestamp from filename first (most reliable for actively-written logs)
+                    # Format: training_6gpu_20251104_223000.log -> 2025-11-04 22:30:00
+                    LOG_DATE=$(echo "$LATEST_LOG" | grep -oE '[0-9]{8}_[0-9]{6}' | head -1)
+                    if [ -n "$LOG_DATE" ]; then
+                        # Parse YYYYMMDD_HHMMSS format
+                        YEAR=$(echo "$LOG_DATE" | cut -c1-4)
+                        MONTH=$(echo "$LOG_DATE" | cut -c5-6)
+                        DAY=$(echo "$LOG_DATE" | cut -c7-8)
+                        HOUR=$(echo "$LOG_DATE" | cut -c10-11)
+                        MIN=$(echo "$LOG_DATE" | cut -c12-13)
+                        SEC=$(echo "$LOG_DATE" | cut -c14-15)
+                        LOG_START_TIME=$(date -j -f "%Y-%m-%d %H:%M:%S" "${YEAR}-${MONTH}-${DAY} ${HOUR}:${MIN}:${SEC}" +%s 2>/dev/null || date -d "${YEAR}-${MONTH}-${DAY} ${HOUR}:${MIN}:${SEC}" +%s 2>/dev/null)
+                    fi
+
+                    # If filename parsing failed, fall back to stat (less reliable for active logs)
+                    if [ -z "$LOG_START_TIME" ]; then
+                        LOG_START_TIME=$(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "${USERNAME}@${SERVER}" \
+                            "cd ${BASE_PATH} && (stat -c %W ${LATEST_LOG} 2>/dev/null || stat -f %B ${LATEST_LOG} 2>/dev/null || stat --format=%W ${LATEST_LOG} 2>/dev/null)" 2>&1 | grep -oE '^[0-9]+$' | grep -v '^0$' | head -1)
+                    fi
 
                     CURRENT_TIME=$(date +%s)
 
-                    if [ -n "$LOG_START_TIME" ] && [ "$LOG_START_TIME" -gt 0 ]; then
+                    # Validate that we got a numeric timestamp
+                    if [ -n "$LOG_START_TIME" ] && [ "$LOG_START_TIME" -gt 0 ] 2>/dev/null; then
                         # Total time elapsed for logged epochs
                         TIME_ELAPSED=$((CURRENT_TIME - LOG_START_TIME))
 
-                        # Estimate time per epoch
-                        TIME_PER_EPOCH=$(echo "scale=2; $TIME_ELAPSED / $EPOCHS_IN_LOG" | bc)
-
-                        # Convert to minutes
-                        TIME_PER_EPOCH_MIN=$(echo "scale=1; $TIME_PER_EPOCH / 60" | bc)
-
-                        # Estimate remaining time
-                        TIME_REMAINING_SEC=$(echo "$TIME_PER_EPOCH * $EPOCHS_REMAINING" | bc)
-                        TIME_REMAINING_MIN=$(echo "scale=0; $TIME_REMAINING_SEC / 60" | bc)
-                        TIME_REMAINING_HR=$(echo "scale=1; $TIME_REMAINING_MIN / 60" | bc)
-
-                        # Calculate 95% confidence interval (assuming ~20% variability)
-                        # This is a rough estimate based on typical training variance
-                        STDERR=$(echo "scale=2; $TIME_PER_EPOCH * 0.10" | bc)  # 10% std error
-                        CI_MARGIN=$(echo "scale=2; $STDERR * 1.96" | bc)  # 95% CI
-
-                        TIME_MIN=$(echo "scale=2; ($TIME_PER_EPOCH - $CI_MARGIN) * $EPOCHS_REMAINING / 3600" | bc)
-                        TIME_MAX=$(echo "scale=2; ($TIME_PER_EPOCH + $CI_MARGIN) * $EPOCHS_REMAINING / 3600" | bc)
-
-                        # Ensure min time is not negative
-                        if [ $(echo "$TIME_MIN < 0" | bc) -eq 1 ]; then
-                            TIME_MIN=0
-                        fi
-
-                        echo -e "\n${BOLD}Time per Epoch:${NC} ${TIME_PER_EPOCH_MIN} minutes"
-
-                        if [ "$TIME_REMAINING_HR" -lt 2 ]; then
-                            echo -e "${BOLD}Estimated Remaining:${NC} ${TIME_REMAINING_MIN} minutes"
+                        # Skip if time elapsed is negative or zero (clock skew or future timestamp)
+                        if [ "$TIME_ELAPSED" -le 0 ]; then
+                            print_warning "Invalid timestamp: log appears to be from the future or current time"
                         else
-                            echo -e "${BOLD}Estimated Remaining:${NC} ${TIME_REMAINING_HR} hours"
-                        fi
+                            # Estimate time per epoch
+                            TIME_PER_EPOCH=$(echo "scale=2; $TIME_ELAPSED / $EPOCHS_IN_LOG" | bc)
 
-                        echo -e "${BOLD}95% Confidence Range:${NC} ${TIME_MIN} - ${TIME_MAX} hours"
+                            # Convert to minutes
+                            TIME_PER_EPOCH_MIN=$(echo "scale=1; $TIME_PER_EPOCH / 60" | bc)
 
-                        # Calculate estimated completion time
-                        COMPLETION_TIMESTAMP=$((CURRENT_TIME + TIME_REMAINING_SEC))
-                        COMPLETION_TIME=$(date -r "$COMPLETION_TIMESTAMP" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || date -d "@$COMPLETION_TIMESTAMP" "+%Y-%m-%d %H:%M:%S" 2>/dev/null)
+                            # Estimate remaining time
+                            TIME_REMAINING_SEC=$(echo "scale=0; $TIME_PER_EPOCH * $EPOCHS_REMAINING / 1" | bc)
+                            TIME_REMAINING_MIN=$(echo "scale=0; $TIME_REMAINING_SEC / 60" | bc)
+                            TIME_REMAINING_HR=$(echo "scale=1; $TIME_REMAINING_MIN / 60" | bc)
 
-                        if [ -n "$COMPLETION_TIME" ]; then
-                            echo -e "${BOLD}Estimated Completion:${NC} ${COMPLETION_TIME}"
+                            # Calculate 95% confidence interval (assuming ~20% variability)
+                            # This is a rough estimate based on typical training variance
+                            STDERR=$(echo "scale=2; $TIME_PER_EPOCH * 0.10" | bc)  # 10% std error
+                            CI_MARGIN=$(echo "scale=2; $STDERR * 1.96" | bc)  # 95% CI
+
+                            TIME_MIN=$(echo "scale=2; ($TIME_PER_EPOCH - $CI_MARGIN) * $EPOCHS_REMAINING / 3600" | bc)
+                            TIME_MAX=$(echo "scale=2; ($TIME_PER_EPOCH + $CI_MARGIN) * $EPOCHS_REMAINING / 3600" | bc)
+
+                            # Ensure min time is not negative
+                            if [ $(echo "$TIME_MIN < 0" | bc) -eq 1 ]; then
+                                TIME_MIN=0
+                            fi
+
+                            echo -e "\n${BOLD}Time per Epoch:${NC} ${TIME_PER_EPOCH_MIN} minutes"
+
+                            # Display in appropriate units
+                            if [ $(echo "$TIME_REMAINING_HR < 2" | bc) -eq 1 ]; then
+                                echo -e "${BOLD}Estimated Remaining:${NC} ${TIME_REMAINING_MIN} minutes"
+                            else
+                                echo -e "${BOLD}Estimated Remaining:${NC} ${TIME_REMAINING_HR} hours"
+                            fi
+
+                            echo -e "${BOLD}95% Confidence Range:${NC} ${TIME_MIN} - ${TIME_MAX} hours"
+
+                            # Calculate estimated completion time
+                            COMPLETION_TIMESTAMP=$((CURRENT_TIME + TIME_REMAINING_SEC))
+                            COMPLETION_TIME=$(date -r "$COMPLETION_TIMESTAMP" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || date -d "@$COMPLETION_TIMESTAMP" "+%Y-%m-%d %H:%M:%S" 2>/dev/null)
+
+                            if [ -n "$COMPLETION_TIME" ]; then
+                                echo -e "${BOLD}Estimated Completion:${NC} ${COMPLETION_TIME}"
+                            fi
                         fi
                     else
                         print_warning "Could not determine log start time"
@@ -461,7 +486,7 @@ if [ -n "$LATEST_LOG" ]; then
                     # Extract loss data from all epoch lines
                     # Format: epoch train_loss val_loss
                     echo "$EPOCH_LINES" | while read -r line; do
-                        EPOCH=$(echo "$line" | grep -oE "^Epoch [0-9]+" | grep -oE "[0-9]+")
+                        EPOCH=$(echo "$line" | grep -oE "Epoch [0-9]+" | head -1 | grep -oE "[0-9]+")
                         TRAIN_LOSS=$(echo "$line" | grep -oE "Train Loss: [0-9]+\.[0-9]+" | grep -oE "[0-9]+\.[0-9]+")
                         VAL_LOSS=$(echo "$line" | grep -oE "Val Loss: [0-9]+\.[0-9]+" | grep -oE "[0-9]+\.[0-9]+")
 
