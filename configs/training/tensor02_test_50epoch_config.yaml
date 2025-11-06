@@ -4,8 +4,8 @@
 # Duration: ~24 hours for 50 epochs
 
 # Optimizer parameters
-learning_rate: 1.0e-4  # Conservative - can increase if this works
-batch_size: 2  # Per GPU (12 total across 6 GPUs)
+learning_rate: 1.0e-3  # INCREASED: Ramp 1e-5 → 1e-3 during warmup, then cosine decay
+batch_size: 2  # Per GPU (16 total across 8 GPUs)
 num_epochs: 50  # 10% of production for validation
 weight_decay: 1.0e-5
 
@@ -19,7 +19,7 @@ fmri_loss_type: 'mse'
 
 # Learning rate scheduling
 scheduler_type: 'cosine'
-warmup_epochs: 2  # REDUCED from 10 (Issue #32)
+warmup_epochs: 10  # FIXED: Now steps per-batch, proper warmup from 1e-5 to 1e-3
 min_lr: 1.0e-6
 
 # Training settings
@@ -73,6 +73,6 @@ model:
 distributed:
   enabled: true
   backend: 'nccl'
-  world_size: 6  # Use 6 GPUs
+  world_size: 8  # Use all 8 GPUs on tensor02
   master_addr: 'localhost'
   master_port: '12356'  # Different port from tensor01

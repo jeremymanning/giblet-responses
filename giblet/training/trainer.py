@@ -363,17 +363,30 @@ class Trainer:
         """Create learning rate scheduler."""
         if self.config.scheduler_type == "cosine":
             # Cosine annealing with warmup
+            # Warmup: linearly ramp from 1e-5 to base LR over warmup_steps
+            # Then: cosine decay from base LR to min_lr over remaining steps
             total_steps = len(self.train_loader) * self.config.num_epochs
             warmup_steps = len(self.train_loader) * self.config.warmup_epochs
 
+            # Store for _update_lr
+            self.total_steps = total_steps
+            self.warmup_steps = warmup_steps
+
+            # Cosine scheduler for post-warmup (from base LR to min_lr)
             self.scheduler = optim.lr_scheduler.CosineAnnealingLR(
                 self.optimizer,
                 T_max=total_steps - warmup_steps,
                 eta_min=self.config.min_lr,
             )
+
+            # Warmup scheduler: ramp from 1e-5 to base LR
+            # start_factor = (start_lr / base_lr) = (1e-5 / 1e-3) = 0.01
+            # end_factor = 1.0 (reaches base LR at end of warmup)
+            start_lr = 1e-5
+            start_factor = start_lr / self.config.learning_rate
             self.warmup_scheduler = optim.lr_scheduler.LinearLR(
                 self.optimizer,
-                start_factor=0.1,
+                start_factor=start_factor,
                 end_factor=1.0,
                 total_iters=warmup_steps,
             )
@@ -384,23 +397,27 @@ class Trainer:
                 self.optimizer, step_size=30, gamma=0.1
             )
             self.warmup_scheduler = None
+            self.total_steps = None
+            self.warmup_steps = None
 
         else:  # 'none'
             self.scheduler = None
             self.warmup_scheduler = None
+            self.total_steps = None
+            self.warmup_steps = None
 
     def _update_lr(self):
-        """Update learning rate based on scheduler."""
+        """Update learning rate based on scheduler (called per batch)."""
         if self.scheduler is None:
             return
 
-        # Use warmup scheduler for first few epochs
+        # Use warmup scheduler for first warmup_steps
         if (
             self.warmup_scheduler is not None
-            and self.current_epoch < self.config.warmup_epochs
+            and self.global_step < self.warmup_steps
         ):
             self.warmup_scheduler.step()
-        else:
+        elif self.global_step >= self.warmup_steps:
             self.scheduler.step()
 
     def train(self):
@@ -446,8 +463,7 @@ class Trainer:
             else:
                 val_metrics = None
 
-            # Update learning rate
-            self._update_lr()
+            # Note: Learning rate is now updated per-batch in _train_epoch()
 
             # Log metrics
             if self.is_main_process:
@@ -590,6 +606,9 @@ class Trainer:
                     losses[key] += loss_dict[key].item()
 
             self.global_step += 1
+
+            # Update learning rate (per-batch scheduling)
+            self._update_lr()
 
             # Update progress bar
             if self.is_main_process:
