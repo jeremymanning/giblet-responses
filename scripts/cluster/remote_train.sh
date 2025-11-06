@@ -251,7 +251,7 @@ fi
 echo -e "${BLUE}=== Synchronizing Code ===${NC}"
 
 # Build rsync exclude list
-EXCLUDE_ARGS="--exclude=.git --exclude=data/sherlock_nii --exclude=__pycache__ --exclude=*.pyc --exclude=venv* --exclude=*.log"
+EXCLUDE_ARGS="--exclude=.git --exclude=data/sherlock_nii --exclude=__pycache__ --exclude=*.pyc --exclude=venv* --exclude=*.log --exclude=checkpoints_local"
 if ! $RESUME; then
     EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude=checkpoints --exclude=logs"
 fi
