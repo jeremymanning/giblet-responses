@@ -40,11 +40,12 @@ early_stopping_delta: 1.0e-4
 
 # Data settings - 5 SUBJECTS for faster testing
 # NOTE: fMRI normalization is NOW ENABLED by default (normalize_fmri=True)
+# mode: 'cross_subject' - Normalize within-subject, then average across subjects
 data:
   data_dir: 'data/'
   subjects: [1, 2, 3, 4, 5]  # 5 subjects for validation
   apply_hrf: true
-  mode: 'per_subject'
+  mode: 'cross_subject'  # Z-score within subject, then average across subjects
   train_split: 'train'
   val_split: 'val'
   frame_skip: 4  # Memory optimization

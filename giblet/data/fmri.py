@@ -246,6 +246,7 @@ class FMRIProcessor:
         print(f"  Non-zero voxels: {np.sum(np.any(features != 0, axis=0)):,}")
 
         # Apply z-score normalization if requested
+        norm_stats = None
         if self.normalize:
             # Compute mean and std across time (per voxel)
             mean = np.mean(features, axis=0, keepdims=True)
@@ -254,6 +255,14 @@ class FMRIProcessor:
             # Avoid division by zero for constant voxels
             std = np.where(std == 0, 1.0, std)
 
+            # Store normalization statistics (per-participant)
+            # These will be saved for applying to validation/test data
+            norm_stats = {
+                'mean': mean.squeeze(),  # (n_voxels,)
+                'std': std.squeeze(),    # (n_voxels,)
+                'subject_id': nii_path.stem  # e.g., 'sherlock_movie_s1'
+            }
+
             # Z-score normalization: (x - mean) / std
             features = (features - mean) / std
 
@@ -261,7 +270,7 @@ class FMRIProcessor:
             print(f"  Normalized mean: {np.mean(features):.6f} (should be ~0)")
             print(f"  Normalized std: {np.std(features):.6f} (should be ~1)")
 
-        return features, coordinates, metadata
+        return features, coordinates, metadata, norm_stats
 
     def features_to_nii(
         self,

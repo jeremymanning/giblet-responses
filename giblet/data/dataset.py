@@ -429,14 +429,28 @@ class MultimodalDataset(Dataset):
 
         # Extract features for each subject
         fmri_features_list = []
+        fmri_norm_stats = []  # Store normalization stats per subject
         for sid, fmri_path in zip(self.subject_ids, fmri_paths):
             print(f"  Loading subject {sid}...")
-            features, coords, meta = self.fmri_processor.nii_to_features(fmri_path)
+            features, coords, meta, norm_stats = self.fmri_processor.nii_to_features(fmri_path)
             fmri_features_list.append(features)
+            if norm_stats is not None:
+                fmri_norm_stats.append(norm_stats)
 
         # Stack into (n_subjects, n_trs, n_voxels) array
         fmri_features_stacked = np.stack(fmri_features_list, axis=0)
         print(f"  fMRI features: {fmri_features_stacked.shape}")
+
+        # Save normalization statistics for validation/test
+        if fmri_norm_stats:
+            norm_stats_path = self.cache_dir / "fmri_normalization_stats.npz"
+            print(f"  Saving normalization stats to {norm_stats_path}")
+            np.savez(
+                norm_stats_path,
+                **{f"subject_{stats['subject_id']}_mean": stats['mean'] for stats in fmri_norm_stats},
+                **{f"subject_{stats['subject_id']}_std": stats['std'] for stats in fmri_norm_stats},
+                subject_ids=[stats['subject_id'] for stats in fmri_norm_stats]
+            )
 
         # 5. Align all modalities
         print("\n5. Aligning all modalities to common TR grid...")
