@@ -67,6 +67,9 @@ from .losses import (  # noqa: E402
     compute_correlation_metric,
     compute_r2_score,
 )
+from .losses_normalized import (  # noqa: E402
+    NormalizedCombinedAutoEncoderLoss,
+)
 
 
 @dataclass
@@ -268,14 +271,16 @@ class Trainer:
                 weight_decay=config.weight_decay,
             )
 
-        # Create loss function
-        self.criterion = CombinedAutoEncoderLoss(
+        # Create loss function with modality normalization
+        # Normalizes each modality's loss by its target std for comparability
+        self.criterion = NormalizedCombinedAutoEncoderLoss(
             reconstruction_weight=config.reconstruction_weight,
             fmri_weight=config.fmri_weight,
             video_weight=config.video_weight,
             audio_weight=config.audio_weight,
             text_weight=config.text_weight,
             fmri_loss_type=config.fmri_loss_type,
+            normalize_by_std=True,  # Enable modality-specific loss normalization
         ).to(self.device)
 
         # Create learning rate scheduler
