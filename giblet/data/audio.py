@@ -31,6 +31,16 @@ try:
 except ImportError:
     ENCODEC_AVAILABLE = False
 
+# PyAV for video audio extraction (optional, falls back to librosa)
+try:
+    import av
+    import io
+    import tempfile
+
+    PYAV_AVAILABLE = True
+except ImportError:
+    PYAV_AVAILABLE = False
+
 
 class AudioProcessor:
     """
@@ -109,6 +119,50 @@ class AudioProcessor:
                 )
                 self.encodec_sample_rate = 24000  # EnCodec requires 24kHz
                 print("EnCodec model loaded successfully.")
+
+    def _extract_audio_with_pyav(
+        self, video_path: str, target_sr: int
+    ) -> Tuple[np.ndarray, int]:
+        """
+        Extract audio from video file using PyAV.
+
+        This is more reliable than librosa's audioread backend for video files.
+
+        Args:
+            video_path: Path to video file
+            target_sr: Target sample rate
+
+        Returns:
+            Tuple of (audio_array, sample_rate)
+        """
+        container = av.open(video_path)
+        audio_stream = next(s for s in container.streams if s.type == 'audio')
+
+        # Resample to target rate
+        resampler = av.AudioResampler(
+            format='s16',
+            layout='mono',
+            rate=target_sr
+        )
+
+        audio_frames = []
+        for frame in container.decode(audio_stream):
+            frame.pts = None  # Reset timestamp
+            resampled_frames = resampler.resample(frame)
+            for resampled_frame in resampled_frames:
+                audio_frames.append(resampled_frame.to_ndarray())
+
+        container.close()
+
+        # Concatenate all frames
+        if audio_frames:
+            audio_data = np.concatenate(audio_frames, axis=1).flatten()
+            # Convert from int16 to float32 [-1, 1]
+            audio_data = audio_data.astype(np.float32) / 32768.0
+        else:
+            audio_data = np.array([], dtype=np.float32)
+
+        return audio_data, target_sr
 
     def audio_to_features(
         self,
@@ -234,11 +288,18 @@ class AudioProcessor:
 
         # Load audio
         if from_video:
-            y, sr = librosa.load(
-                str(audio_source), sr=self.encodec_sample_rate, mono=False
-            )
-            if y.ndim > 1:
-                y = np.mean(y, axis=0)
+            # Use PyAV for video files (more reliable than librosa's audioread)
+            if PYAV_AVAILABLE:
+                y, sr = self._extract_audio_with_pyav(
+                    str(audio_source), self.encodec_sample_rate
+                )
+            else:
+                # Fallback to librosa (may fail with some video formats)
+                y, sr = librosa.load(
+                    str(audio_source), sr=self.encodec_sample_rate, mono=False
+                )
+                if y.ndim > 1:
+                    y = np.mean(y, axis=0)
         else:
             y, sr = librosa.load(str(audio_source), sr=self.encodec_sample_rate)
 

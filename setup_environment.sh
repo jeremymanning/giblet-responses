@@ -272,6 +272,15 @@ install_dependencies() {
         print_warning "You can install it manually: conda install -c conda-forge ffmpeg"
     fi
 
+    # Install PyAV for robust video audio extraction
+    print_info "Installing PyAV (Python bindings for ffmpeg)..."
+    if pip install av; then
+        print_success "PyAV installed successfully"
+    else
+        print_warning "Failed to install PyAV - may fall back to less reliable audio extraction"
+        print_warning "You can install it manually: pip install av"
+    fi
+
     # Install in stages for better error reporting
     if pip install -r "$REQUIREMENTS_FILE" --no-cache-dir; then
         print_success "All dependencies installed successfully"
