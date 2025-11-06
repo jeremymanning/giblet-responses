@@ -78,6 +78,19 @@ class MultimodalDataset(Dataset):
     max_trs : int, optional
         Maximum number of TRs to load (for debugging).
         If None, loads all available TRs.
+    use_encodec : bool, default=True
+        Whether to use EnCodec for audio processing.
+    encodec_bandwidth : float, default=3.0
+        EnCodec bandwidth in kbps.
+    encodec_sample_rate : int, default=12000
+        EnCodec sample rate in Hz.
+    frame_skip : int, default=2
+        Frame skip factor for video (memory optimization).
+    shared_data : dict, optional
+        Shared data cache between train/val splits.
+    normalize_fmri : bool, default=True
+        Whether to z-score normalize fMRI data per subject.
+        Fixes scale mismatch between fMRI and other modalities.
 
     Attributes
     ----------
@@ -127,6 +140,7 @@ class MultimodalDataset(Dataset):
         encodec_sample_rate: int = 12000,
         frame_skip: int = 2,  # Issue #30: Memory optimization via frame skipping
         shared_data: Optional[Dict] = None,  # For sharing cache between train/val
+        normalize_fmri: bool = True,  # Issue #32: Normalize fMRI data to fix scale mismatch
     ):
         self.data_dir = Path(data_dir)
         self.split = split
@@ -139,6 +153,7 @@ class MultimodalDataset(Dataset):
         self.encodec_sample_rate = encodec_sample_rate
         self.frame_skip = frame_skip  # Issue #30
         self.shared_data = shared_data  # Shared data for memory efficiency
+        self.normalize_fmri = normalize_fmri  # Issue #32
 
         # Set up cache directory
         if cache_dir is None:
@@ -172,7 +187,9 @@ class MultimodalDataset(Dataset):
         else:
             self.text_processor = None
             print("Warning: Using dummy text features (TextProcessor unavailable)")
-        self.fmri_processor = FMRIProcessor(tr=tr, max_trs=max_trs)
+        self.fmri_processor = FMRIProcessor(
+            tr=tr, max_trs=max_trs, normalize=normalize_fmri
+        )
 
         # Data containers
         self.video_features = None

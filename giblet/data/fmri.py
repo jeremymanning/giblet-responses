@@ -36,6 +36,8 @@ class FMRIProcessor:
         Maximum number of TRs to extract (for truncating to stimulus duration)
     mask_threshold : float, default=0.5
         Threshold for shared mask computation (proportion of subjects)
+    normalize : bool, default=True
+        Whether to z-score normalize fMRI data (per-subject normalization)
     """
 
     def __init__(
@@ -43,10 +45,12 @@ class FMRIProcessor:
         tr: float = 1.5,
         max_trs: Optional[int] = None,
         mask_threshold: float = 0.5,
+        normalize: bool = True,
     ):
         self.tr = tr
         self.max_trs = max_trs
         self.mask_threshold = mask_threshold
+        self.normalize = normalize
         self._shared_mask = None
         self._shared_mask_img = None
         self._coordinates = None
@@ -240,6 +244,22 @@ class FMRIProcessor:
 
         print(f"  Extracted features: {features.shape}")
         print(f"  Non-zero voxels: {np.sum(np.any(features != 0, axis=0)):,}")
+
+        # Apply z-score normalization if requested
+        if self.normalize:
+            # Compute mean and std across time (per voxel)
+            mean = np.mean(features, axis=0, keepdims=True)
+            std = np.std(features, axis=0, keepdims=True)
+
+            # Avoid division by zero for constant voxels
+            std = np.where(std == 0, 1.0, std)
+
+            # Z-score normalization: (x - mean) / std
+            features = (features - mean) / std
+
+            print(f"  Applied z-score normalization (per-voxel)")
+            print(f"  Normalized mean: {np.mean(features):.6f} (should be ~0)")
+            print(f"  Normalized std: {np.std(features):.6f} (should be ~1)")
 
         return features, coordinates, metadata
 
