@@ -1,0 +1,74 @@
+# Test config: All convergence fixes
+# Purpose: Test all fixes together
+# Changes from production:
+#   1. fMRI normalization (default)
+#   2. Reduced warmup (10 → 2 epochs)
+#   3. Increased learning rate (1e-4 → 3e-4)
+
+# Optimizer parameters
+learning_rate: 3.0e-4  # INCREASED from 1e-4 (Issue #32)
+batch_size: 2  # Per GPU
+num_epochs: 20  # Short test run
+weight_decay: 1.0e-5
+
+# Loss function weights
+reconstruction_weight: 1.0
+fmri_weight: 1.0
+video_weight: 1.0
+audio_weight: 1.0
+text_weight: 1.0
+fmri_loss_type: 'mse'
+
+# Learning rate scheduling
+scheduler_type: 'cosine'
+warmup_epochs: 2  # REDUCED from 10 (Issue #32)
+min_lr: 1.0e-6
+
+# Training settings
+gradient_clip_val: 1.0
+use_mixed_precision: true
+num_workers: 2
+pin_memory: true
+
+# Checkpointing and logging
+checkpoint_dir: 'test_full_fixes_checkpoints'
+log_dir: 'test_full_fixes_logs'
+save_every: 5
+validate_every: 1
+
+# Early stopping
+early_stopping_patience: 10
+early_stopping_delta: 1.0e-4
+
+# Data settings - SINGLE SUBJECT for quick testing
+data:
+  data_dir: 'data/'
+  subjects: [1]  # Just one subject for fast testing
+  apply_hrf: true
+  mode: 'per_subject'
+  train_split: 'train'
+  val_split: 'val'
+  frame_skip: 4
+  fps: 25.0
+  tr: 1.5
+
+# Model architecture
+model:
+  video_height: 90
+  video_width: 160
+  audio_mels: 2048
+  text_dim: 3072
+  n_voxels: 85810
+  bottleneck_dim: 2048
+  video_features: 1024
+  audio_features: 256
+  text_features: 256
+  decoder_hidden_dim: 2048
+  decoder_dropout: 0.3
+  use_encodec: true
+  audio_frames_per_tr: 112
+  gradient_checkpointing: true
+
+# Single-GPU for local testing
+distributed:
+  enabled: false
