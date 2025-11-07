@@ -102,8 +102,18 @@ echo "Num samples: $NUM_SAMPLES"
 echo "Device: $DEVICE"
 echo ""
 
-# Upload config file to cluster
-echo "Step 1: Uploading config file..."
+# Sync code from GitHub
+echo "Step 1: Syncing code from GitHub..."
+sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+    "$HOST" "cd ~/giblet-responses && source ~/.bashrc && source scripts/cluster/setup_cluster.sh && setup_cluster_environment" || {
+    echo "Error: Failed to sync code from GitHub"
+    exit 1
+}
+echo "✓ Code synced from GitHub"
+
+# Upload config file to cluster (config files may not be committed to git)
+echo ""
+echo "Step 2: Uploading config file..."
 sshpass -p "$PASSWORD" scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
     "$CONFIG" "$HOST:~/giblet-responses/$(basename $CONFIG)" || {
     echo "Error: Failed to upload config file"
@@ -113,7 +123,7 @@ echo "✓ Config uploaded"
 
 # Create evaluation script on cluster
 echo ""
-echo "Step 2: Creating evaluation script on cluster..."
+echo "Step 3: Creating evaluation script on cluster..."
 
 EVAL_SCRIPT=$(cat <<'EOF'
 #!/bin/bash
@@ -166,7 +176,7 @@ echo "✓ Evaluation script created"
 
 # Run evaluation
 echo ""
-echo "Step 3: Running evaluation on $CLUSTER..."
+echo "Step 4: Running evaluation on $CLUSTER..."
 echo "This may take several minutes..."
 echo ""
 
@@ -181,7 +191,7 @@ sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/de
 # Sync results back if requested
 if [ "$SYNC_RESULTS" = true ]; then
     echo ""
-    echo "Step 4: Syncing results back to local machine..."
+    echo "Step 5: Syncing results back to local machine..."
 
     LOCAL_OUTPUT_DIR="$OUTPUT_DIR"
     mkdir -p "$LOCAL_OUTPUT_DIR"

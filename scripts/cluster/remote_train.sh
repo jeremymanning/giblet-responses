@@ -9,7 +9,7 @@ PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
 #
 # This script handles:
 #   - SSH authentication via sshpass using cluster credentials
-#   - Code synchronization via rsync
+#   - Code synchronization via GitHub (git pull)
 #   - Remote environment setup verification
 #   - Training job launch in persistent screen sessions (NO SLURM)
 #   - Multi-GPU training via torchrun (handled by run_giblet.sh)
@@ -247,40 +247,17 @@ if $RESUME; then
     echo ""
 fi
 
-# Sync code to remote server
-echo -e "${BLUE}=== Synchronizing Code ===${NC}"
+# Sync code from GitHub instead of rsync
+echo -e "${BLUE}=== Synchronizing Code via GitHub ===${NC}"
 
-# Build rsync exclude list
-EXCLUDE_ARGS="--exclude=.git --exclude=data/sherlock_nii --exclude=__pycache__ --exclude=*.pyc --exclude=venv* --exclude=*.log --exclude=checkpoints_local"
-if ! $RESUME; then
-    EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude=checkpoints --exclude=logs"
-fi
-
-RSYNC_CMD="rsync -avz --progress $EXCLUDE_ARGS ./ $USERNAME@$SERVER:$BASE_PATH/"
+SETUP_CMD="cd $BASE_PATH && source ~/.bashrc && source ~/giblet-responses/scripts/cluster/setup_cluster.sh && setup_cluster_environment"
 
 if $DRY_RUN; then
-    echo -e "${BLUE}[DRY RUN]${NC} Would run: sshpass -p [PASSWORD] $RSYNC_CMD"
+    echo -e "${BLUE}[DRY RUN]${NC} Would run GitHub sync on cluster"
+    echo -e "${BLUE}[DRY RUN]${NC} Command: $SETUP_CMD"
 else
-    echo -e "Running: ${GREEN}rsync${NC}"
-    sshpass -p "$PASSWORD" $RSYNC_CMD
-fi
-echo ""
-
-# Check/setup remote environment
-echo -e "${BLUE}=== Verifying Remote Environment ===${NC}"
-ENV_CHECK=$(run_ssh "cd $BASE_PATH && if [ -f setup_environment.sh ]; then echo 'setup_script_exists'; fi")
-
-if [[ "$ENV_CHECK" == *"setup_script_exists"* ]]; then
-    echo -e "${GREEN}Found setup_environment.sh${NC}"
-    if ! $DRY_RUN; then
-        echo -e "${YELLOW}Checking if environment setup is needed...${NC}"
-        run_ssh "cd $BASE_PATH && if ! conda env list | grep -q giblet-py311; then bash setup_environment.sh; fi"
-    else
-        echo -e "${BLUE}[DRY RUN]${NC} Would check and setup environment if needed"
-    fi
-else
-    echo -e "${YELLOW}Warning: setup_environment.sh not found on remote${NC}"
-    echo -e "${YELLOW}Environment setup may need to be done manually${NC}"
+    echo -e "Running: ${GREEN}GitHub sync${NC}"
+    run_ssh "$SETUP_CMD"
 fi
 echo ""
 
