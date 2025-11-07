@@ -1,245 +1,439 @@
 #!/bin/bash
-# Setup cluster environment on tensor01 or tensor02
-# Usage: ./setup_cluster.sh <tensor01|tensor02>
+#
+# Shared Cluster Setup Function
+# =============================
+# Idempotent cluster environment setup that ALL cluster scripts should use
+#
+# This script provides a single setup_cluster_environment() function that:
+#   1. Clones/updates the giblet-responses repository
+#   2. Downloads the Sherlock dataset if needed
+#   3. Creates the conda environment (giblet-py311)
+#   4. Installs Python dependencies
+#   5. Handles errors gracefully with clear messages
+#
+# Usage (from other scripts):
+#   source "$(dirname "$0")/setup_cluster.sh"
+#   setup_cluster_environment
+#
+# This script is designed to be IDEMPOTENT - safe to run multiple times
+# without side effects. Each step checks if work is needed before acting.
+#
+# Created: 2025-11-06
 
+# Exit on error
 set -e
 
-# Colors for output
+# Color codes for output
+RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-RED='\033[0;31m'
 BLUE='\033[0;34m'
-NC='\033[0m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
 
-# Script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Configuration
+REPO_URL="https://github.com/ContextLab/giblet-responses.git"
+REPO_DIR="$HOME/giblet-responses"
+CONDA_ENV_NAME="giblet-py311"
+PYTHON_VERSION="3.11"
+MIN_DATA_FILES=15  # Minimum number of .nii.gz files expected
 
-# Function to print messages
-print_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+print_section() {
+    echo ""
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${BLUE}  $1${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
+    echo ""
 }
 
 print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+    echo -e "${GREEN}✓ $1${NC}"
 }
 
 print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    echo -e "${YELLOW}⚠ $1${NC}"
 }
 
 print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}✗ $1${NC}"
 }
 
-# Function to read JSON value
-read_json() {
-    local json_file=$1
-    local key=$2
-    python3 -c "import json; data=json.load(open('$json_file')); print(data.get('$key', ''))"
+print_info() {
+    echo -e "${CYAN}→ $1${NC}"
 }
 
-# Validate arguments
-if [ $# -ne 1 ]; then
-    print_error "Usage: $0 <tensor01|tensor02>"
-    exit 1
-fi
+# ============================================================================
+# STEP 1: CLONE/UPDATE REPOSITORY
+# ============================================================================
 
-CLUSTER=$1
-if [[ "$CLUSTER" != "tensor01" && "$CLUSTER" != "tensor02" ]]; then
-    print_error "Invalid cluster name. Must be 'tensor01' or 'tensor02'"
-    exit 1
-fi
+setup_repository() {
+    print_section "Step 1: Repository Setup"
 
-# Read credentials from JSON
-CREDS_FILE="$PROJECT_ROOT/cluster_config/${CLUSTER}_credentials.json"
-if [ ! -f "$CREDS_FILE" ]; then
-    print_error "Credentials file not found: $CREDS_FILE"
-    exit 1
-fi
+    if [[ -d "$REPO_DIR" ]]; then
+        print_info "Repository exists at $REPO_DIR"
 
-print_info "Reading credentials from $CREDS_FILE"
-USERNAME=$(read_json "$CREDS_FILE" "username")
-PASSWORD=$(read_json "$CREDS_FILE" "password")
-SERVER=$(read_json "$CREDS_FILE" "server")
-BASE_PATH=$(read_json "$CREDS_FILE" "base_path")
+        # Check if it's a valid git repository
+        if [[ -d "$REPO_DIR/.git" ]]; then
+            print_info "Updating repository from GitHub..."
+            cd "$REPO_DIR"
 
-if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ] || [ -z "$SERVER" ]; then
-    print_error "Failed to read credentials from JSON file"
-    exit 1
-fi
+            # Stash any local changes to avoid conflicts
+            if ! git diff --quiet || ! git diff --cached --quiet; then
+                print_warning "Local changes detected, stashing..."
+                git stash push -m "Auto-stash before cluster setup $(date +%Y%m%d_%H%M%S)" || {
+                    print_error "Failed to stash local changes"
+                    return 1
+                }
+            fi
 
-print_success "Credentials loaded for $SERVER"
-
-# Check if sshpass is installed
-if ! command -v sshpass &> /dev/null; then
-    print_warning "sshpass not found. Installing via Homebrew..."
-    if command -v brew &> /dev/null; then
-        brew install sshpass
+            # Pull latest changes
+            if git pull origin main; then
+                print_success "Repository updated successfully"
+            else
+                print_error "Failed to update repository"
+                return 1
+            fi
+        else
+            print_warning "$REPO_DIR exists but is not a git repository"
+            print_error "Please remove $REPO_DIR and run this script again"
+            return 1
+        fi
     else
-        print_error "sshpass not installed and brew not available"
-        exit 1
+        print_info "Cloning repository from $REPO_URL"
+
+        # Create parent directory if needed
+        mkdir -p "$(dirname "$REPO_DIR")"
+
+        if git clone "$REPO_URL" "$REPO_DIR"; then
+            print_success "Repository cloned successfully to $REPO_DIR"
+        else
+            print_error "Failed to clone repository"
+            print_info "You may need to set up SSH keys or check network connectivity"
+            return 1
+        fi
     fi
-fi
 
-print_info "Setting up cluster: $CLUSTER ($SERVER)"
-echo ""
+    # Verify repository directory exists and is accessible
+    if [[ ! -d "$REPO_DIR" ]]; then
+        print_error "Repository directory does not exist: $REPO_DIR"
+        return 1
+    fi
 
-# Step 1: Test SSH connection
-print_info "Testing SSH connection..."
-sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    "$USERNAME@$SERVER" "echo 'SSH connection successful'" 2>/dev/null || {
-    print_error "Failed to connect to $SERVER"
-    exit 1
-}
-print_success "SSH connection verified"
-echo ""
-
-# Step 2: Create project directory on cluster
-print_info "Creating project directory on cluster..."
-sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    "$USERNAME@$SERVER" "mkdir -p $BASE_PATH && echo 'Directory ready'" 2>/dev/null
-print_success "Project directory created/verified"
-echo ""
-
-# Step 3: Check if conda is available
-print_info "Checking for conda installation..."
-CONDA_INSTALLED=$(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    "$USERNAME@$SERVER" "command -v conda &> /dev/null && echo 'yes' || echo 'no'" 2>/dev/null)
-
-if [ "$CONDA_INSTALLED" = "no" ]; then
-    print_warning "Conda not found on cluster. Please install Miniconda/Anaconda manually."
-    print_info "Instructions: https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html"
-else
-    print_success "Conda is installed"
-fi
-echo ""
-
-# Step 4: Create conda environment
-print_info "Creating conda environment: giblet-env"
-SETUP_ENV_SCRIPT=$(cat <<'EOF'
-set -e
-source ~/.bashrc
-if conda env list | grep -q "giblet-env"; then
-    echo "Environment giblet-env already exists"
-else
-    conda create -y -n giblet-env python=3.10
-    echo "Environment created successfully"
-fi
-EOF
-)
-
-sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    "$USERNAME@$SERVER" "bash -c '$SETUP_ENV_SCRIPT'" 2>/dev/null
-print_success "Conda environment ready (giblet-env)"
-echo ""
-
-# Step 5: Sync code to cluster
-print_info "Syncing code to cluster..."
-print_info "Source: $PROJECT_ROOT/"
-print_info "Destination: $USERNAME@$SERVER:$BASE_PATH/"
-
-# Use rsync via sshpass
-export SSHPASS="$PASSWORD"
-rsync -e "sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
-    -avz \
-    --exclude='.git' \
-    --exclude='.pytest_cache' \
-    --exclude='__pycache__' \
-    --exclude='.DS_Store' \
-    --exclude='*.pyc' \
-    --exclude='data/sherlock_nii' \
-    --exclude='venv' \
-    --exclude='.venv' \
-    "$PROJECT_ROOT/" "$USERNAME@$SERVER:$BASE_PATH/" 2>/dev/null || {
-    print_warning "Rsync sync failed, attempting with scp as fallback..."
+    cd "$REPO_DIR"
+    print_success "Repository ready at $REPO_DIR"
 }
 
-print_success "Code synced to cluster"
-echo ""
+# ============================================================================
+# STEP 2: DOWNLOAD SHERLOCK DATASET
+# ============================================================================
 
-# Step 6: Install dependencies
-print_info "Installing Python dependencies..."
-INSTALL_DEPS_SCRIPT=$(cat <<'EOF'
-set -e
-source ~/.bashrc
-conda activate giblet-env
-cd $BASE_PATH
-pip install --upgrade pip
-pip install -r requirements.txt
-echo "Dependencies installed successfully"
-EOF
-)
+setup_dataset() {
+    print_section "Step 2: Dataset Setup"
 
-sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    "$USERNAME@$SERVER" "bash -c 'BASE_PATH=\"$BASE_PATH\" bash -s' <<< '$INSTALL_DEPS_SCRIPT'" 2>/dev/null || {
-    print_warning "Dependency installation may have encountered issues. Check manually with:"
-    print_warning "sshpass -p \"PASSWORD\" ssh $USERNAME@$SERVER"
-}
-print_success "Dependencies installed"
-echo ""
+    cd "$REPO_DIR"
 
-# Step 7: Download data
-print_info "Downloading dataset from Dropbox..."
-DOWNLOAD_DATA_SCRIPT=$(cat <<'EOF'
-set -e
-source ~/.bashrc
-cd $BASE_PATH
-if [ -f download_data_from_dropbox.sh ]; then
-    chmod +x download_data_from_dropbox.sh
-    bash download_data_from_dropbox.sh
-    echo "Data download completed"
-else
-    echo "download_data_from_dropbox.sh not found"
-fi
-EOF
-)
+    DATA_DIR="$REPO_DIR/data/sherlock_nii"
 
-sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    "$USERNAME@$SERVER" "bash -c 'BASE_PATH=\"$BASE_PATH\" bash -s' <<'EOF' 2>/dev/null || true
-$DOWNLOAD_DATA_SCRIPT
-EOF
-" 2>/dev/null || {
-    print_warning "Data download failed or script not available. You can download manually on the cluster."
-}
+    # Check if dataset already exists and has files
+    if [[ -d "$DATA_DIR" ]]; then
+        NII_COUNT=$(find "$DATA_DIR" -name "*.nii.gz" 2>/dev/null | wc -l | tr -d ' ')
 
-print_success "Dataset setup complete"
-echo ""
+        if [[ $NII_COUNT -ge $MIN_DATA_FILES ]]; then
+            print_success "Dataset already exists ($NII_COUNT .nii.gz files found)"
+            print_info "Skipping download (dataset appears complete)"
+            return 0
+        else
+            print_warning "Dataset directory exists but only has $NII_COUNT files (expected >= $MIN_DATA_FILES)"
+            print_info "Will attempt to download dataset..."
+        fi
+    else
+        print_info "Dataset not found at $DATA_DIR"
+        print_info "Will download dataset..."
+    fi
 
-# Step 8: Verify setup
-print_info "Verifying setup..."
-VERIFY_SCRIPT=$(cat <<'EOF'
-source ~/.bashrc
-conda activate giblet-env
-cd $BASE_PATH
-python -c "import torch; print(f'PyTorch version: {torch.__version__}')"
-python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
-if [ -f requirements.txt ]; then
-    echo "requirements.txt found: Yes"
-fi
-if [ -d "giblet" ]; then
-    echo "giblet directory found: Yes"
-fi
-if [ -d "data" ]; then
-    echo "data directory found: Yes"
-fi
-EOF
-)
+    # Check if download script exists
+    DOWNLOAD_SCRIPT="$REPO_DIR/download_data_from_dropbox.sh"
+    if [[ ! -f "$DOWNLOAD_SCRIPT" ]]; then
+        print_error "Download script not found: $DOWNLOAD_SCRIPT"
+        print_warning "You may need to download the dataset manually"
+        return 1
+    fi
 
-sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    "$USERNAME@$SERVER" "bash -c 'BASE_PATH=\"$BASE_PATH\" bash -s' <<'EOF'
-$VERIFY_SCRIPT
-EOF
-" 2>/dev/null || {
-    print_warning "Verification encountered issues"
+    # Make script executable
+    chmod +x "$DOWNLOAD_SCRIPT"
+
+    # Download dataset
+    print_info "Starting dataset download (this may take several minutes for ~11GB)..."
+    print_warning "Please be patient, this is downloading from Dropbox..."
+
+    if bash "$DOWNLOAD_SCRIPT"; then
+        # Verify download was successful
+        NII_COUNT=$(find "$DATA_DIR" -name "*.nii.gz" 2>/dev/null | wc -l | tr -d ' ')
+        if [[ $NII_COUNT -ge $MIN_DATA_FILES ]]; then
+            print_success "Dataset downloaded successfully ($NII_COUNT .nii.gz files)"
+        else
+            print_warning "Download completed but fewer files than expected ($NII_COUNT found)"
+            print_warning "Training may fail if dataset is incomplete"
+        fi
+    else
+        print_error "Dataset download failed"
+        print_warning "You can try downloading manually by running:"
+        print_warning "  cd $REPO_DIR && ./download_data_from_dropbox.sh"
+        return 1
+    fi
 }
 
-echo ""
-print_success "Cluster setup complete!"
-echo ""
-echo "Next steps:"
-echo "  1. Test environment: sshpass -p \"$PASSWORD\" ssh $USERNAME@$SERVER"
-echo "  2. Submit training job: $SCRIPT_DIR/submit_job.sh $CLUSTER <job_name> <script_path>"
-echo "  3. Monitor job: $SCRIPT_DIR/monitor_job.sh $CLUSTER <job_id>"
-echo "  4. Get results: $SCRIPT_DIR/sync_results.sh $CLUSTER"
-echo ""
+# ============================================================================
+# STEP 3: SETUP CONDA ENVIRONMENT
+# ============================================================================
+
+setup_conda_environment() {
+    print_section "Step 3: Conda Environment Setup"
+
+    # Check if conda is available
+    if ! command -v conda &> /dev/null; then
+        print_error "Conda not found"
+        print_info "Please install Miniconda or Anaconda first:"
+        print_info "  https://docs.conda.io/en/latest/miniconda.html"
+        return 1
+    fi
+
+    CONDA_VERSION=$(conda --version)
+    print_success "Found conda: $CONDA_VERSION"
+
+    # Initialize conda for this shell session
+    eval "$(conda shell.bash hook)" || {
+        # Try alternative initialization if first method fails
+        source "$(conda info --base)/etc/profile.d/conda.sh" || {
+            print_error "Failed to initialize conda"
+            return 1
+        }
+    }
+
+    # Check if environment already exists
+    if conda env list | grep -q "^${CONDA_ENV_NAME} "; then
+        print_success "Environment '$CONDA_ENV_NAME' already exists"
+        print_info "Skipping environment creation (already exists)"
+    else
+        print_info "Creating new conda environment: $CONDA_ENV_NAME (Python $PYTHON_VERSION)"
+        print_warning "This may take a few minutes..."
+
+        if conda create -n "$CONDA_ENV_NAME" python="$PYTHON_VERSION" -y; then
+            print_success "Environment '$CONDA_ENV_NAME' created successfully"
+        else
+            print_error "Failed to create conda environment"
+            return 1
+        fi
+    fi
+
+    # Activate the environment
+    print_info "Activating environment: $CONDA_ENV_NAME"
+    conda activate "$CONDA_ENV_NAME" || {
+        print_error "Failed to activate conda environment"
+        return 1
+    }
+
+    if [[ "$CONDA_DEFAULT_ENV" != "$CONDA_ENV_NAME" ]]; then
+        print_error "Environment activation failed (current: $CONDA_DEFAULT_ENV, expected: $CONDA_ENV_NAME)"
+        return 1
+    fi
+
+    print_success "Environment activated: $CONDA_DEFAULT_ENV"
+    print_info "Python version: $(python --version)"
+}
+
+# ============================================================================
+# STEP 4: INSTALL DEPENDENCIES
+# ============================================================================
+
+install_dependencies() {
+    print_section "Step 4: Installing Dependencies"
+
+    cd "$REPO_DIR"
+
+    # Ensure environment is activated
+    if [[ "$CONDA_DEFAULT_ENV" != "$CONDA_ENV_NAME" ]]; then
+        print_info "Re-activating conda environment..."
+        eval "$(conda shell.bash hook)"
+        conda activate "$CONDA_ENV_NAME" || {
+            print_error "Failed to activate conda environment"
+            return 1
+        }
+    fi
+
+    # Check which requirements file to use (prefer requirements_conda.txt)
+    REQUIREMENTS_FILE=""
+    if [[ -f "$REPO_DIR/requirements_conda.txt" ]]; then
+        REQUIREMENTS_FILE="$REPO_DIR/requirements_conda.txt"
+        print_info "Using requirements_conda.txt"
+    elif [[ -f "$REPO_DIR/requirements.txt" ]]; then
+        REQUIREMENTS_FILE="$REPO_DIR/requirements.txt"
+        print_info "Using requirements.txt"
+    else
+        print_error "No requirements file found"
+        print_info "Looked for: requirements_conda.txt or requirements.txt"
+        return 1
+    fi
+
+    # Check if packages are already installed by testing key imports
+    print_info "Checking if dependencies are already installed..."
+    if python -c "import torch; import sentence_transformers; import nibabel" 2>/dev/null; then
+        print_success "Key dependencies already installed"
+        print_info "Checking for updates..."
+
+        # Only reinstall if requirements file is newer than last install
+        # (We'll skip this check for simplicity and just do a quick install)
+        print_info "Running pip install to ensure all dependencies are current..."
+    else
+        print_info "Dependencies not installed or incomplete"
+        print_info "This will take several minutes (PyTorch and ML libraries)..."
+    fi
+
+    # Upgrade pip first
+    print_info "Upgrading pip..."
+    pip install --upgrade pip -q || {
+        print_warning "Failed to upgrade pip (continuing anyway)"
+    }
+
+    # Install ffmpeg if not present (needed for audio processing)
+    if ! python -c "import av" 2>/dev/null; then
+        print_info "Installing ffmpeg for audio processing..."
+        conda install -y -c conda-forge ffmpeg -q || {
+            print_warning "Failed to install ffmpeg from conda (may already be installed)"
+        }
+
+        print_info "Installing PyAV (Python bindings for ffmpeg)..."
+        pip install av -q || {
+            print_warning "Failed to install PyAV (continuing anyway)"
+        }
+    fi
+
+    # Install dependencies from requirements file
+    print_info "Installing packages from $REQUIREMENTS_FILE..."
+    if pip install -r "$REQUIREMENTS_FILE" --no-cache-dir; then
+        print_success "Dependencies installed successfully"
+    else
+        print_error "Failed to install some dependencies"
+        print_warning "Training may fail if dependencies are incomplete"
+        return 1
+    fi
+
+    # Special handling for tf-keras if needed
+    if grep -q "tensorflow" "$REQUIREMENTS_FILE" 2>/dev/null; then
+        if ! python -c "import keras" 2>/dev/null; then
+            print_info "Installing tf-keras (Keras 3 compatibility)..."
+            pip install tf-keras -q || {
+                print_warning "Failed to install tf-keras (may not be needed)"
+            }
+        fi
+    fi
+
+    # Verify key packages
+    print_info "Verifying installation..."
+
+    # Check PyTorch
+    if python -c "import torch; print('PyTorch:', torch.__version__)" 2>/dev/null; then
+        TORCH_VERSION=$(python -c "import torch; print(torch.__version__)")
+        print_success "PyTorch $TORCH_VERSION installed"
+
+        # Check CUDA availability
+        if python -c "import torch; exit(0 if torch.cuda.is_available() else 1)" 2>/dev/null; then
+            CUDA_VERSION=$(python -c "import torch; print(torch.version.cuda if torch.version.cuda else 'N/A')")
+            GPU_COUNT=$(python -c "import torch; print(torch.cuda.device_count())")
+            print_success "CUDA available: version $CUDA_VERSION ($GPU_COUNT GPUs detected)"
+        else
+            print_warning "CUDA not available (CPU only mode)"
+            print_warning "Training will be slow without GPU acceleration"
+        fi
+    else
+        print_error "PyTorch not installed correctly"
+        return 1
+    fi
+
+    # Check other key packages
+    PACKAGES=("sentence_transformers" "nibabel" "numpy" "pandas")
+    for pkg in "${PACKAGES[@]}"; do
+        if python -c "import $pkg" 2>/dev/null; then
+            print_success "$pkg ✓"
+        else
+            print_error "$pkg not installed"
+            return 1
+        fi
+    done
+
+    print_success "All dependencies verified"
+}
+
+# ============================================================================
+# MAIN SETUP FUNCTION (exported for use by other scripts)
+# ============================================================================
+
+setup_cluster_environment() {
+    print_section "Giblet Cluster Environment Setup"
+    print_info "This will set up the complete environment for training"
+    print_info "All steps are idempotent - safe to run multiple times"
+    echo ""
+
+    # Step 1: Repository
+    if ! setup_repository; then
+        print_error "Repository setup failed"
+        return 1
+    fi
+
+    # Step 2: Dataset
+    if ! setup_dataset; then
+        print_warning "Dataset setup failed (continuing anyway)"
+        print_warning "You may need to download the dataset manually"
+    fi
+
+    # Step 3: Conda environment
+    if ! setup_conda_environment; then
+        print_error "Conda environment setup failed"
+        return 1
+    fi
+
+    # Step 4: Dependencies
+    if ! install_dependencies; then
+        print_error "Dependency installation failed"
+        return 1
+    fi
+
+    # Success!
+    print_section "Setup Complete!"
+    print_success "Environment is ready for training"
+    echo ""
+    print_info "Repository:   $REPO_DIR"
+    print_info "Environment:  $CONDA_ENV_NAME"
+    print_info "Python:       $(python --version 2>&1)"
+    echo ""
+    print_success "You can now run training scripts"
+    echo ""
+}
+
+# ============================================================================
+# SCRIPT CAN ALSO BE RUN DIRECTLY (not just sourced)
+# ============================================================================
+
+# If script is run directly (not sourced), execute setup
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    print_info "Running setup directly..."
+    setup_cluster_environment || {
+        print_error "Setup failed"
+        exit 1
+    }
+
+    print_section "Next Steps"
+    echo -e "  1. Activate the environment:"
+    echo -e "     ${CYAN}conda activate $CONDA_ENV_NAME${NC}"
+    echo ""
+    echo -e "  2. Navigate to repository:"
+    echo -e "     ${CYAN}cd $REPO_DIR${NC}"
+    echo ""
+    echo -e "  3. Run training:"
+    echo -e "     ${CYAN}./run_giblet.sh --task train${NC}"
+    echo ""
+fi
