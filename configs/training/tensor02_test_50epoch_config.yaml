@@ -1,0 +1,78 @@
+# Tensor02 Test Config: Validate fMRI normalization fix
+# Purpose: Test fixes on cluster before deploying to production
+# Comparison: tensor01 (broken, no normalization) vs tensor02 (fixed, normalized)
+# Duration: ~24 hours for 50 epochs
+
+# Optimizer parameters
+learning_rate: 1.0e-3  # INCREASED: Ramp 1e-5 → 1e-3 during warmup, then cosine decay
+batch_size: 2  # Per GPU (16 total across 8 GPUs)
+num_epochs: 50  # 10% of production for validation
+weight_decay: 1.0e-5
+
+# Loss function weights
+reconstruction_weight: 1.0
+fmri_weight: 1.0
+video_weight: 1.0
+audio_weight: 1.0
+text_weight: 1.0
+fmri_loss_type: 'mse'
+
+# Learning rate scheduling
+scheduler_type: 'cosine'
+warmup_epochs: 10  # FIXED: Now steps per-batch, proper warmup from 1e-5 to 1e-3
+min_lr: 1.0e-6
+
+# Training settings
+gradient_clip_val: 1.0
+use_mixed_precision: true
+num_workers: 2
+pin_memory: true
+
+# Checkpointing and logging
+checkpoint_dir: 'tensor02_test_checkpoints'
+log_dir: 'tensor02_test_logs'
+save_every: 10  # Save every 10 epochs
+validate_every: 1
+
+# Early stopping
+early_stopping_patience: 20  # More patience for test
+early_stopping_delta: 1.0e-4
+
+# Data settings - 5 SUBJECTS for faster testing
+# NOTE: fMRI normalization is NOW ENABLED by default (normalize_fmri=True)
+# mode: 'cross_subject' - Normalize within-subject, then average across subjects
+data:
+  data_dir: 'data/'
+  subjects: [1, 2, 3, 4, 5]  # 5 subjects for validation
+  apply_hrf: true
+  mode: 'cross_subject'  # Z-score within subject, then average across subjects
+  train_split: 'train'
+  val_split: 'val'
+  frame_skip: 4  # Memory optimization
+  fps: 25.0
+  tr: 1.5
+
+# Model architecture
+model:
+  video_height: 90
+  video_width: 160
+  audio_mels: 2048
+  text_dim: 3072
+  n_voxels: 83138  # Actual masked fMRI voxel count (61x73x61 spatial with brain mask)
+  bottleneck_dim: 2048
+  video_features: 1024
+  audio_features: 256
+  text_features: 256
+  decoder_hidden_dim: 2048
+  decoder_dropout: 0.3
+  use_encodec: true
+  audio_frames_per_tr: 112
+  gradient_checkpointing: true
+
+# Multi-GPU training settings
+distributed:
+  enabled: true
+  backend: 'nccl'
+  world_size: 8  # Use all 8 GPUs on tensor02
+  master_addr: 'localhost'
+  master_port: '12356'  # Different port from tensor01

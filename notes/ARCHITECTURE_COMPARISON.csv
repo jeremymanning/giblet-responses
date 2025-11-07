@@ -1,0 +1,20 @@
+Layer,Spec Description,Implementation,Input Dims,Output Dims,Parameters,Compliant,Notes
+Layer 1,Video + audio + text input,"video (B,3,90,160) + audio (B,2048) + text (B,1024)","— ","43200/2048/1024",0,✓,Three separate input tensors
+Layer 2A,Conv2D video features,VideoEncoder: 4x Conv2D + BatchNorm + Linear,"(B,3,90,160)",1024,"16,119,040",✓,Spatial convolutions with stride=2
+Layer 2B,Conv1D audio features,AudioEncoder: 4x Conv1D + BatchNorm + Linear,"(B,2048)",256,"8,519,424",✓,Frequency convolutions with stride=2
+Layer 2C,Linear text features,TextEncoder: 2x Linear + BatchNorm,"(B,1024)",256,"657,664",✓,Dimensionality reduction
+Layer 3,Pool/concatenate features,torch.cat() on dim=1,"1024+256+256",1536,0,✓,Simple concatenation
+Layer 4,Feature convolution + ReLU,feature_conv: Linear + BatchNorm + ReLU,1536,1536,"2,363,904",✓,Uses Linear instead of Conv
+Layer 5,Linear to voxel dimensions,to_bottleneck stage 1: Linear + BatchNorm + ReLU,1536,4096,"39,095,744",⚠️,Spec says should map to 85810 voxels directly
+Layer 6,Reshape to 3D + convolve (SMALLEST LAYER),to_bottleneck stage 2: Linear + BatchNorm + ReLU,4096,8000,"(included in L5)","✗ MAJOR","Should be smallest but 8000 > 2048 (L7); no 3D reshape"
+—,— (Training only),bottleneck_to_voxels: 2x Linear,8000,85810,"1,537,118,002",—,Optional voxel prediction path
+Layer 7,Mirror of Layer 5,layer7: Linear + BatchNorm + ReLU,8000,2048,"16,390,144",✓,This is actually the smallest main layer!
+Layer 8,Mirror of Layer 4,layer8: Linear + BatchNorm + ReLU,2048,4096,"8,400,896",✓,Feature deconvolution
+Layer 9,Mirror of Layer 3,layer9: Linear + BatchNorm + ReLU,4096,8192,"33,579,008",✓,Unpool features
+Layer 10A,Mirror of Layer 2A,layer10_video: 2x Linear + BatchNorm + ReLU,8192,4096,"100,700,160",✓,Video branch deconvolution
+Layer 10B,Mirror of Layer 2B,layer10_audio: 2x Linear + BatchNorm + ReLU,8192,1024,"18,883,584",✓,Audio branch deconvolution
+Layer 10C,Mirror of Layer 2C,layer10_text: 2x Linear + BatchNorm + ReLU,8192,2048,"20,983,808",✓,Text branch deconvolution
+Layer 11 (video),Mirror of Layer 1 video,layer11_video: Linear + Sigmoid,4096,43200,"176,990,400",✓,Reconstruct video frames
+Layer 11 (audio),Mirror of Layer 1 audio,layer11_audio: Linear,1024,2048,"2,099,200",✓,Reconstruct mel spectrogram
+Layer 11 (text),Mirror of Layer 1 text,layer11_text: Linear,2048,1024,"2,098,176",✓,Reconstruct text embeddings
+TOTAL,— ,— ,— ,— ,"1,983,999,154",—,~2 billion parameters

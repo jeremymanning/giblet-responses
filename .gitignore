@@ -50,6 +50,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.benchmarks/
 
 # Translations
 *.mo
@@ -109,6 +110,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+venv_py311/
 
 # Spyder project settings
 .spyderproject
@@ -127,3 +129,27 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Project-specific
+/data/
+/code/
+cluster_config/*.json
+
+# macOS
+.DS_Store
+
+# Validation outputs (generated files, can be large)
+validation_outputs/
+
+# Training artifacts (Issue #31: Prevent future clutter)
+*_checkpoints/
+*_outputs/
+*_logs/
+logs/
+encodec_test_outputs/
+encodec_parameter_sweep/
+
+# Pre-commit and CI/CD
+.pre-commit-config.yaml.backup
+.ruff_cache/
+checkpoints_local/best_checkpoint_epoch0.pt

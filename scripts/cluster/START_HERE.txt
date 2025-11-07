@@ -1,0 +1,241 @@
+================================================================================
+                    CLUSTER DEPLOYMENT SCRIPTS
+                  tensor01 & tensor02 GPU Cluster
+================================================================================
+
+Welcome! This directory contains everything you need to manage training and
+inference jobs on the Dartmouth tensor clusters.
+
+QUICK START (2 minutes)
+================================================================================
+
+1. From this directory, run:
+   ./setup_cluster.sh tensor01
+
+2. Submit a job:
+   ./submit_job.sh tensor01 my_job demo_decoder.py --epochs 100
+
+3. Monitor it:
+   ./monitor_job.sh tensor01 <job_id> --tail
+
+4. Get results:
+   ./sync_results.sh tensor01
+
+DOCUMENTATION
+================================================================================
+
+Start with your experience level:
+
+BEGINNER (recommended):
+  1. README.md              - Complete guide with features & examples
+  2. USAGE.md               - Step-by-step instructions
+  3. QUICK_REFERENCE.md     - Command cheat sheet
+
+EXPERIENCED:
+  1. QUICK_REFERENCE.md     - Command syntax
+  2. EXAMPLES.md            - Real-world usage patterns
+  3. README.md              - Troubleshooting & advanced
+
+FIRST-TIME SETUP:
+  Run: ./example_workflow.sh
+  (Interactive walkthrough of the complete workflow)
+
+FILE GUIDE
+================================================================================
+
+Documentation Files:
+  README.md              - Main documentation (start here)
+  USAGE.md               - Detailed usage guide
+  QUICK_REFERENCE.md     - Command reference card
+  EXAMPLES.md            - 12+ real-world examples
+  INDEX.md               - Complete file reference
+
+Script Files:
+  setup_cluster.sh       - One-time cluster setup
+  submit_job.sh          - Submit training jobs
+  monitor_job.sh         - Monitor job progress
+  sync_results.sh        - Download results
+  example_workflow.sh    - Interactive demo
+  utils.sh               - Utility functions
+
+SCRIPT SUMMARY
+================================================================================
+
+setup_cluster.sh        One-time cluster setup
+  Usage: ./setup_cluster.sh <tensor01|tensor02>
+
+submit_job.sh          Submit jobs to SLURM
+  Usage: ./submit_job.sh <cluster> <name> <script> [args...]
+
+monitor_job.sh         Check job status and logs
+  Usage: ./monitor_job.sh <cluster> <job_id> [--tail] [--error]
+
+sync_results.sh        Download results from cluster
+  Usage: ./sync_results.sh <cluster> [--dry-run]
+
+CLUSTER INFO
+================================================================================
+
+Clusters:          tensor01.dartmouth.edu, tensor02.dartmouth.edu
+GPUs per cluster:  8 × A6000
+Memory:            128GB
+CPUs:              16
+Time limit:        24 hours
+Base path:         ~/giblet-responses
+Conda env:         giblet-env
+
+CREDENTIALS
+================================================================================
+
+Credentials are stored in:
+  ../../cluster_config/tensor01_credentials.json
+  ../../cluster_config/tensor02_credentials.json
+
+Format:
+  {
+    "server": "tensor01.dartmouth.edu",
+    "username": "your_username",
+    "password": "your_password",
+    "base_path": "~/giblet-responses",
+    "gpus": 8,
+    "gpu_type": "A6000"
+  }
+
+NOTE: These files are in .gitignore - never commit credentials!
+
+PREREQUISITES
+================================================================================
+
+Required:
+  - sshpass (for credential-based SSH)
+  - Python 3.6+ (for JSON parsing)
+  - conda/anaconda on the clusters
+  - SLURM job scheduler on clusters
+
+Install sshpass:
+  macOS:  brew install sshpass
+  Linux:  sudo apt-get install sshpass
+
+WORKFLOW OVERVIEW
+================================================================================
+
+Step 1: Setup (once per cluster)
+  cd scripts/cluster
+  ./setup_cluster.sh tensor01
+  (Creates environment, syncs code, installs dependencies)
+
+Step 2: Submit a job
+  ./submit_job.sh tensor01 training train.py --epochs 100
+  (Returns Job ID: 12345)
+
+Step 3: Monitor progress
+  ./monitor_job.sh tensor01 12345 --tail
+  (Shows job status and log output in real-time)
+
+Step 4: Retrieve results
+  ./sync_results.sh tensor01
+  (Downloads to results_tensor01/, checkpoints_tensor01/, etc.)
+
+EXAMPLE USAGE
+================================================================================
+
+Simple job:
+  ./submit_job.sh tensor01 job1 demo_decoder.py --epochs 50
+
+Multiple seeds:
+  for seed in 1 2 3 4 5; do
+    ./submit_job.sh tensor01 seed_$seed train.py --seed $seed
+  done
+
+Monitor job:
+  ./monitor_job.sh tensor01 12345 --tail
+
+Distributed jobs:
+  ./submit_job.sh tensor01 exp1 train.py &
+  ./submit_job.sh tensor02 exp2 train.py &
+  wait
+
+Get results:
+  ./sync_results.sh tensor01
+  ls -la results_tensor01/
+
+TROUBLESHOOTING
+================================================================================
+
+sshpass not found:
+  brew install sshpass (macOS)
+  apt-get install sshpass (Linux)
+
+Connection refused:
+  Check credentials in ../../cluster_config/tensor01_credentials.json
+
+Job not submitting:
+  Check that your script exists: ls -la ../../<script_name>.py
+
+For more help:
+  See README.md → Troubleshooting section
+
+NEXT STEPS
+================================================================================
+
+Option 1: Interactive Walkthrough
+  ./example_workflow.sh
+
+Option 2: Quick Reference
+  See QUICK_REFERENCE.md for commands and examples
+
+Option 3: Full Documentation
+  Open README.md in your text editor or:
+  cat README.md | less
+
+Option 4: Real-World Examples
+  See EXAMPLES.md for 12+ usage patterns
+
+SUPPORT
+================================================================================
+
+For detailed help, see:
+  README.md              - Complete documentation
+  USAGE.md               - Step-by-step guide
+  QUICK_REFERENCE.md     - Command reference
+  EXAMPLES.md            - Real-world examples
+  INDEX.md               - File reference
+
+Run any script without arguments for quick help:
+  ./setup_cluster.sh
+  ./submit_job.sh
+  ./monitor_job.sh
+  ./sync_results.sh
+
+IMPORTANT NOTES
+================================================================================
+
+1. Credentials: Keep cluster_config/*.json files secure!
+   Already in .gitignore - never commit them.
+
+2. Setup once: Run setup_cluster.sh only once per cluster
+   (unless you need to update code/dependencies)
+
+3. Job IDs: Save job IDs returned by submit_job.sh
+   Use them with monitor_job.sh and sync_results.sh
+
+4. Results location: After sync_results.sh, results appear at:
+   results_<cluster>/
+   checkpoints_<cluster>/
+   logs_<cluster>/
+   output_<cluster>/
+
+5. Time limits: Default 24-hour walltime
+   Edit submit_job.sh #SBATCH section to change
+
+================================================================================
+
+                          READY TO GET STARTED?
+
+         Run: ./setup_cluster.sh tensor01
+
+              Or read: cat README.md
+
+         Or try interactive demo: ./example_workflow.sh
+
+================================================================================

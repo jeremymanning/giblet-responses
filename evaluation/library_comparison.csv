@@ -1,0 +1,26 @@
+Library,Installation,PyTorch Native,Handles 2B Params,Parallel Branches,Horizontal Layout,Color Custom,PDF/SVG Export,Active Maintenance,Test Time (s),Last Release,GitHub Stars,Recommendation
+visualtorch,Success,Yes,Failed,Unknown,Unknown,Unknown,PNG only,Active (2024),0.00,2024,~100,Not Recommended - API issues
+torchviz,Success,Yes,Yes,Shows graph structure,No,Limited,Yes (PDF/SVG/PNG),Active,3.81,Dec 2 2024,~3200,Recommended - Good for computational graphs
+hiddenlayer,Success,Yes,Failed,Unknown,Unknown,Themes,PNG/PDF,Inactive (2018),0.00,2018 (v0.2),~1800,Not Recommended - Outdated
+torchview,Success,Yes,Yes,Clear visualization,Yes (LR mode),Limited,Yes (PDF/SVG/PNG),Very Active,1.15,Oct 29 2024,~1200,STRONGLY RECOMMENDED - Best overall
+custom_matplotlib,Built-in,Yes,Yes,Vertical list only,No,Full control,Yes (PDF/PNG),N/A,0.83,N/A,N/A,Recommended - Good for custom styling
+
+Use Case,Primary Choice,Secondary Choice,Notes
+Architecture Diagrams,torchview,custom_matplotlib,Use torchview for horizontal layout showing parallel branches
+Debugging,torchviz,torchview,torchviz shows computational graph for gradient flow
+Documentation,torchview,custom_matplotlib,Professional appearance with automatic annotations
+Quick Inspection,torchviz,N/A,Simplest API for fast checks
+Publications,torchview,custom_matplotlib,High-quality PDF/SVG export
+
+Key Finding,Details
+Best Library,torchview - Handles large models with horizontal layout and clear parallel branch visualization
+Runner-up,torchviz - Excellent for computational graphs but less suitable for architecture diagrams
+Custom Option,Keep existing matplotlib code for cases requiring full styling control
+Failed Libraries,visualtorch (API issues) and hiddenlayer (outdated multi-input support)
+Critical Feature,Horizontal orientation is essential for showing parallel encoder/decoder branches
+
+Installation Command,Library
+pip install torchview,torchview (recommended)
+conda install -c conda-forge torchview,torchview (recommended via conda)
+pip install torchviz,torchviz (alternative)
+Already in codebase,custom_matplotlib

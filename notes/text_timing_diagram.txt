@@ -1,0 +1,118 @@
+TEXT TIMING ALIGNMENT - VISUAL DIAGRAM
+================================================================================
+
+TR Grid (1.5s bins):
+┌──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┐
+│  0   │  1   │  2   │  3   │  4   │  5   │  6   │  7   │  8   │  9   │
+│0-1.5s│1.5-3s│3-4.5s│4.5-6s│6-7.5s│7.5-9s│9-10.5│10.5- │12-   │13.5- │
+│      │      │      │      │      │      │      │ 12s  │13.5s │ 15s  │
+└──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┘
+
+Annotations:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Segment 0 [0-12s]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+└─ TRs: 0, 1, 2, 3, 4, 5, 6, 7
+                                              ━━━━━━━━━━━━━━━━━━
+                                              Segment 1 [12-15s]
+                                              ━━━━━━━━━━━━━━━━━━
+                                              └─ TRs: 8, 9
+
+================================================================================
+
+ALIGNMENT LOGIC:
+
+For each annotation [start_time, end_time]:
+  1. Calculate start_tr = floor(start_time / 1.5)
+  2. Calculate end_tr = ceil(end_time / 1.5)
+  3. Add annotation to all TRs in range(start_tr, end_tr)
+
+Example 1: Segment 0 [0s, 12s]
+  start_tr = floor(0 / 1.5) = 0
+  end_tr = ceil(12 / 1.5) = 8
+  TRs = [0, 1, 2, 3, 4, 5, 6, 7]  ✓ Correct!
+
+Example 2: Segment 1 [12s, 15s]
+  start_tr = floor(12 / 1.5) = 8
+  end_tr = ceil(15 / 1.5) = 10
+  TRs = [8, 9]  ✓ Correct!
+
+================================================================================
+
+OVERLAP HANDLING:
+
+When multiple annotations overlap the same TR:
+
+TR 0 [0-1.5s]:
+  - Segment 0 [0-12s] contributes ✓
+  - Segment 482 [0-12s] contributes ✓ (duplicate)
+  → Aggregation: mean(embedding_0, embedding_482)
+  → Since they're duplicates, mean has no effect
+
+================================================================================
+
+TRUNCATION TO 920 TRs:
+
+Full dataset:
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  Annotations: 0s ────────────────────────────────> 1544s   │
+│                                                    (25.7m)  │
+│                                                             │
+│  fMRI Data:   0s ──────────────────────> 1380s             │
+│                                          (920 TRs, 23m)    │
+│                                                             │
+│  Used:        0s ──────────────────────> 1380s             │
+│               └──────920 TRs──────────┘                    │
+│                                                             │
+│  Ignored:                               1380s ─────> 1544s │
+│                                         (80 annotations)   │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+
+Implementation (text.py lines 215-216):
+  start_tr = max(0, start_tr)
+  end_tr = min(n_trs, end_tr)
+
+This ensures annotations beyond TR 920 are not included.
+
+================================================================================
+
+DATA FLOW:
+
+1. Load annotations from data/annotations.xlsx
+   └─ Read "Start Time (s)" and "End Time (s)" columns
+
+2. Combine text columns
+   └─ Scene Details - A Level
+   └─ Name - All
+   └─ Location
+
+3. Embed text using BAAI/bge-large-en-v1.5
+   └─ Output: (n_segments, 1024) embeddings
+
+4. Align to TR grid
+   └─ Input: segment embeddings, n_trs=920
+   └─ Process: Map each segment to overlapping TRs
+   └─ Aggregate: Mean of overlapping embeddings
+   └─ Fill gaps: Forward fill (not needed - no gaps)
+   └─ Output: (920, 1024) TR-aligned embeddings
+
+5. Sync with other modalities (sync.py)
+   └─ All modalities resampled to 920 TRs
+   └─ Optional: Apply HRF convolution
+
+================================================================================
+
+VERIFICATION RESULTS:
+
+✓ Timing columns correctly used
+✓ TR alignment logic mathematically sound
+✓ Edge cases handled correctly
+✓ Truncation works properly
+✓ Integration with sync.py verified
+✓ All tests pass
+
+NO CHANGES NEEDED - IMPLEMENTATION IS CORRECT
+
+================================================================================

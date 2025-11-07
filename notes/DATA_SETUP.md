@@ -1,0 +1,47 @@
+# Data Setup Instructions
+
+## Dataset Already Packaged and Available
+
+The Sherlock dataset has been packaged and uploaded to Dropbox. No setup needed - just download!
+
+## For Lab Members
+
+Simple one-command setup:
+
+```bash
+chmod +x download_data_from_dropbox.sh
+./download_data_from_dropbox.sh
+```
+
+This will:
+1. Download `sherlock_dataset.zip` from Dropbox (11 GB)
+2. Extract all data files to the correct locations
+3. Clean up the zip file
+
+**Requirements**: Only `curl` and `unzip` (standard on macOS/Linux)
+
+## Dataset Structure
+
+After setup, you'll have:
+
+```
+data/
+├── stimuli_Sherlock.m4v              # 272 MB - Sherlock episode video
+├── annotations.xlsx                   # 173 KB - Scene-level annotations
+└── sherlock_nii/                      # ~12 GB compressed
+    ├── sherlock_movie_s1.nii.gz      # Subject 1
+    ├── sherlock_movie_s10.nii.gz     # Subject 10
+    ├── sherlock_movie_s11.nii.gz     # Subject 11
+    ├── ...                           # Subjects 12-16
+    ├── sherlock_movie_s2.nii.gz      # Subject 2
+    ├── ...                           # Subjects 3-9
+    └── sherlock_movie_s9.nii.gz      # Subject 9
+```
+
+Total size: ~12-13 GB
+
+## Notes
+
+- Data files are in `.gitignore` and will not be committed to GitHub
+- Only the download scripts and documentation are version controlled
+- The Dropbox link is embedded in `download_data_from_dropbox.sh` for easy sharing

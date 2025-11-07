@@ -1,0 +1,104 @@
+[
+  {
+    "library": "visualtorch",
+    "installable": true,
+    "import_success": true,
+    "pytorch_native": true,
+    "handles_large_models": false,
+    "shows_parallel_branches": "unknown",
+    "horizontal_orientation": "unknown",
+    "color_customization": "unknown",
+    "pdf_svg_output": "unknown",
+    "active_maintenance": "unknown",
+    "test_time_seconds": 0.0004553794860839844,
+    "error_messages": [
+      "Generation error: 'module' object is not callable\nTraceback (most recent call last):\n  File \"/Users/jmanning/giblet-responses/evaluation/test_visualization_libraries.py\", line 145, in generate_test_output\n    visualtorch.graph(simple_model, torch.zeros(1, 10),\nTypeError: 'module' object is not callable\n"
+    ],
+    "success_messages": [
+      "Successfully installed visualtorch",
+      "Successfully imported visualtorch"
+    ],
+    "sample_output": null
+  },
+  {
+    "library": "torchviz",
+    "installable": true,
+    "import_success": true,
+    "pytorch_native": true,
+    "handles_large_models": true,
+    "shows_parallel_branches": "shows computational graph structure",
+    "horizontal_orientation": "unknown",
+    "color_customization": "unknown",
+    "pdf_svg_output": "supports PDF, PNG, SVG via graphviz",
+    "active_maintenance": "unknown",
+    "test_time_seconds": 3.810544967651367,
+    "error_messages": [],
+    "success_messages": [
+      "Successfully installed torchviz",
+      "Successfully imported torchviz",
+      "Created computational graph",
+      "SVG export successful"
+    ],
+    "sample_output": "/Users/jmanning/giblet-responses/evaluation/output/torchviz_test.png"
+  },
+  {
+    "library": "hiddenlayer",
+    "installable": true,
+    "import_success": true,
+    "pytorch_native": true,
+    "handles_large_models": false,
+    "shows_parallel_branches": "unknown",
+    "horizontal_orientation": "unknown",
+    "color_customization": "unknown",
+    "pdf_svg_output": "unknown",
+    "active_maintenance": "unknown",
+    "test_time_seconds": 0.003602743148803711,
+    "error_messages": [
+      "Graph creation failed: MultimodalAutoencoder.forward() missing 2 required positional arguments: 'audio' and 'text'"
+    ],
+    "success_messages": [
+      "Successfully installed hiddenlayer",
+      "Successfully imported hiddenlayer"
+    ],
+    "sample_output": null
+  },
+  {
+    "library": "torchview",
+    "installable": true,
+    "import_success": true,
+    "pytorch_native": true,
+    "handles_large_models": true,
+    "shows_parallel_branches": "shows detailed layer structure",
+    "horizontal_orientation": "supports via rankdir parameter",
+    "color_customization": "unknown",
+    "pdf_svg_output": "supports PNG, PDF, SVG via graphviz",
+    "active_maintenance": "unknown",
+    "test_time_seconds": 1.1521308422088623,
+    "error_messages": [],
+    "success_messages": [
+      "Successfully installed torchview",
+      "Successfully imported torchview",
+      "Created detailed layer visualization",
+      "Horizontal orientation successful"
+    ],
+    "sample_output": "/Users/jmanning/giblet-responses/evaluation/output/torchview_test.png"
+  },
+  {
+    "library": "custom_matplotlib",
+    "installable": true,
+    "import_success": true,
+    "pytorch_native": true,
+    "handles_large_models": true,
+    "shows_parallel_branches": "vertical list, no parallel visualization",
+    "horizontal_orientation": "vertical only",
+    "color_customization": "fully customizable",
+    "pdf_svg_output": "supports PDF, PNG",
+    "active_maintenance": "unknown",
+    "test_time_seconds": 0.8251478672027588,
+    "error_messages": [],
+    "success_messages": [
+      "Created custom matplotlib diagram"
+    ],
+    "sample_output": "/Users/jmanning/giblet-responses/evaluation/output/custom_matplotlib_test.pdf"
+  }
+]
